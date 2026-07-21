@@ -15,8 +15,20 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-3 gap-6">
+        {(() => {
+          const cards = [
+            { title: "Monthly Income", value: "₦350,000" },
+            { title: "Savings", value: "₦150,000" },
+            { title: "Expenses", value: "₦95,000" },
+            { title: "Business Fund", value: "₦60,000" },
+          ];
 
-        <Card
+          return cards.map((card, index) => (
+            <Card key={index} title={card.title} value={card.value} />
+          ));
+        })()}
+
+        {/* <Card
           title="Monthly Income"
           value="₦350,000"
         />
@@ -30,6 +42,11 @@ const Dashboard = () => {
           title="Expenses"
           value="₦95,000"
         />
+
+        <Card
+          title="Investments"
+          value="₦70,000"
+        /> */}
 
       </div>
 

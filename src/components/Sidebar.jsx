@@ -1,34 +1,40 @@
+
+import { NavLink } from "react-router-dom";
+import { LayoutDashboard, Wallet, Receipt, Target, ChartBar, Calculator, Settings } from "lucide-react";
+
 const Sidebar = () => {
+
+  const menuItems = [
+    { name: "Dashboard", path: "/", icon: LayoutDashboard },
+    { name: "Budgets", path: "/budgets", icon: Wallet },
+    { name: "Expenses", path: "/expenses", icon: Receipt },
+    { name: "Goals", path: "/goals", icon: Target },
+    { name: "Reports", path: "/reports", icon: ChartBar },
+    { name: "Compound Interest", path: "/compound-interest", icon: Calculator },
+    { name: "Settings", path: "/settings", icon: Settings },
+  ];
   return (
     <aside className="w-64 min-h-screen bg-slate-900 text-white p-6">
-      <h1 className="text-2xl font-bold mb-10">
-        💰 BudgetFlow
-      </h1>
+      <h1 className="text-2xl font-bold mb-10">💰 BudgetFlow</h1>
 
       <nav className="space-y-3">
-        <p className="cursor-pointer rounded-lg p-3 hover:bg-slate-800">
-          Dashboard
-        </p>
-
-        <p className="cursor-pointer rounded-lg p-3 hover:bg-slate-800">
-          Budgets
-        </p>
-
-        <p className="cursor-pointer rounded-lg p-3 hover:bg-slate-800">
-          Expenses
-        </p>
-
-        <p className="cursor-pointer rounded-lg p-3 hover:bg-slate-800">
-          Goals
-        </p>
-
-        <p className="cursor-pointer rounded-lg p-3 hover:bg-slate-800">
-          Reports
-        </p>
-
-        <p className="cursor-pointer rounded-lg p-3 hover:bg-slate-800">
-          Settings
-        </p>
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+            to={item.path}
+            key={item.path}
+            className={({ isActive }) =>
+              isActive
+                ? "flex items-center rounded-lg p-3 bg-blue-600 text-white"
+                : "flex items-center rounded-lg p-3 hover:bg-slate-800"
+            }
+          >
+            <Icon size={20} />
+            <span className="ml-3">{item.name}</span>
+          </NavLink>
+          );
+        })}
       </nav>
     </aside>
   );

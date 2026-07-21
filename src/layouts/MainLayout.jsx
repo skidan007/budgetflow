@@ -1,31 +1,17 @@
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
+import { Outlet } from "react-router-dom";
 
-const MainLayout = ({ children }) => {
+const MainLayout = () => {
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        background: "#f8fafc",
-        color: "#0f172a",
-      }}
-    >
+    <div className="flex min-h-screen">
       <Sidebar />
 
-      <div
-        style={{
-          flex: 1,
-        }}
-      >
+      <div className="flex-1">
         <Navbar />
 
-        <main
-          style={{
-            padding: "20px",
-          }}
-        >
-          {children}
+        <main className="p-6">
+          <Outlet />
         </main>
       </div>
     </div>
