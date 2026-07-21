@@ -1,5 +1,17 @@
 const Navbar = () => {
-  return <nav style={{ padding: "16px 20px", background: "#ffffff", borderBottom: "1px solid #e2e8f0" }}>Navbar</nav>;
+  return (
+    <header className="bg-white h-20 shadow flex items-center justify-between px-8">
+
+      <h2 className="font-semibold">
+        Dashboard
+      </h2>
+
+      <div>
+        Daniel
+      </div>
+
+    </header>
+  );
 };
 
 export default Navbar;
