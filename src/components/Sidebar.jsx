@@ -18,12 +18,12 @@ const Sidebar = () => {
       <h1 className="text-2xl font-bold mb-10">💰 BudgetFlow</h1>
 
       <nav className="space-y-3">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
+        {menuItems.map((menu) => {
+          const Icon = menu.icon;
           return (
             <NavLink
-            to={item.path}
-            key={item.path}
+            to={menu.path}
+            key={menu.path}
             className={({ isActive }) =>
               isActive
                 ? "flex items-center rounded-lg p-3 bg-blue-600 text-white"
@@ -31,7 +31,7 @@ const Sidebar = () => {
             }
           >
             <Icon size={20} />
-            <span className="ml-3">{item.name}</span>
+            <span className="ml-3">{menu.name}</span>
           </NavLink>
           );
         })}
