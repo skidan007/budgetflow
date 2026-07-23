@@ -15,6 +15,8 @@ function Dashboard() {
   const [expenseCategory, setExpenseCategory] = useState("Food");
 
   const [transactions, setTransactions] = useState([]);
+  const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
 
   const handleAddIncome = () => {
     if (!incomeInput) return;
@@ -25,13 +27,14 @@ function Dashboard() {
     setBalance((prev) => prev + amount);
 
     setTransactions((prev) => [
-      ...prev,
+      
       {
         id: Date.now(),
         type: "Income",
         amount,
         category: incomeCategory,
       },
+      ...prev,
     ]);
 
     setIncomeInput("");
@@ -46,13 +49,14 @@ function Dashboard() {
     setBalance((prev) => prev - amount);
 
     setTransactions((prev) => [
-      ...prev,
+      
       {
         id: Date.now(),
         type: "Expense",
         amount,
         category: expenseCategory,
       },
+      ...prev,
     ]);
 
     setExpenseInput("");
@@ -76,6 +80,16 @@ function Dashboard() {
     },
     { title: "Savings", amount: "₦300,000", icon: PiggyBank },
   ];
+
+  const filteredTransactions = transactions.filter((transaction) => {
+    const matchesFilter = filter === "All" || transaction.type === filter;
+
+    const matchesSearch = transaction.category
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    return matchesFilter && matchesSearch;
+  });
   return (
     <div className="space-y-8">
       <div>
@@ -168,13 +182,37 @@ function Dashboard() {
 
         {/* Right Column */}
         <div className="rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-4 text-xl font-semibold">Recent Transactions</h2>
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <h2 className="text-xl font-semibold">Recent Transactions</h2>
+
+            <div className="flex gap-3">
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="rounded-lg border p-2"
+              >
+                <option>All</option>
+                <option>Income</option>
+                <option>Expense</option>
+              </select>
+
+              <input
+                type="text"
+                placeholder="Search category..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="rounded-lg border p-2"
+              />
+            </div>
+          </div>
 
           <div className="space-y-3 max-h-125 overflow-y-auto pr-2">
             {transactions.length === 0 ? (
               <p className="text-center text-gray-500">No transactions yet.</p>
+            ) : filteredTransactions.length === 0 ? (
+              <p className="text-center text-gray-500">No matching results.</p>
             ) : (
-              transactions.map((transaction) => (
+              filteredTransactions.map((transaction) => (
                 <TransactionItem
                   key={transaction.id}
                   transaction={transaction}
