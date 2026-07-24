@@ -27,7 +27,6 @@ function Dashboard() {
     setBalance((prev) => prev + amount);
 
     setTransactions((prev) => [
-      
       {
         id: Date.now(),
         type: "Income",
@@ -49,7 +48,6 @@ function Dashboard() {
     setBalance((prev) => prev - amount);
 
     setTransactions((prev) => [
-      
       {
         id: Date.now(),
         type: "Expense",
@@ -90,6 +88,27 @@ function Dashboard() {
 
     return matchesFilter && matchesSearch;
   });
+
+  const handleDelete = (id) => {
+  const transactionToDelete = transactions.find(
+    (transaction) => transaction.id === id
+  );
+
+  if (!transactionToDelete) return;
+
+  if (transactionToDelete.type === "Income") {
+    setIncome((prev) => prev - transactionToDelete.amount);
+    setBalance((prev) => prev - transactionToDelete.amount);
+  } else {
+    setExpenses((prev) => prev - transactionToDelete.amount);
+    setBalance((prev) => prev + transactionToDelete.amount);
+  }
+
+  setTransactions((prev) =>
+    prev.filter((transaction) => transaction.id !== id)
+  );
+};
+
   return (
     <div className="space-y-8">
       <div>
@@ -216,6 +235,7 @@ function Dashboard() {
                 <TransactionItem
                   key={transaction.id}
                   transaction={transaction}
+                  onDelete={handleDelete}
                 />
               ))
             )}
