@@ -17,6 +17,7 @@ function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
+  const [editingTransaction, setEditingTransaction] = useState(null);
 
   const handleAddIncome = () => {
     if (!incomeInput) return;
@@ -90,24 +91,95 @@ function Dashboard() {
   });
 
   const handleDelete = (id) => {
-  const transactionToDelete = transactions.find(
-    (transaction) => transaction.id === id
-  );
+    const transactionToDelete = transactions.find(
+      (transaction) => transaction.id === id,
+    );
 
-  if (!transactionToDelete) return;
+    if (!transactionToDelete) return;
 
-  if (transactionToDelete.type === "Income") {
-    setIncome((prev) => prev - transactionToDelete.amount);
-    setBalance((prev) => prev - transactionToDelete.amount);
-  } else {
-    setExpenses((prev) => prev - transactionToDelete.amount);
-    setBalance((prev) => prev + transactionToDelete.amount);
-  }
+    if (transactionToDelete.type === "Income") {
+      setIncome((prev) => prev - transactionToDelete.amount);
+      setBalance((prev) => prev - transactionToDelete.amount);
+    } else {
+      setExpenses((prev) => prev - transactionToDelete.amount);
+      setBalance((prev) => prev + transactionToDelete.amount);
+    }
 
-  setTransactions((prev) =>
-    prev.filter((transaction) => transaction.id !== id)
-  );
-};
+    setTransactions((prev) =>
+      prev.filter((transaction) => transaction.id !== id),
+    );
+  };
+
+  const handleEdit = (transaction) => {
+    setEditingTransaction(transaction);
+    if (transaction.type === "Income") {
+      setIncomeCategory(transaction.category);
+    } else {
+      setExpenseCategory(transaction.category);
+    }
+
+    if (transaction.type === "Income") {
+      setIncomeInput(transaction.amount.toString());
+      setExpenseInput("");
+    } else {
+      setExpenseInput(transaction.amount.toString());
+      setIncomeInput("");
+    }
+  };
+
+
+
+  const handleUpdateTransaction = () => {
+    if (!editingTransaction) return;
+
+    const oldTransaction = transactions.find(
+      (transaction) => transaction.id === editingTransaction.id,
+    );
+
+    if (!oldTransaction) return;
+
+    const amount =
+      editingTransaction.type === "Income"
+        ? Number(incomeInput)
+        : Number(expenseInput);
+
+    const category =
+      editingTransaction.type === "Income" ? incomeCategory : expenseCategory;
+
+    if (oldTransaction.type === "Income") {
+      setIncome((prev) => prev - oldTransaction.amount);
+      setBalance((prev) => prev - oldTransaction.amount);
+    } else {
+      setExpenses((prev) => prev - oldTransaction.amount);
+      setBalance((prev) => prev + oldTransaction.amount);
+    }
+
+    if (editingTransaction.type === "Income") {
+      setIncome((prev) => prev + amount);
+      setBalance((prev) => prev + amount);
+    } else {
+      setExpenses((prev) => prev + amount);
+      setBalance((prev) => prev - amount);
+    }
+
+    setTransactions((prev) =>
+      prev.map((transaction) =>
+        transaction.id === editingTransaction.id
+          ? {
+              ...transaction,
+              amount,
+              category,
+            }
+          : transaction,
+      ),
+    );
+
+    setEditingTransaction(null);
+    setIncomeInput("");
+    setExpenseInput("");
+    setIncomeCategory("Salary");
+    setExpenseCategory("Food");
+  };
 
   return (
     <div className="space-y-8">
@@ -156,10 +228,16 @@ function Dashboard() {
               />
 
               <button
-                onClick={handleAddIncome}
-                className="rounded-lg bg-blue-600 px-6 py-3 text-white lg:w-40 w-full"
+                onClick={
+                  editingTransaction?.type === "Income"
+                    ? handleUpdateTransaction
+                    : handleAddIncome
+                }
+                className="rounded-lg bg-blue-600 px-6 text-white lg-w-40 py-3 w-full"
               >
-                Add Income
+                {editingTransaction?.type === "Income"
+                  ? "Save Changes"
+                  : "Add Income"}
               </button>
             </div>
           </div>
@@ -190,10 +268,16 @@ function Dashboard() {
               />
 
               <button
-                onClick={handleAddExpense}
+                onClick={
+                  editingTransaction?.type === "Expense"
+                    ? handleUpdateTransaction
+                    : handleAddExpense
+                }
                 className="rounded-lg bg-red-600 px-6 py-3 text-white lg:w-40 w-full"
               >
-                Add Expense
+                {editingTransaction?.type === "Expense"
+                  ? "Save Changes"
+                  : "Add Expense"}
               </button>
             </div>
           </div>
@@ -236,26 +320,13 @@ function Dashboard() {
                   key={transaction.id}
                   transaction={transaction}
                   onDelete={handleDelete}
+                  onEdit={handleEdit}
                 />
               ))
             )}
           </div>
         </div>
       </div>
-
-      {/* <div className="rounded-xl bg-white p-6 shadow">
-        <h2 className="mb-4 text-xl font-semibold">Recent Transactions</h2>
-
-        <div className="space-y-3 max-h-125 overflow-y-auto">
-          {transactions.length === 0 ? (
-            <p className="text-center text-gray-500">No transactions yet.</p>
-          ) : (
-            transactions.map((transaction) => (
-              <TransactionItem key={transaction.id} transaction={transaction} />
-            ))
-          )}
-        </div>
-      </div> */}
     </div>
   );
 }

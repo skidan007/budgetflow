@@ -1,4 +1,4 @@
-const TransactionItem = ({ transaction, onDelete }) => {
+const TransactionItem = ({ transaction, onDelete, onEdit }) => {
   const isIncome = transaction.type === "Income";
 
   return (
@@ -24,12 +24,21 @@ const TransactionItem = ({ transaction, onDelete }) => {
       >
         ₦{transaction.amount.toLocaleString()}
       </p>
-      <button
-        onClick={() => onDelete(transaction.id)}
-        className="ml-4 rounded-lg hover:bg-red-100 text-red-700 px-4 py-2"
-      >
-        Delete
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => { console.log("Editing transaction:", transaction); onEdit(transaction); }}
+          className="ml-4 rounded-lg bg-blue-600 px-4 py-2 text-white"
+        >
+          Edit
+        </button>
+
+        <button
+          onClick={() => onDelete(transaction.id)}
+          className="rounded-lg bg-red-600 px-4 py-2 text-white"
+        >
+          Delete
+        </button>
+      </div>
     </div>
   );
 };
