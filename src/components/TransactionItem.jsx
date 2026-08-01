@@ -1,4 +1,5 @@
 const TransactionItem = ({ transaction, onDelete, onEdit }) => {
+  console.log(transaction);
   const isIncome = transaction.type === "Income";
 
   return (
@@ -26,7 +27,7 @@ const TransactionItem = ({ transaction, onDelete, onEdit }) => {
       </p>
       <div className="flex gap-2">
         <button
-          onClick={() => { console.log("Editing transaction:", transaction); onEdit(transaction); }}
+          onClick={() => onEdit(transaction)}
           className="ml-4 rounded-lg bg-blue-600 px-4 py-2 text-white"
         >
           Edit

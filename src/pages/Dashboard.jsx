@@ -1,31 +1,64 @@
+import ExpensePieChart from "../components/ExpensePieChart";
 import TransactionItem from "../components/TransactionItem";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SummaryCard from "../components/SummaryCard";
 import { Wallet, TrendingUp, Receipt, PiggyBank } from "lucide-react";
 
 function Dashboard() {
-  const [balance, setBalance] = useState(0);
-  const [income, setIncome] = useState(0);
-  const [expenses, setExpenses] = useState(0);
-
   const [incomeInput, setIncomeInput] = useState("");
   const [expenseInput, setExpenseInput] = useState("");
 
   const [incomeCategory, setIncomeCategory] = useState("Salary");
   const [expenseCategory, setExpenseCategory] = useState("Food");
 
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState(() => {
+    const savedTransactions = localStorage.getItem("transactions");
+    return savedTransactions ? JSON.parse(savedTransactions) : [];
+  });
+
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [editingTransaction, setEditingTransaction] = useState(null);
+
+  const income = transactions.reduce(
+    (total, transaction) =>
+      transaction.type === "Income" ? total + transaction.amount : total,
+    0,
+  );
+
+  const expenses = transactions.reduce(
+    (total, transaction) =>
+      transaction.type === "Expense" ? total + transaction.amount : total,
+    0,
+  );
+  const balance = income - expenses;
+
+  const expenseChartData = Object.values(
+    transactions
+      .filter((transaction) => transaction.type === "Expense")
+      .reduce((acc, transaction) => {
+        if (!acc[transaction.category]) {
+          acc[transaction.category] = {
+            name: transaction.category,
+            value: 0,
+          };
+        }
+
+        acc[transaction.category].value += transaction.amount;
+
+        return acc;
+      }, {}),
+  );
+
+  // ✅ 2. Save transactions whenever they change
+  useEffect(() => {
+    localStorage.setItem("transactions", JSON.stringify(transactions));
+  }, [transactions]);
 
   const handleAddIncome = () => {
     if (!incomeInput) return;
 
     const amount = Number(incomeInput);
-
-    setIncome((prev) => prev + amount);
-    setBalance((prev) => prev + amount);
 
     setTransactions((prev) => [
       {
@@ -44,9 +77,6 @@ function Dashboard() {
     if (!expenseInput) return;
 
     const amount = Number(expenseInput);
-
-    setExpenses((prev) => prev + amount);
-    setBalance((prev) => prev - amount);
 
     setTransactions((prev) => [
       {
@@ -91,20 +121,6 @@ function Dashboard() {
   });
 
   const handleDelete = (id) => {
-    const transactionToDelete = transactions.find(
-      (transaction) => transaction.id === id,
-    );
-
-    if (!transactionToDelete) return;
-
-    if (transactionToDelete.type === "Income") {
-      setIncome((prev) => prev - transactionToDelete.amount);
-      setBalance((prev) => prev - transactionToDelete.amount);
-    } else {
-      setExpenses((prev) => prev - transactionToDelete.amount);
-      setBalance((prev) => prev + transactionToDelete.amount);
-    }
-
     setTransactions((prev) =>
       prev.filter((transaction) => transaction.id !== id),
     );
@@ -127,16 +143,8 @@ function Dashboard() {
     }
   };
 
-
-
   const handleUpdateTransaction = () => {
     if (!editingTransaction) return;
-
-    const oldTransaction = transactions.find(
-      (transaction) => transaction.id === editingTransaction.id,
-    );
-
-    if (!oldTransaction) return;
 
     const amount =
       editingTransaction.type === "Income"
@@ -145,22 +153,6 @@ function Dashboard() {
 
     const category =
       editingTransaction.type === "Income" ? incomeCategory : expenseCategory;
-
-    if (oldTransaction.type === "Income") {
-      setIncome((prev) => prev - oldTransaction.amount);
-      setBalance((prev) => prev - oldTransaction.amount);
-    } else {
-      setExpenses((prev) => prev - oldTransaction.amount);
-      setBalance((prev) => prev + oldTransaction.amount);
-    }
-
-    if (editingTransaction.type === "Income") {
-      setIncome((prev) => prev + amount);
-      setBalance((prev) => prev + amount);
-    } else {
-      setExpenses((prev) => prev + amount);
-      setBalance((prev) => prev - amount);
-    }
 
     setTransactions((prev) =>
       prev.map((transaction) =>
@@ -180,7 +172,6 @@ function Dashboard() {
     setIncomeCategory("Salary");
     setExpenseCategory("Food");
   };
-
   return (
     <div className="space-y-8">
       <div>
@@ -285,6 +276,8 @@ function Dashboard() {
 
         {/* Right Column */}
         <div className="rounded-xl bg-white p-6 shadow">
+          <ExpensePieChart data={expenseChartData} />
+          
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h2 className="text-xl font-semibold">Recent Transactions</h2>
 
@@ -308,7 +301,6 @@ function Dashboard() {
               />
             </div>
           </div>
-
           <div className="space-y-3 max-h-125 overflow-y-auto pr-2">
             {transactions.length === 0 ? (
               <p className="text-center text-gray-500">No transactions yet.</p>
