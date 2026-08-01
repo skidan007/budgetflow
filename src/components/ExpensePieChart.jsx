@@ -18,25 +18,21 @@ const COLORS = [
 
 function ExpensePieChart({ data }) {
   return (
-    <div className="rounded-xl bg-white p-6 shadow">
-      <h2 className="mb-4 text-xl font-semibold">Expense Breakdown</h2>
+    <div className="rounded-xl bg-white p-6 shadow-md transition-all duration-300 hover:shadow-xl">
+      <h2 className="mb-4 text-xl font-semibold">Expense Breakdown by Category</h2>
 
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="name"
-            outerRadius={100}
-            label
-          >
+          <Pie data={data} dataKey="value" nameKey="name" outerRadius={115}>
             {data.map((entry, index) => (
               <Cell key={index} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>
 
-          <Tooltip />
-          <Legend />
+          <Tooltip
+            formatter={(value) => [`₦${value.toLocaleString()}`, "Amount"]}
+          />
+          <Legend verticalAlign="bottom" height={36} />
         </PieChart>
       </ResponsiveContainer>
     </div>

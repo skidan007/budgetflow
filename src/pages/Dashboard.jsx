@@ -4,6 +4,7 @@ import TransactionItem from "../components/TransactionItem";
 import { useState, useEffect } from "react";
 import SummaryCard from "../components/SummaryCard";
 import { Wallet, TrendingUp, Receipt, PiggyBank } from "lucide-react";
+import toast from "react-hot-toast";
 
 function Dashboard() {
   const [incomeInput, setIncomeInput] = useState("");
@@ -90,6 +91,7 @@ function Dashboard() {
     ]);
 
     setIncomeInput("");
+    toast.success("Income added successfully!");
   };
 
   const handleAddExpense = () => {
@@ -111,6 +113,7 @@ function Dashboard() {
     ]);
 
     setExpenseInput("");
+    toast.success("Expense added successfully!");
   };
 
   const summaryCardData = [
@@ -156,8 +159,9 @@ function Dashboard() {
 
   const handleDelete = (id) => {
     setTransactions((prev) =>
-      prev.filter((transaction) => transaction.id !== id),
+      prev.filter((transaction) => transaction.id !== id)
     );
+    toast.success("Transaction deleted successfully!");
   };
 
   const handleEdit = (transaction) => {
