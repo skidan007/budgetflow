@@ -12,6 +12,11 @@ function Dashboard() {
   const [incomeCategory, setIncomeCategory] = useState("Salary");
   const [expenseCategory, setExpenseCategory] = useState("Food");
 
+  const today = new Date().toISOString().split("T")[0];
+
+  const [incomeDate, setIncomeDate] = useState(today);
+  const [expenseDate, setExpenseDate] = useState(today);
+
   const [transactions, setTransactions] = useState(() => {
     const savedTransactions = localStorage.getItem("transactions");
     return savedTransactions ? JSON.parse(savedTransactions) : [];
@@ -79,6 +84,7 @@ function Dashboard() {
         type: "Income",
         amount,
         category: incomeCategory,
+        date: incomeDate,
       },
       ...prev,
     ]);
@@ -91,12 +97,15 @@ function Dashboard() {
 
     const amount = Number(expenseInput);
 
+    console.log(expenseDate);
+
     setTransactions((prev) => [
       {
         id: Date.now(),
         type: "Expense",
         amount,
         category: expenseCategory,
+        date: expenseDate,
       },
       ...prev,
     ]);
@@ -109,18 +118,30 @@ function Dashboard() {
       title: "Total Balance",
       amount: `₦${balance.toLocaleString()}`,
       icon: Wallet,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
     },
     {
       title: "Income",
       amount: `₦${income.toLocaleString()}`,
       icon: TrendingUp,
+      iconBg: "bg-green-100",
+      iconColor: "text-green-600",
     },
     {
       title: "Expenses",
       amount: `₦${expenses.toLocaleString()}`,
       icon: Receipt,
+      iconBg: "bg-red-100",
+      iconColor: "text-red-600",
     },
-    { title: "Savings", amount: "₦300,000", icon: PiggyBank },
+    {
+      title: "Savings",
+      amount: "₦300,000",
+      icon: PiggyBank,
+      iconBg: "bg-purple-100",
+      iconColor: "text-purple-600",
+    },
   ];
 
   const filteredTransactions = transactions.filter((transaction) => {
@@ -200,18 +221,20 @@ function Dashboard() {
             title={card.title}
             amount={card.amount}
             icon={card.icon}
+            iconBg={card.iconBg}
+            iconColor={card.iconColor}
           />
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div>
         {/* Left Column */}
-        <div className="space-y-6 ">
+        <div className="space-y-6 grid gap-6 lg:grid-cols-2">
           {/* Add Income */}
           <div className="rounded-xl bg-white p-6 shadow">
             <h2 className="mb-4 text-xl font-semibold">Add Income</h2>
 
-            <div className="flex flex-col gap-4 lg:flex-row">
+            <div className="grid gap-4 ">
               <select
                 value={incomeCategory}
                 onChange={(e) => setIncomeCategory(e.target.value)}
@@ -223,6 +246,14 @@ function Dashboard() {
                 <option>Gift</option>
                 <option>Other</option>
               </select>
+
+              <input
+                type="date"
+                value={incomeDate}
+                onChange={(e) => setIncomeDate(e.target.value)}
+                className="rounded-lg border p-3"
+              />
+
               <input
                 type="number"
                 value={incomeInput}
@@ -250,7 +281,7 @@ function Dashboard() {
           <div className="rounded-xl bg-white p-6 shadow">
             <h2 className="mb-4 text-xl font-semibold">Add Expense</h2>
 
-            <div className="flex flex-col gap-4 lg:flex-row">
+            <div className="grid gap-4">
               <select
                 value={expenseCategory}
                 onChange={(e) => setExpenseCategory(e.target.value)}
@@ -263,6 +294,14 @@ function Dashboard() {
                 <option>Entertainment</option>
                 <option>Other</option>
               </select>
+
+              <input
+                type="date"
+                value={expenseDate}
+                onChange={(e) => setExpenseDate(e.target.value)}
+                className="rounded-lg border p-3"
+              />
+
               <input
                 type="number"
                 value={expenseInput}
@@ -277,7 +316,7 @@ function Dashboard() {
                     ? handleUpdateTransaction
                     : handleAddExpense
                 }
-                className="rounded-lg bg-red-600 px-6 py-3 text-white lg:w-40 w-full"
+                className="rounded-lg bg-red-600 px-6 py-3 text-white lg-w-40 w-full"
               >
                 {editingTransaction?.type === "Expense"
                   ? "Save Changes"
@@ -287,16 +326,14 @@ function Dashboard() {
           </div>
         </div>
 
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <ExpensePieChart data={expenseChartData} />
+
+          <IncomeExpenseChart data={incomeExpenseChartData} />
+        </div>
+
         {/* Right Column */}
         <div className="rounded-xl bg-white p-6 shadow">
-          
-            {/* pie chart */}
-            <ExpensePieChart data={expenseChartData} />
-
-            {/* bar chart */}
-            <IncomeExpenseChart data={incomeExpenseChartData} />
-          
-
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h2 className="text-xl font-semibold">Recent Transactions</h2>
 
