@@ -1,4 +1,5 @@
 import ExpensePieChart from "../components/ExpensePieChart";
+import IncomeExpenseChart from "../components/IncomeExpenseChart";
 import TransactionItem from "../components/TransactionItem";
 import { useState, useEffect } from "react";
 import SummaryCard from "../components/SummaryCard";
@@ -33,6 +34,7 @@ function Dashboard() {
   );
   const balance = income - expenses;
 
+  // pie chart data for expenses by category
   const expenseChartData = Object.values(
     transactions
       .filter((transaction) => transaction.type === "Expense")
@@ -49,6 +51,17 @@ function Dashboard() {
         return acc;
       }, {}),
   );
+  // bar chart data for income vs expenses
+  const incomeExpenseChartData = [
+    {
+      name: "Income",
+      value: income,
+    },
+    {
+      name: "Expense",
+      value: expenses,
+    },
+  ];
 
   // ✅ 2. Save transactions whenever they change
   useEffect(() => {
@@ -193,7 +206,7 @@ function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left Column */}
-        <div className="space-y-6">
+        <div className="space-y-6 ">
           {/* Add Income */}
           <div className="rounded-xl bg-white p-6 shadow">
             <h2 className="mb-4 text-xl font-semibold">Add Income</h2>
@@ -276,8 +289,14 @@ function Dashboard() {
 
         {/* Right Column */}
         <div className="rounded-xl bg-white p-6 shadow">
-          <ExpensePieChart data={expenseChartData} />
           
+            {/* pie chart */}
+            <ExpensePieChart data={expenseChartData} />
+
+            {/* bar chart */}
+            <IncomeExpenseChart data={incomeExpenseChartData} />
+          
+
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h2 className="text-xl font-semibold">Recent Transactions</h2>
 
