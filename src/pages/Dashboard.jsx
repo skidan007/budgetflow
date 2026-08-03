@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import SummaryCard from "../components/SummaryCard";
 import { Wallet, TrendingUp, Receipt, PiggyBank } from "lucide-react";
 import toast from "react-hot-toast";
+import BudgetProgress from "../components/BudgetProgress";
 
 function Dashboard() {
   const [incomeInput, setIncomeInput] = useState("");
@@ -26,6 +27,18 @@ function Dashboard() {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [editingTransaction, setEditingTransaction] = useState(null);
+
+  const [budgets, setBudgets] = useState(() => {
+    const savedBudgets = localStorage.getItem("budgets");
+    return savedBudgets ? JSON.parse(savedBudgets) : [];
+  });
+
+  const [budgetCategory, setBudgetCategory] = useState("Food");
+  const [budgetAmount, setBudgetAmount] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("budgets", JSON.stringify(budgets));
+  }, [budgets]);
 
   const income = transactions.reduce(
     (total, transaction) =>
@@ -159,7 +172,7 @@ function Dashboard() {
 
   const handleDelete = (id) => {
     setTransactions((prev) =>
-      prev.filter((transaction) => transaction.id !== id)
+      prev.filter((transaction) => transaction.id !== id),
     );
     toast.success("Transaction deleted successfully!");
   };
@@ -209,6 +222,25 @@ function Dashboard() {
     setExpenseInput("");
     setIncomeCategory("Salary");
     setExpenseCategory("Food");
+  };
+
+  const handleAddBudget = () => {
+    if (!budgetAmount) return;
+
+    const amount = Number(budgetAmount);
+
+    setBudgets((prev) => [
+      {
+        id: Date.now(),
+        category: budgetCategory,
+        amount,
+      },
+      ...prev,
+    ]);
+
+    setBudgetAmount("");
+    setBudgetCategory("Food");
+    toast.success("Budget added successfully!");
   };
   return (
     <div className="space-y-8">
@@ -328,6 +360,40 @@ function Dashboard() {
               </button>
             </div>
           </div>
+
+          <div className="rounded-xl bg-white p-6 shadow-md">
+            <h2 className="mb-4 text-xl font-semibold">Budget Planner</h2>
+
+            <div className="space-y-4">
+              <select
+                value={budgetCategory}
+                onChange={(e) => setBudgetCategory(e.target.value)}
+                className="w-full rounded-lg border p-3"
+              >
+                <option>Food</option>
+                <option>Transport</option>
+                <option>Bills</option>
+                <option>Entertainment</option>
+                <option>Shopping</option>
+                <option>Health</option>
+              </select>
+
+              <input
+                type="number"
+                placeholder="Budget Amount"
+                value={budgetAmount}
+                onChange={(e) => setBudgetAmount(e.target.value)}
+                className="w-full rounded-lg border p-3"
+              />
+
+              <button
+                onClick={handleAddBudget}
+                className="w-full rounded-lg bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700"
+              >
+                Save Budget
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -336,7 +402,35 @@ function Dashboard() {
           <IncomeExpenseChart data={incomeExpenseChartData} />
         </div>
 
-        {/* Right Column */}
+        {/* progress bar */}
+        <div className="mt-8">
+          <h2 className="mb-4 text-2xl font-bold">Budget Progress</h2>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {console.log("Budgets:", budgets)}
+            {budgets.map((budget) => {
+              
+              const spent = transactions
+                .filter(
+                  (transaction) =>
+                    transaction.type === "Expense" &&
+                    transaction.category === budget.category,
+                )
+                .reduce((total, transaction) => total + transaction.amount, 0);
+
+              return (
+                <BudgetProgress
+                  key={budget.id}
+                  category={budget.category}
+                  budget={budget.amount}
+                  spent={spent}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Recent Transactions */}
         <div className="rounded-xl bg-white p-6 shadow">
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h2 className="text-xl font-semibold">Recent Transactions</h2>
