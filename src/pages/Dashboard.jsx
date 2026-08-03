@@ -8,6 +8,26 @@ import toast from "react-hot-toast";
 import BudgetProgress from "../components/BudgetProgress";
 
 function Dashboard() {
+  // const normalizeBudgets = (value) => {
+  //   if (!Array.isArray(value)) return [];
+
+  //   return value
+  //     .map((budget) => {
+  //       const amount = Number(budget?.amount ?? budget?.budget ?? 0);
+
+  //       if (!budget?.category || amount <= 0 || Number.isNaN(amount)) {
+  //         return null;
+  //       }
+
+  //       return {
+  //         id: budget.id ?? Date.now() + Math.random(),
+  //         category: budget.category,
+  //         amount,
+  //       };
+  //     })
+  //     .filter(Boolean);
+  // };
+
   const [incomeInput, setIncomeInput] = useState("");
   const [expenseInput, setExpenseInput] = useState("");
 
@@ -29,9 +49,22 @@ function Dashboard() {
   const [editingTransaction, setEditingTransaction] = useState(null);
 
   const [budgets, setBudgets] = useState(() => {
-    const savedBudgets = localStorage.getItem("budgets");
-    return savedBudgets ? JSON.parse(savedBudgets) : [];
-  });
+  const savedBudgets = localStorage.getItem("budgets");
+
+  if (!savedBudgets) return [];
+
+  const parsed = JSON.parse(savedBudgets);
+
+  // Keep only the latest budget for each category
+  const uniqueBudgets = Object.values(
+    parsed.reduce((acc, budget) => {
+      acc[budget.category] = budget;
+      return acc;
+    }, {})
+  );
+
+  return uniqueBudgets;
+});
 
   const [budgetCategory, setBudgetCategory] = useState("Food");
   const [budgetAmount, setBudgetAmount] = useState("");
@@ -225,23 +258,67 @@ function Dashboard() {
   };
 
   const handleAddBudget = () => {
-    if (!budgetAmount) return;
-
     const amount = Number(budgetAmount);
 
-    setBudgets((prev) => [
-      {
-        id: Date.now(),
-        category: budgetCategory,
-        amount,
-      },
-      ...prev,
-    ]);
+    if (!amount || amount <= 0 || Number.isNaN(amount)) {
+      toast.error("Enter a valid budget amount");
+      return;
+    }
+
+    setBudgets((prev) => {
+      const existing = prev.find(
+        (budget) => budget.category === budgetCategory,
+      );
+
+      if (existing) {
+        return prev.map((budget) =>
+          budget.category === budgetCategory ? { ...budget, amount } : budget,
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          id: Date.now(),
+          category: budgetCategory,
+          amount,
+        },
+      ];
+    });
 
     setBudgetAmount("");
     setBudgetCategory("Food");
-    toast.success("Budget added successfully!");
+
+    toast.success("Budget saved successfully!");
   };
+
+  const expenseCategoryTotals = transactions
+    .filter((transaction) => transaction.type === "Expense")
+    .reduce((acc, transaction) => {
+      const current = acc[transaction.category] || 0;
+      acc[transaction.category] = current + transaction.amount;
+      return acc;
+    }, {});
+
+  const progressItems = Object.keys(expenseCategoryTotals).reduce(
+    (items, category) => {
+      const existing = items.find((item) => item.category === category);
+
+      if (!existing) {
+        items.push({
+          id: `expense-${category}`,
+          category,
+          amount: 0,
+        });
+      }
+
+      return items;
+    },
+    [...budgets],
+  );
+
+
+  
   return (
     <div className="space-y-8">
       <div>
@@ -407,9 +484,12 @@ function Dashboard() {
           <h2 className="mb-4 text-2xl font-bold">Budget Progress</h2>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {console.log("Budgets:", budgets)}
-            {budgets.map((budget) => {
-              
+            {progressItems.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 md:col-span-2 lg:col-span-3">
+                No expenses or budgets yet. Add an expense or set a budget to see progress.
+              </p>
+            ) : (
+              progressItems.map((budget) => {
               const spent = transactions
                 .filter(
                   (transaction) =>
@@ -426,7 +506,8 @@ function Dashboard() {
                   spent={spent}
                 />
               );
-            })}
+              })
+            )}
           </div>
         </div>
 
