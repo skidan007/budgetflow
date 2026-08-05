@@ -4,30 +4,12 @@ import TransactionItem from "../components/TransactionItem";
 import { useState, useEffect } from "react";
 import SummaryCard from "../components/SummaryCard";
 import { Wallet, TrendingUp, Receipt, PiggyBank } from "lucide-react";
+import { useFinance } from "../context/FinanceContext";
+import ExpenseForm from "../components/ExpenseForm";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import BudgetProgress from "../components/BudgetProgress";
 
 function Dashboard() {
-  // const normalizeBudgets = (value) => {
-  //   if (!Array.isArray(value)) return [];
-
-  //   return value
-  //     .map((budget) => {
-  //       const amount = Number(budget?.amount ?? budget?.budget ?? 0);
-
-  //       if (!budget?.category || amount <= 0 || Number.isNaN(amount)) {
-  //         return null;
-  //       }
-
-  //       return {
-  //         id: budget.id ?? Date.now() + Math.random(),
-  //         category: budget.category,
-  //         amount,
-  //       };
-  //     })
-  //     .filter(Boolean);
-  // };
-
   const [incomeInput, setIncomeInput] = useState("");
   const [expenseInput, setExpenseInput] = useState("");
 
@@ -39,39 +21,11 @@ function Dashboard() {
   const [incomeDate, setIncomeDate] = useState(today);
   const [expenseDate, setExpenseDate] = useState(today);
 
-  const [transactions, setTransactions] = useState(() => {
-    const savedTransactions = localStorage.getItem("transactions");
-    return savedTransactions ? JSON.parse(savedTransactions) : [];
-  });
+  const { transactions, setTransactions } = useFinance();
 
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [editingTransaction, setEditingTransaction] = useState(null);
-
-  const [budgets, setBudgets] = useState(() => {
-  const savedBudgets = localStorage.getItem("budgets");
-
-  if (!savedBudgets) return [];
-
-  const parsed = JSON.parse(savedBudgets);
-
-  // Keep only the latest budget for each category
-  const uniqueBudgets = Object.values(
-    parsed.reduce((acc, budget) => {
-      acc[budget.category] = budget;
-      return acc;
-    }, {})
-  );
-
-  return uniqueBudgets;
-});
-
-  const [budgetCategory, setBudgetCategory] = useState("Food");
-  const [budgetAmount, setBudgetAmount] = useState("");
-
-  useEffect(() => {
-    localStorage.setItem("budgets", JSON.stringify(budgets));
-  }, [budgets]);
 
   const income = transactions.reduce(
     (total, transaction) =>
@@ -203,29 +157,29 @@ function Dashboard() {
     return matchesFilter && matchesSearch;
   });
 
-  const handleDelete = (id) => {
-    setTransactions((prev) =>
-      prev.filter((transaction) => transaction.id !== id),
-    );
-    toast.success("Transaction deleted successfully!");
-  };
+  // const handleDelete = (id) => {
+  //   setTransactions((prev) =>
+  //     prev.filter((transaction) => transaction.id !== id),
+  //   );
+  //   toast.success("Transaction deleted successfully!");
+  // };
 
-  const handleEdit = (transaction) => {
-    setEditingTransaction(transaction);
-    if (transaction.type === "Income") {
-      setIncomeCategory(transaction.category);
-    } else {
-      setExpenseCategory(transaction.category);
-    }
+  // const handleEdit = (transaction) => {
+  //   setEditingTransaction(transaction);
+  //   if (transaction.type === "Income") {
+  //     setIncomeCategory(transaction.category);
+  //   } else {
+  //     setExpenseCategory(transaction.category);
+  //   }
 
-    if (transaction.type === "Income") {
-      setIncomeInput(transaction.amount.toString());
-      setExpenseInput("");
-    } else {
-      setExpenseInput(transaction.amount.toString());
-      setIncomeInput("");
-    }
-  };
+  //   if (transaction.type === "Income") {
+  //     setIncomeInput(transaction.amount.toString());
+  //     setExpenseInput("");
+  //   } else {
+  //     setExpenseInput(transaction.amount.toString());
+  //     setIncomeInput("");
+  //   }
+  // };
 
   const handleUpdateTransaction = () => {
     if (!editingTransaction) return;
@@ -257,68 +211,6 @@ function Dashboard() {
     setExpenseCategory("Food");
   };
 
-  const handleAddBudget = () => {
-    const amount = Number(budgetAmount);
-
-    if (!amount || amount <= 0 || Number.isNaN(amount)) {
-      toast.error("Enter a valid budget amount");
-      return;
-    }
-
-    setBudgets((prev) => {
-      const existing = prev.find(
-        (budget) => budget.category === budgetCategory,
-      );
-
-      if (existing) {
-        return prev.map((budget) =>
-          budget.category === budgetCategory ? { ...budget, amount } : budget,
-        );
-      }
-
-      return [
-        ...prev,
-        {
-          id: Date.now(),
-          category: budgetCategory,
-          amount,
-        },
-      ];
-    });
-
-    setBudgetAmount("");
-    setBudgetCategory("Food");
-
-    toast.success("Budget saved successfully!");
-  };
-
-  const expenseCategoryTotals = transactions
-    .filter((transaction) => transaction.type === "Expense")
-    .reduce((acc, transaction) => {
-      const current = acc[transaction.category] || 0;
-      acc[transaction.category] = current + transaction.amount;
-      return acc;
-    }, {});
-
-  const progressItems = Object.keys(expenseCategoryTotals).reduce(
-    (items, category) => {
-      const existing = items.find((item) => item.category === category);
-
-      if (!existing) {
-        items.push({
-          id: `expense-${category}`,
-          category,
-          amount: 0,
-        });
-      }
-
-      return items;
-    },
-    [...budgets],
-  );
-
-
-  
   return (
     <div className="space-y-8">
       <div>
@@ -391,124 +283,26 @@ function Dashboard() {
           </div>
 
           {/* Add Expense */}
-          <div className="rounded-xl bg-white p-6 shadow">
-            <h2 className="mb-4 text-xl font-semibold">Add Expense</h2>
 
-            <div className="grid gap-4">
-              <select
-                value={expenseCategory}
-                onChange={(e) => setExpenseCategory(e.target.value)}
-                className="w-full rounded-lg border p-3"
-              >
-                <option>Food</option>
-                <option>Transport</option>
-                <option>Shopping</option>
-                <option>Bills</option>
-                <option>Entertainment</option>
-                <option>Other</option>
-              </select>
-
-              <input
-                type="date"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-                className="rounded-lg border p-3"
-              />
-
-              <input
-                type="number"
-                value={expenseInput}
-                onChange={(e) => setExpenseInput(e.target.value)}
-                placeholder="Enter expense"
-                className="flex-1 rounded-lg border p-3"
-              />
-
-              <button
-                onClick={
-                  editingTransaction?.type === "Expense"
-                    ? handleUpdateTransaction
-                    : handleAddExpense
-                }
-                className="rounded-lg bg-red-600 px-6 py-3 text-white lg-w-40 w-full"
-              >
-                {editingTransaction?.type === "Expense"
-                  ? "Save Changes"
-                  : "Add Expense"}
-              </button>
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-white p-6 shadow-md">
-            <h2 className="mb-4 text-xl font-semibold">Budget Planner</h2>
-
-            <div className="space-y-4">
-              <select
-                value={budgetCategory}
-                onChange={(e) => setBudgetCategory(e.target.value)}
-                className="w-full rounded-lg border p-3"
-              >
-                <option>Food</option>
-                <option>Transport</option>
-                <option>Bills</option>
-                <option>Entertainment</option>
-                <option>Shopping</option>
-                <option>Health</option>
-              </select>
-
-              <input
-                type="number"
-                placeholder="Budget Amount"
-                value={budgetAmount}
-                onChange={(e) => setBudgetAmount(e.target.value)}
-                className="w-full rounded-lg border p-3"
-              />
-
-              <button
-                onClick={handleAddBudget}
-                className="w-full rounded-lg bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700"
-              >
-                Save Budget
-              </button>
-            </div>
-          </div>
+          <ExpenseForm
+            setExpenseCategory={setExpenseCategory}
+            setExpenseDate={setExpenseDate}
+            setExpenseInput={setExpenseInput}
+            
+            expenseCategory={expenseCategory}
+            
+            expenseDate={expenseDate}
+            expenseInput={expenseInput}
+            
+            onSubmit={handleAddExpense}
+            buttonText="Add Expense"
+          />
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <ExpensePieChart data={expenseChartData} />
 
           <IncomeExpenseChart data={incomeExpenseChartData} />
-        </div>
-
-        {/* progress bar */}
-        <div className="mt-8">
-          <h2 className="mb-4 text-2xl font-bold">Budget Progress</h2>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {progressItems.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 md:col-span-2 lg:col-span-3">
-                No expenses or budgets yet. Add an expense or set a budget to see progress.
-              </p>
-            ) : (
-              progressItems.map((budget) => {
-              const spent = transactions
-                .filter(
-                  (transaction) =>
-                    transaction.type === "Expense" &&
-                    transaction.category === budget.category,
-                )
-                .reduce((total, transaction) => total + transaction.amount, 0);
-
-              return (
-                <BudgetProgress
-                  key={budget.id}
-                  category={budget.category}
-                  budget={budget.amount}
-                  spent={spent}
-                />
-              );
-              })
-            )}
-          </div>
         </div>
 
         {/* Recent Transactions */}
@@ -542,15 +336,23 @@ function Dashboard() {
             ) : filteredTransactions.length === 0 ? (
               <p className="text-center text-gray-500">No matching results.</p>
             ) : (
-              filteredTransactions.map((transaction) => (
+              filteredTransactions.slice(0, 5).map((transaction) => (
                 <TransactionItem
                   key={transaction.id}
                   transaction={transaction}
-                  onDelete={handleDelete}
-                  onEdit={handleEdit}
+                  // onDelete={handleDelete}
+                  // onEdit={handleEdit}
                 />
               ))
             )}
+            <div className="mt-6 flex justify-center">
+              <Link
+                to="/expenses"
+                className="rounded-lg bg-slate-900 px-5 py-3 font-medium text-white transition hover:bg-slate-800"
+              >
+                View All Expenses →
+              </Link>
+            </div>
           </div>
         </div>
       </div>
