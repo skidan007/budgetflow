@@ -8,7 +8,8 @@ function GoalCard({ goal, onAddSavings, onEdit, onDelete }) {
 
   const remaining = goal.target - saved;
 
-  // const remaining = goal.target - goal.saved;
+  const completed = saved >= goal.target;
+  const exceeded = Math.max(saved - goal.target, 0);
 
   return (
     <div className="rounded-xl bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
@@ -33,16 +34,30 @@ function GoalCard({ goal, onAddSavings, onEdit, onDelete }) {
           <strong>Saved:</strong> ₦{(goal.saved ?? 0).toLocaleString()}
         </p>
 
-        <p>
-          <strong>Remaining:</strong> ₦{remaining.toLocaleString()}
-        </p>
+        {completed ? (
+          <div className="rounded-lg bg-green-50 p-3 border border-green-200">
+            <p className="font-semibold text-green-700">🎉 Goal Achieved!</p>
+
+            {exceeded > 0 && (
+              <p className="mt-1 text-sm text-green-600">
+                Exceeded Target by ₦{exceeded.toLocaleString()}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p>
+            <strong>Remaining:</strong> ₦{remaining.toLocaleString()}
+          </p>
+        )}
       </div>
 
       {/* Progress Bar */}
 
       <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-200">
         <div
-          className="h-full rounded-full bg-indigo-600 transition-all duration-500"
+          className={`h-full rounded-full transition-all duration-500 ${
+            percentage >= 100 ? "bg-green-500" : "bg-indigo-600"
+          }`}
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -52,24 +67,31 @@ function GoalCard({ goal, onAddSavings, onEdit, onDelete }) {
       </p>
 
       <div className="mt-6 space-y-3">
-        <button
-          onClick={() => onAddSavings(goal)}
-          className="w-full rounded-lg bg-green-600 py-3 font-semibold text-white"
-        >
-          Add Savings
-        </button>
-
-        <div className="grid grid-cols-2 gap-3">
+        <div className="mt-6 flex flex-wrap gap-2">
           <button
-            onClick={() => onEdit(goal)}
-            className="rounded-lg bg-blue-600 py-3 text-white"
+            onClick={() => onAddSavings(goal)}
+            disabled={completed}
+            className={`w-full rounded-lg py-3 font-semibold text-white transition ${
+              completed
+                ? "cursor-not-allowed bg-slate-400"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
           >
-            Edit
+            {completed ? "🎉 Goal Completed" : "Add Savings"}
           </button>
+
+          {!completed && (
+            <button
+              onClick={() => onEdit(goal)}
+              className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            >
+              Edit
+            </button>
+          )}
 
           <button
             onClick={() => onDelete(goal)}
-            className="rounded-lg bg-red-600 py-3 text-white"
+            className={`${completed ? "w-full" : "flex-1"} rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700`}
           >
             Delete
           </button>
