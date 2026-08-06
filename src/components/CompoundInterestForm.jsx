@@ -5,6 +5,10 @@ function CompoundInterestForm({
   setMonthlyContribution,
   interestRate,
   setInterestRate,
+
+  inflationRate,
+  setInflationRate,
+
   years,
   setYears,
   frequency,
@@ -14,17 +18,12 @@ function CompoundInterestForm({
 }) {
   return (
     <div className="rounded-2xl bg-white p-6 shadow-md">
-      <h2 className="mb-6 text-xl font-semibold">
-        Investment Details
-      </h2>
+      <h2 className="mb-6 text-xl font-semibold">Investment Details</h2>
 
       <div className="grid gap-5 md:grid-cols-2">
-
         {/* Currency */}
         <div>
-          <label className="mb-2 block text-sm font-medium">
-            Currency
-          </label>
+          <label className="mb-2 block text-sm font-medium">Currency</label>
 
           <select
             value={currency}
@@ -61,9 +60,7 @@ function CompoundInterestForm({
           <input
             type="number"
             value={monthlyContribution}
-            onChange={(e) =>
-              setMonthlyContribution(Number(e.target.value))
-            }
+            onChange={(e) => setMonthlyContribution(Number(e.target.value))}
             className="w-full rounded-lg border p-3"
           />
         </div>
@@ -77,9 +74,20 @@ function CompoundInterestForm({
           <input
             type="number"
             value={interestRate}
-            onChange={(e) =>
-              setInterestRate(Number(e.target.value))
-            }
+            onChange={(e) => setInterestRate(Number(e.target.value))}
+            className="w-full rounded-lg border p-3"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">
+            Inflation Rate (%)
+          </label>
+
+          <input
+            type="number"
+            value={inflationRate}
+            onChange={(e) => setInflationRate(Number(e.target.value))}
             className="w-full rounded-lg border p-3"
           />
         </div>
@@ -116,7 +124,6 @@ function CompoundInterestForm({
             <option>Yearly</option>
           </select>
         </div>
-
       </div>
     </div>
   );
