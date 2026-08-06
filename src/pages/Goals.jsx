@@ -2,6 +2,7 @@ import { useState } from "react";
 import GoalForm from "../components/GoalForm";
 import GoalCard from "../components/GoalCard";
 import { useFinance } from "../context/FinanceContext";
+import ConfirmModal from "../components/ConfirmModal";
 import toast from "react-hot-toast";
 
 const Goals = () => {
@@ -15,6 +16,9 @@ const Goals = () => {
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [savingAmount, setSavingAmount] = useState("");
   const [showSavingsModal, setShowSavingsModal] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [goalToDelete, setGoalToDelete] = useState(null);
 
   const [editingGoal, setEditingGoal] = useState(null);
   const isEditing = Boolean(editingGoal);
@@ -124,6 +128,30 @@ const Goals = () => {
     toast("Edit cancelled");
   };
 
+  const handleDeleteGoal = (goal) => {
+    setGoalToDelete(goal);
+    setShowDeleteModal(true);
+  };
+
+  // const confirmDeleteGoal = () => {
+  //   if (!goalToDelete) return;
+
+  //   setGoals((prev) => prev.filter((goal) => goal.id !== goalToDelete.id));
+
+  //   toast.success("Goal deleted successfully!");
+  //   setShowDeleteModal(false);
+  //   setGoalToDelete(null);
+  // };
+
+  const confirmDeleteGoal = () => {
+    setGoals((prev) => prev.filter((goal) => goal.id !== goalToDelete.id));
+
+    toast.success("Goal deleted.");
+
+    setShowDeleteModal(false);
+    setGoalToDelete(null);
+  };
+
   return (
     <section>
       <h1 className="text-2xl font-semibold">Goals</h1>
@@ -155,7 +183,7 @@ const Goals = () => {
               goal={goal}
               onAddSavings={openSavingsModal}
               onEdit={handleEditGoal}
-              onDelete={() => {}}
+              onDelete={handleDeleteGoal}
             />
           ))
         )}
@@ -201,6 +229,14 @@ const Goals = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        title="Delete Goal"
+        message={`Are you sure you want to delete "${goalToDelete?.title}"? `}
+        onConfirm={confirmDeleteGoal}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </section>
   );
 };

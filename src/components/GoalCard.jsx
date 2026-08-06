@@ -68,7 +68,7 @@ function GoalCard({ goal, onAddSavings, onEdit, onDelete }) {
           </button>
 
           <button
-            onClick={() => onDelete(goal.id)}
+            onClick={() => onDelete(goal)}
             className="rounded-lg bg-red-600 py-3 text-white"
           >
             Delete
