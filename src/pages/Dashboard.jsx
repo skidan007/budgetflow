@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 function Dashboard() {
+  
   const [incomeInput, setIncomeInput] = useState("");
   const [expenseInput, setExpenseInput] = useState("");
 
@@ -29,13 +30,17 @@ function Dashboard() {
 
   const income = transactions.reduce(
     (total, transaction) =>
-      transaction.type === "Income" ? total + transaction.amount : total,
+      transaction.type === "Income"
+        ? total + (Number(transaction.amount) || 0)
+        : total,
     0,
   );
 
   const expenses = transactions.reduce(
     (total, transaction) =>
-      transaction.type === "Expense" ? total + transaction.amount : total,
+      transaction.type === "Expense"
+        ? total + (Number(transaction.amount) || 0)
+        : total,
     0,
   );
   const balance = income - expenses;
@@ -52,7 +57,7 @@ function Dashboard() {
           };
         }
 
-        acc[transaction.category].value += transaction.amount;
+        acc[transaction.category].value += Number(transaction.amount) || 0;
 
         return acc;
       }, {}),
@@ -68,7 +73,6 @@ function Dashboard() {
       value: expenses,
     },
   ];
-
   // ✅ 2. Save transactions whenever they change
   useEffect(() => {
     localStorage.setItem("transactions", JSON.stringify(transactions));
@@ -119,28 +123,28 @@ function Dashboard() {
   const summaryCardData = [
     {
       title: "Total Balance",
-      amount: `₦${balance.toLocaleString()}`,
+      amount: balance,
       icon: Wallet,
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
     },
     {
       title: "Income",
-      amount: `₦${income.toLocaleString()}`,
+      amount: income,
       icon: TrendingUp,
       iconBg: "bg-green-100",
       iconColor: "text-green-600",
     },
     {
       title: "Expenses",
-      amount: `₦${expenses.toLocaleString()}`,
+      amount: expenses,
       icon: Receipt,
       iconBg: "bg-red-100",
       iconColor: "text-red-600",
     },
     {
       title: "Savings",
-      amount: "₦300,000",
+      amount: 300000,
       icon: PiggyBank,
       iconBg: "bg-purple-100",
       iconColor: "text-purple-600",

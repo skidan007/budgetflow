@@ -43,6 +43,11 @@ function Reports() {
     .filter((t) => t.type === "Expense")
     .reduce((sum, t) => sum + t.amount, 0);
 
+  console.log({
+    totalIncome,
+    totalExpenses,
+  });
+
   const totalSavings = totalIncome - totalExpenses;
   const difference = totalIncome - totalExpenses;
 
@@ -101,6 +106,24 @@ function Reports() {
     };
   });
 
+  const categoryTotals = filteredTransactions
+    .filter((t) => t.type === "Expense")
+    .reduce((acc, transaction) => {
+      acc[transaction.category] =
+        (acc[transaction.category] || 0) + transaction.amount;
+
+      return acc;
+    }, {});
+
+  const topCategory = Object.entries(categoryTotals).sort(
+    (a, b) => b[1] - a[1],
+  )[0];
+
+  const topCategoryPercentage =
+    totalExpenses > 0 && topCategory
+      ? (topCategory[1] / totalExpenses) * 100
+      : 0;
+
   return (
     <section>
       <div className="mb-6 flex items-center justify-between">
@@ -155,6 +178,26 @@ function Reports() {
 
       <div className={`mt-8 rounded-xl border p-5 ${insightColor}`}>
         <p className="font-medium">{insight}</p>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-orange-200 bg-orange-50 p-6">
+        <h2 className="text-xl font-bold text-orange-700">
+          🏆 Top Spending Category
+        </h2>
+
+        {topCategory ? (
+          <>
+            <p className="mt-3 text-2xl font-bold">{topCategory[0]}</p>
+
+            <p className="text-lg">₦{topCategory[1].toLocaleString()}</p>
+
+            <p className="text-sm text-slate-600">
+              {topCategoryPercentage.toFixed(1)}% of all expenses
+            </p>
+          </>
+        ) : (
+          <p className="mt-3 text-slate-500">No expense data available.</p>
+        )}
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">

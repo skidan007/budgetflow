@@ -5,7 +5,13 @@ const SummaryCard = ({
   iconBg = "bg-blue-100",
   iconColor = "text-blue-600",
 }) => {
-  const isNegative = Number(amount) < 0;
+  const parsedAmount =
+    typeof amount === "number"
+      ? amount
+      : Number(String(amount).replace(/[^0-9.-]/g, ""));
+
+  const safeAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+  const isNegative = safeAmount < 0;
 
   return (
     <div className="rounded-2xl bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -27,7 +33,7 @@ const SummaryCard = ({
           isNegative ? "text-red-600" : "text-slate-900"
         }`}
       >
-        ₦{Number(amount).toLocaleString()}
+        ₦{safeAmount.toLocaleString()}
       </p>
 
       <p className="mt-2 text-xs text-slate-400">
