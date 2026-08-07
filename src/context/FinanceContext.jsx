@@ -48,6 +48,19 @@ export function FinanceProvider({ children }) {
     return normalizeBudgets(parseStoredArray("budgets"));
   });
 
+  const [investmentScenarios, setInvestmentScenarios] = useState(() => {
+  const saved = localStorage.getItem("investmentScenarios");
+
+  return saved ? JSON.parse(saved) : [];
+});
+
+useEffect(() => {
+  localStorage.setItem(
+    "investmentScenarios",
+    JSON.stringify(investmentScenarios)
+  );
+}, [investmentScenarios]);
+
   useEffect(() => {
     localStorage.setItem("transactions", JSON.stringify(transactions));
   }, [transactions]);
@@ -60,7 +73,7 @@ export function FinanceProvider({ children }) {
 }, [goals]);
   return (
     <FinanceContext.Provider
-      value={{ transactions, setTransactions, budgets, setBudgets, goals, setGoals }}
+      value={{ transactions, setTransactions, budgets, setBudgets, goals, setGoals, investmentScenarios, setInvestmentScenarios }}
     >
       {children}
     </FinanceContext.Provider>

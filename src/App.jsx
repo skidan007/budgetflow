@@ -5,7 +5,7 @@ import Budgets from "./pages/Budgets";
 import Expenses from "./pages/Expenses";
 import Goals from "./pages/Goals";
 import Reports from "./pages/Reports";
-import CompoundInterest from "./pages/compoundInterest";
+import CompoundInterest from "./pages/CompoundInterest";
 import Settings from "./pages/Settings";
 import "./App.css";
 

@@ -1,1 +1,28 @@
 @import "tailwindcss";
+@media print {
+  body {
+    background: white !important;
+  }
+
+  aside {
+    display: none !important;
+  }
+
+  nav {
+    display: none !important;
+  }
+
+  button,
+  select {
+    display: none !important;
+  }
+
+  input {
+    border: none !important;
+  }
+
+  .shadow-md,
+  .shadow-lg {
+    box-shadow: none !important;
+  }
+}

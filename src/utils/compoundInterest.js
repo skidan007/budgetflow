@@ -5,6 +5,7 @@ export function calculateCompoundInterest({
   inflationRate = 0,
   years,
   frequency,
+  comparisonRates = [],
 }) {
   const frequencies = {
     Daily: 365,
@@ -13,6 +14,7 @@ export function calculateCompoundInterest({
     Quarterly: 4,
     Yearly: 1,
   };
+
 
   const n = frequencies[frequency] || 12;
   const r = Number(interestRate) / 100;
@@ -60,11 +62,82 @@ export function calculateCompoundInterest({
     });
   }
 
+  const monthlyData = [];
+
+  for (let month = 1; month <= safeYears * 12; month++) {
+    const monthlyRate = r / 12;
+
+    let value;
+
+    if (monthlyRate > 0) {
+      value =
+        safePrincipal * Math.pow(1 + monthlyRate, month) +
+        safeMonthlyContribution *
+          ((Math.pow(1 + monthlyRate, month) - 1) / monthlyRate);
+    } else {
+      value = safePrincipal + safeMonthlyContribution * month;
+    }
+
+    monthlyData.push({
+      month,
+      value,
+    });
+  }
+
+  const rateComparisonGrowthData = [];
+
+  for (let year = 1; year <= safeYears; year++) {
+    const row = {
+      year,
+    };
+
+    comparisonRates.forEach((comparisonRate) => {
+      const comparisonR = Number(comparisonRate) / 100;
+      const periods = year * n;
+
+      const growth = Math.pow(1 + comparisonR / n, periods);
+
+      const principalGrowth = safePrincipal * growth;
+
+      const contributionGrowth =
+        comparisonR > 0
+          ? safeMonthlyContribution * ((growth - 1) / (comparisonR / n))
+          : safeMonthlyContribution * year * 12;
+
+      row[`rate${comparisonRate}`] = principalGrowth + contributionGrowth;
+    });
+
+    rateComparisonGrowthData.push(row);
+  }
+
+ 
+
+  const rateComparisonData = comparisonRates.map((comparisonRate) => {
+    const comparisonRateDecimal = comparisonRate / 100;
+
+    const comparisonFutureValue =
+      comparisonRateDecimal > 0
+        ? safePrincipal *
+            Math.pow(1 + comparisonRateDecimal / n, totalPeriods) +
+          safeMonthlyContribution *
+            ((Math.pow(1 + comparisonRateDecimal / n, totalPeriods) - 1) /
+              (comparisonRateDecimal / n))
+        : safePrincipal + safeMonthlyContribution * safeYears * 12;
+
+    return {
+      rate: comparisonRate,
+      futureValue: comparisonFutureValue,
+    };
+  });
+
   return {
     futureValue,
     totalContributions,
     interestEarned,
     inflationAdjustedValue,
     yearlyData,
+    monthlyData,
+    rateComparisonData,
+    rateComparisonGrowthData,
   };
 }
