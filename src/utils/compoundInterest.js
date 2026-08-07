@@ -1,134 +1,298 @@
+// src/utils/compoundInterest.js
+
+const COMPOUND_FREQUENCIES = {
+  Daily: 365,
+  Weekly: 52,
+  Monthly: 12,
+  Yearly: 1,
+};
+
+const CONTRIBUTION_FREQUENCIES = {
+  Weekly: 52,
+  "Bi-weekly": 26,
+  Monthly: 12,
+  Quarterly: 4,
+  Yearly: 1,
+};
+
+// Greatest common divisor
+function gcd(a, b) {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+
+  while (y !== 0) {
+    const remainder = x % y;
+    x = y;
+    y = remainder;
+  }
+
+  return x;
+}
+
+// Least common multiple
+function lcm(a, b) {
+  return Math.abs(a * b) / gcd(a, b);
+}
+
+/**
+ * Core investment simulation.
+ *
+ * Interest and contributions are treated as end-of-period events.
+ * If interest and a contribution happen at the same point,
+ * interest is applied first and the contribution is added afterward.
+ */
+function simulateInvestment({
+  principal,
+  contributionAmount,
+  annualRate,
+  years,
+  compoundFrequency,
+  contributionFrequency,
+  snapshot,
+}) {
+  const compoundPeriodsPerYear =
+    COMPOUND_FREQUENCIES[compoundFrequency] || 12;
+
+  const contributionPeriodsPerYear =
+    CONTRIBUTION_FREQUENCIES[contributionFrequency] || 12;
+
+  const safeYears = Math.max(Number(years) || 0, 0);
+  const safePrincipal = Math.max(Number(principal) || 0, 0);
+  const safeContributionAmount = Math.max(
+    Number(contributionAmount) || 0,
+    0,
+  );
+
+  const safeAnnualRate = Number(annualRate) || 0;
+
+  /*
+   * We create a common timeline so that different frequencies
+   * can work together correctly.
+   *
+   * Example:
+   * Daily compounding = 365
+   * Monthly contribution = 12
+   *
+   * Common timeline = LCM(365, 12)
+   */
+  const basePeriodsPerYear = lcm(
+    compoundPeriodsPerYear,
+    contributionPeriodsPerYear,
+  );
+
+  const totalBasePeriods = Math.round(
+    safeYears * basePeriodsPerYear,
+  );
+
+  const compoundInterval =
+    basePeriodsPerYear / compoundPeriodsPerYear;
+
+  const contributionInterval =
+    basePeriodsPerYear / contributionPeriodsPerYear;
+
+  const compoundRate =
+    safeAnnualRate / compoundPeriodsPerYear;
+
+  let balance = safePrincipal;
+  let contributionCount = 0;
+
+  const data = [];
+
+  for (let period = 1; period <= totalBasePeriods; period++) {
+    // Apply compound interest.
+    if (period % compoundInterval === 0) {
+      balance *= 1 + compoundRate;
+    }
+
+    // Add contribution.
+    if (period % contributionInterval === 0) {
+      balance += safeContributionAmount;
+      contributionCount += 1;
+    }
+
+    // Create chart snapshots.
+    if (snapshot === "Yearly") {
+      if (period % basePeriodsPerYear === 0) {
+        const year = period / basePeriodsPerYear;
+
+        data.push({
+          year,
+          value: balance,
+        });
+      }
+    }
+
+    if (snapshot === "Monthly") {
+      const monthlyInterval =
+        basePeriodsPerYear / 12;
+
+      if (period % monthlyInterval === 0) {
+        const month = period / monthlyInterval;
+
+        data.push({
+          month,
+          value: balance,
+        });
+      }
+    }
+  }
+
+  return {
+    futureValue: balance,
+    contributionCount,
+    data,
+  };
+}
+
+/**
+ * Main compound interest calculator.
+ */
 export function calculateCompoundInterest({
   principal,
   monthlyContribution,
   interestRate,
   inflationRate = 0,
   years,
-  frequency,
+  frequency = "Monthly",
+  contributionFrequency = "Monthly",
   comparisonRates = [],
 }) {
-  const frequencies = {
-    Daily: 365,
-    Weekly: 52,
-    Monthly: 12,
-    Quarterly: 4,
-    Yearly: 1,
-  };
-
-
-  const n = frequencies[frequency] || 12;
-  const r = Number(interestRate) / 100;
-  const safeInflationRate = Number(inflationRate) || 0;
   const safePrincipal = Number(principal) || 0;
-  const safeMonthlyContribution = Number(monthlyContribution) || 0;
-  const safeYears = Number(years) || 0;
-  const totalPeriods = safeYears * n;
 
-  let futurePrincipal = safePrincipal;
-  let futureContributions = safeMonthlyContribution * safeYears * 12;
+  const safeContributionAmount =
+    Number(monthlyContribution) || 0;
 
-  if (r > 0) {
-    futurePrincipal = safePrincipal * Math.pow(1 + r / n, totalPeriods);
-    futureContributions =
-      safeMonthlyContribution *
-      ((Math.pow(1 + r / n, totalPeriods) - 1) / (r / n));
-  }
+  const safeInterestRate =
+    Number(interestRate) || 0;
 
-  const futureValue = futurePrincipal + futureContributions;
+  const safeInflationRate =
+    Number(inflationRate) || 0;
+
+  const safeYears =
+    Math.max(Number(years) || 0, 0);
+
+  /*
+   * Main investment calculation
+   */
+  const mainSimulation = simulateInvestment({
+    principal: safePrincipal,
+    contributionAmount: safeContributionAmount,
+    annualRate: safeInterestRate / 100,
+    years: safeYears,
+    compoundFrequency: frequency,
+    contributionFrequency,
+  });
+
+  const futureValue =
+    mainSimulation.futureValue;
+
   const totalContributions =
-    safePrincipal + safeMonthlyContribution * safeYears * 12;
-  const interestEarned = futureValue - totalContributions;
+    safePrincipal +
+    safeContributionAmount *
+      mainSimulation.contributionCount;
+
+  const interestEarned =
+    futureValue - totalContributions;
+
+  /*
+   * Inflation-adjusted purchasing power.
+   */
   const inflationAdjustedValue =
-    futureValue / Math.pow(1 + safeInflationRate / 100, safeYears);
+    futureValue /
+    Math.pow(
+      1 + safeInflationRate / 100,
+      safeYears,
+    );
 
-  const yearlyData = [];
+  /*
+   * Yearly chart data.
+   */
+  const yearlyData = simulateInvestment({
+    principal: safePrincipal,
+    contributionAmount: safeContributionAmount,
+    annualRate: safeInterestRate / 100,
+    years: safeYears,
+    compoundFrequency: frequency,
+    contributionFrequency,
+    snapshot: "Yearly",
+  }).data;
 
-  for (let year = 1; year <= safeYears; year++) {
-    const periods = year * n;
+  /*
+   * Monthly chart data.
+   */
+  const monthlyData = simulateInvestment({
+    principal: safePrincipal,
+    contributionAmount: safeContributionAmount,
+    annualRate: safeInterestRate / 100,
+    years: safeYears,
+    compoundFrequency: frequency,
+    contributionFrequency,
+    snapshot: "Monthly",
+  }).data;
 
-    let yearlyFuturePrincipal = safePrincipal;
-    let yearlyFutureContribution = safeMonthlyContribution * year * 12;
+  /*
+   * Final-value comparison.
+   */
+  const rateComparisonData =
+    comparisonRates.map((comparisonRate) => {
+      const numericRate =
+        Number(comparisonRate) || 0;
 
-    if (r > 0) {
-      yearlyFuturePrincipal = safePrincipal * Math.pow(1 + r / n, periods);
-      yearlyFutureContribution =
-        safeMonthlyContribution *
-        ((Math.pow(1 + r / n, periods) - 1) / (r / n));
-    }
+      const simulation =
+        simulateInvestment({
+          principal: safePrincipal,
+          contributionAmount:
+            safeContributionAmount,
+          annualRate: numericRate / 100,
+          years: safeYears,
+          compoundFrequency: frequency,
+          contributionFrequency,
+        });
 
-    yearlyData.push({
-      year,
-      value: yearlyFuturePrincipal + yearlyFutureContribution,
+      return {
+        rate: numericRate,
+        futureValue: simulation.futureValue,
+      };
     });
-  }
 
-  const monthlyData = [];
-
-  for (let month = 1; month <= safeYears * 12; month++) {
-    const monthlyRate = r / 12;
-
-    let value;
-
-    if (monthlyRate > 0) {
-      value =
-        safePrincipal * Math.pow(1 + monthlyRate, month) +
-        safeMonthlyContribution *
-          ((Math.pow(1 + monthlyRate, month) - 1) / monthlyRate);
-    } else {
-      value = safePrincipal + safeMonthlyContribution * month;
-    }
-
-    monthlyData.push({
-      month,
-      value,
-    });
-  }
-
+  /*
+   * Year-by-year comparison chart.
+   */
   const rateComparisonGrowthData = [];
 
-  for (let year = 1; year <= safeYears; year++) {
+  const safeComparisonYears =
+    Math.floor(safeYears);
+
+  for (
+    let year = 1;
+    year <= safeComparisonYears;
+    year++
+  ) {
     const row = {
       year,
     };
 
     comparisonRates.forEach((comparisonRate) => {
-      const comparisonR = Number(comparisonRate) / 100;
-      const periods = year * n;
+      const numericRate =
+        Number(comparisonRate) || 0;
 
-      const growth = Math.pow(1 + comparisonR / n, periods);
+      const simulation =
+        simulateInvestment({
+          principal: safePrincipal,
+          contributionAmount:
+            safeContributionAmount,
+          annualRate: numericRate / 100,
+          years: year,
+          compoundFrequency: frequency,
+          contributionFrequency,
+        });
 
-      const principalGrowth = safePrincipal * growth;
-
-      const contributionGrowth =
-        comparisonR > 0
-          ? safeMonthlyContribution * ((growth - 1) / (comparisonR / n))
-          : safeMonthlyContribution * year * 12;
-
-      row[`rate${comparisonRate}`] = principalGrowth + contributionGrowth;
+      row[`rate${numericRate}`] =
+        simulation.futureValue;
     });
 
     rateComparisonGrowthData.push(row);
   }
-
- 
-
-  const rateComparisonData = comparisonRates.map((comparisonRate) => {
-    const comparisonRateDecimal = comparisonRate / 100;
-
-    const comparisonFutureValue =
-      comparisonRateDecimal > 0
-        ? safePrincipal *
-            Math.pow(1 + comparisonRateDecimal / n, totalPeriods) +
-          safeMonthlyContribution *
-            ((Math.pow(1 + comparisonRateDecimal / n, totalPeriods) - 1) /
-              (comparisonRateDecimal / n))
-        : safePrincipal + safeMonthlyContribution * safeYears * 12;
-
-    return {
-      rate: comparisonRate,
-      futureValue: comparisonFutureValue,
-    };
-  });
 
   return {
     futureValue,

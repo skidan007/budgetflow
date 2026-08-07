@@ -4,13 +4,15 @@ import { Outlet } from "react-router-dom";
 
 const MainLayout = () => {
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-100">
+      {/* Sidebar */}
       <Sidebar />
 
-      <div className="flex-1 ml-64">
+      {/* Main Content */}
+      <div className="ml-64 min-h-screen">
         <Navbar />
 
-        <main className="p-6 ">
+        <main className="p-6">
           <Outlet />
         </main>
       </div>

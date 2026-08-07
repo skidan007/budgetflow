@@ -6,6 +6,7 @@ import SummaryCard from "../components/SummaryCard";
 import { Wallet, TrendingUp, Receipt, PiggyBank } from "lucide-react";
 import { useFinance } from "../context/FinanceContext";
 import ExpenseForm from "../components/ExpenseForm";
+// import DashboardGoals from "../components/DashboardGoals";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -161,29 +162,6 @@ function Dashboard() {
     return matchesFilter && matchesSearch;
   });
 
-  // const handleDelete = (id) => {
-  //   setTransactions((prev) =>
-  //     prev.filter((transaction) => transaction.id !== id),
-  //   );
-  //   toast.success("Transaction deleted successfully!");
-  // };
-
-  // const handleEdit = (transaction) => {
-  //   setEditingTransaction(transaction);
-  //   if (transaction.type === "Income") {
-  //     setIncomeCategory(transaction.category);
-  //   } else {
-  //     setExpenseCategory(transaction.category);
-  //   }
-
-  //   if (transaction.type === "Income") {
-  //     setIncomeInput(transaction.amount.toString());
-  //     setExpenseInput("");
-  //   } else {
-  //     setExpenseInput(transaction.amount.toString());
-  //     setIncomeInput("");
-  //   }
-  // };
 
   const handleUpdateTransaction = () => {
     if (!editingTransaction) return;
@@ -235,6 +213,8 @@ function Dashboard() {
           />
         ))}
       </div>
+
+      {/* <DashboardGoals /> */}
 
       <div>
         {/* Left Column */}
@@ -365,3 +345,5 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
+

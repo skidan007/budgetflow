@@ -26,3 +26,37 @@
     box-shadow: none !important;
   }
 }
+
+@media print {
+  /* Hide the sidebar */
+  aside {
+    display: none !important;
+  }
+
+  /* Hide buttons */
+  button {
+    display: none !important;
+  }
+
+  /* Remove the left spacing created by the fixed sidebar */
+  .ml-64 {
+    margin-left: 0 !important;
+  }
+
+  /* Remove unnecessary screen styling */
+  body {
+    background: white !important;
+  }
+
+  /* Remove shadows */
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl {
+    box-shadow: none !important;
+  }
+
+  /* Make the printed content use the full page */
+  main {
+    padding: 0 !important;
+  }
+}
