@@ -1,4 +1,10 @@
-function GoalCard({ goal, onOpen, onDelete, onAddSavings }) {
+import SavingsHistory from "./SavingsHistory";
+
+function GoalCard({  goal,
+  onOpen,
+  onDelete,
+  onAddSavings,
+  onDeleteSaving, }) {
   const targetAmount = Number(goal?.targetAmount) || 0;
   const currentAmount = Number(goal?.currentAmount) || 0;
 
@@ -96,7 +102,7 @@ function GoalCard({ goal, onOpen, onDelete, onAddSavings }) {
           type="button"
           disabled={progress >= 100}
           onClick={() => onAddSavings(goal)}
-          className={`mt-3 w-full rounded-lg px-4 py-3 font-semibold transition ${
+          className={`mt-2 w-full rounded-lg px-4 py-3 font-semibold transition ${
             progress >= 100
               ? "cursor-not-allowed bg-slate-300 text-slate-500"
               : "bg-green-600 text-white hover:bg-green-700"
@@ -104,6 +110,7 @@ function GoalCard({ goal, onOpen, onDelete, onAddSavings }) {
         >
           {progress >= 100 ? "🔒 Savings Completed" : "Add Savings"}
         </button>
+        <SavingsHistory goal={goal} onDeleteSaving={onDeleteSaving} />
       </div>
     </div>
   );

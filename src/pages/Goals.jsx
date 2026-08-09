@@ -211,6 +211,45 @@ function Goals() {
     setSelectedGoal(goal);
   };
 
+  const handleDeleteSaving = (goalId, savingId) => {
+    setGoals((prevGoals) =>
+      prevGoals.map((goal) => {
+        if (goal.id !== goalId) {
+          return goal;
+        }
+
+        const savingsHistory = Array.isArray(goal.savingsHistory)
+          ? goal.savingsHistory
+          : [];
+
+        const savingToDelete = savingsHistory.find(
+          (saving) => String(saving.id) === String(savingId),
+        );
+
+        if (!savingToDelete) {
+          return goal;
+        }
+
+        const savingAmount = Number(savingToDelete.amount) || 0;
+
+        const updatedSavingsHistory = savingsHistory.filter(
+          (saving) => String(saving.id) !== String(savingId),
+        );
+
+        return {
+          ...goal,
+          currentAmount: Math.max(
+            Number(goal.currentAmount || 0) - savingAmount,
+            0,
+          ),
+          savingsHistory: updatedSavingsHistory,
+        };
+      }),
+    );
+
+    toast.success("Savings deleted successfully!");
+  };
+
   // -----------------------------
   // CLOSE SAVINGS MODAL
   // -----------------------------
@@ -421,6 +460,7 @@ function Goals() {
               onDelete={handleDeleteGoal}
               onOpen={handleEditGoal}
               onAddSavings={handleOpenSavings}
+              onDeleteSaving={handleDeleteSaving}
             />
           ))}
         </div>
