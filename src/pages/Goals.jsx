@@ -1,4 +1,6 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
+
 import GoalCard from "../components/GoalCard";
 import AddSavingsModal from "../components/AddSavingsModal";
 import { useFinance } from "../context/FinanceContext";
@@ -44,67 +46,99 @@ function Goals() {
 
     const amount = Number(targetAmount);
 
+    console.log("SAVE/UPDATE CLICKED");
+    console.log("Editing Goal ID:", editingGoalId);
+    console.log("New Amount:", amount);
+
+    // VALIDATION
     if (!goalName.trim()) {
+      toast.error("Please enter a goal name.");
       return;
     }
 
     if (!amount || amount <= 0) {
+      toast.error("Please enter a valid target amount.");
       return;
     }
 
     if (!targetDate) {
+      toast.error("Please select a target date.");
       return;
     }
 
-    // UPDATE
+    // =========================
+    // UPDATE EXISTING GOAL
+    // =========================
     if (editingGoalId !== null) {
-      setGoals((prevGoals) =>
-        prevGoals.map((goal) =>
-          goal.id === editingGoalId
-            ? {
-                ...goal,
-                name: goalName.trim(),
-                type: goalType,
-                targetAmount: amount,
-                targetDate,
-              }
-            : goal,
-        ),
-      );
+      setGoals((prevGoals) => {
+        const updatedGoals = prevGoals.map((goal) => {
+          if (String(goal.id) !== String(editingGoalId)) {
+            return goal;
+          }
+
+          return {
+            ...goal,
+            name: goalName.trim(),
+            type: goalType,
+            targetAmount: amount,
+            targetDate: targetDate,
+          };
+        });
+
+        console.log("UPDATED GOALS:", updatedGoals);
+
+        return updatedGoals;
+      });
+
+      toast.success("Goal updated successfully!");
 
       resetForm();
+
       return;
     }
 
-    // CREATE
+    // =========================
+    // CREATE NEW GOAL
+    // =========================
     const newGoal = {
-      id: generateId(),
+      id: `goal-${Date.now()}`,
       name: goalName.trim(),
       type: goalType,
       targetAmount: amount,
       currentAmount: 0,
       targetDate,
-      currency,
+      currency: "₦",
       savingsHistory: [],
     };
 
-    setGoals((prevGoals) => [
-      ...prevGoals,
-      newGoal,
-    ]);
+    console.log("NEW GOAL:", newGoal);
+
+    setGoals((prevGoals) => [...prevGoals, newGoal]);
+
+    toast.success("Goal created successfully!");
 
     resetForm();
   };
+  // CREATE
 
   // -----------------------------
   // EDIT GOAL
   // -----------------------------
 
   const handleEditGoal = (goal) => {
+    const targetAmount = Number(goal?.targetAmount) || 0;
+    const currentAmount = Number(goal?.currentAmount) || 0;
+
+    if (currentAmount >= targetAmount && targetAmount > 0) {
+      toast.error("This goal has already been completed.");
+      return;
+    }
+
     setEditingGoalId(goal.id);
+
     setGoalName(goal.name || "");
     setGoalType(goal.type || "🎯 Goal");
-    setTargetAmount(goal.targetAmount || "");
+    setTargetAmount(String(goal.targetAmount ?? ""));
     setTargetDate(goal.targetDate || "");
 
     window.scrollTo({
@@ -112,33 +146,53 @@ function Goals() {
       behavior: "smooth",
     });
   };
-
   // -----------------------------
   // DELETE GOAL
   // -----------------------------
 
   const handleDeleteGoal = (goalId) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this goal?",
-    );
+    toast(
+      (t) => (
+        <div className="w-72">
+          <p className="font-semibold text-slate-900">Delete this goal?</p>
 
-    if (!confirmed) {
-      return;
-    }
+          <p className="mt-1 text-sm text-slate-500">
+            This action cannot be undone.
+          </p>
 
-    setGoals((prevGoals) =>
-      prevGoals.filter(
-        (goal) => goal.id !== goalId,
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                toast.dismiss(t.id);
+              }}
+              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setGoals((prevGoals) =>
+                  prevGoals.filter((goal) => goal.id !== goalId),
+                );
+
+                toast.dismiss(t.id);
+
+                toast.success("Goal deleted successfully!");
+              }}
+              className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
       ),
+      {
+        duration: Infinity,
+      },
     );
-
-    if (editingGoalId === goalId) {
-      resetForm();
-    }
-
-    if (selectedGoal?.id === goalId) {
-      setSelectedGoal(null);
-    }
   };
 
   // -----------------------------
@@ -146,6 +200,14 @@ function Goals() {
   // -----------------------------
 
   const handleOpenSavings = (goal) => {
+    const targetAmount = Number(goal?.targetAmount) || 0;
+    const currentAmount = Number(goal?.currentAmount) || 0;
+
+    if (currentAmount >= targetAmount && targetAmount > 0) {
+      toast.error("This goal has already been completed.");
+      return;
+    }
+
     setSelectedGoal(goal);
   };
 
@@ -166,6 +228,15 @@ function Goals() {
       return;
     }
 
+    const targetAmount = Number(selectedGoal.targetAmount) || 0;
+    const currentAmount = Number(selectedGoal.currentAmount) || 0;
+
+    if (currentAmount >= targetAmount && targetAmount > 0) {
+      toast.error("This goal has already been completed.");
+      setSelectedGoal(null);
+      return;
+    }
+
     const savingsAmount = Number(amount);
 
     if (!savingsAmount || savingsAmount <= 0) {
@@ -178,28 +249,20 @@ function Goals() {
           return goal;
         }
 
-        const savingsHistory =
-          goal.savingsHistory || [];
+        const savingsHistory = goal.savingsHistory || [];
 
         const newSaving = {
           id: generateId(),
           amount: savingsAmount,
-          date: new Date()
-            .toISOString()
-            .split("T")[0],
+          date: new Date().toISOString().split("T")[0],
         };
 
         return {
           ...goal,
 
-          currentAmount:
-            Number(goal.currentAmount || 0) +
-            savingsAmount,
+          currentAmount: Number(goal.currentAmount || 0) + savingsAmount,
 
-          savingsHistory: [
-            ...savingsHistory,
-            newSaving,
-          ],
+          savingsHistory: [...savingsHistory, newSaving],
         };
       }),
     );
@@ -212,9 +275,7 @@ function Goals() {
       {/* PAGE HEADER */}
 
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">
-          Goals
-        </h1>
+        <h1 className="text-3xl font-bold text-slate-900">Goals</h1>
 
         <p className="mt-1 text-sm text-slate-500">
           Set savings goals and track your progress.
@@ -225,15 +286,10 @@ function Goals() {
 
       <div className="rounded-xl bg-white p-6 shadow-md">
         <h2 className="text-xl font-semibold text-slate-900">
-          {editingGoalId !== null
-            ? "Edit Goal"
-            : "Set a New Goal"}
+          {editingGoalId !== null ? "Edit Goal" : "Set a New Goal"}
         </h2>
 
-        <form
-          onSubmit={handleSaveGoal}
-          className="mt-5 space-y-5"
-        >
+        <form onSubmit={handleSaveGoal} className="mt-5 space-y-5">
           {/* GOAL NAME */}
 
           <div>
@@ -244,9 +300,7 @@ function Goals() {
             <input
               type="text"
               value={goalName}
-              onChange={(e) =>
-                setGoalName(e.target.value)
-              }
+              onChange={(e) => setGoalName(e.target.value)}
               placeholder="Emergency Fund"
               className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500"
             />
@@ -261,42 +315,24 @@ function Goals() {
 
             <select
               value={goalType}
-              onChange={(e) =>
-                setGoalType(e.target.value)
-              }
+              onChange={(e) => setGoalType(e.target.value)}
               className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none focus:border-indigo-500"
             >
-              <option value="🎯 Goal">
-                🎯 Goal
-              </option>
+              <option value="🎯 Goal">🎯 Goal</option>
 
-              <option value="🏠 House">
-                🏠 House
-              </option>
+              <option value="🏠 House">🏠 House</option>
 
-              <option value="🚗 Car">
-                🚗 Car
-              </option>
+              <option value="🚗 Car">🚗 Car</option>
 
-              <option value="💍 Wedding">
-                💍 Wedding
-              </option>
+              <option value="💍 Wedding">💍 Wedding</option>
 
-              <option value="✈️ Travel">
-                ✈️ Travel
-              </option>
+              <option value="✈️ Travel">✈️ Travel</option>
 
-              <option value="🎓 Education">
-                🎓 Education
-              </option>
+              <option value="🎓 Education">🎓 Education</option>
 
-              <option value="💰 Emergency Fund">
-                💰 Emergency Fund
-              </option>
+              <option value="💰 Emergency Fund">💰 Emergency Fund</option>
 
-              <option value="💼 Business">
-                💼 Business
-              </option>
+              <option value="💼 Business">💼 Business</option>
             </select>
           </div>
 
@@ -317,11 +353,7 @@ function Goals() {
                 min="0"
                 step="0.01"
                 value={targetAmount}
-                onChange={(e) =>
-                  setTargetAmount(
-                    e.target.value,
-                  )
-                }
+                onChange={(e) => setTargetAmount(e.target.value)}
                 placeholder="500000"
                 className="w-full rounded-r-lg border border-slate-300 p-3 outline-none focus:border-indigo-500"
               />
@@ -338,9 +370,7 @@ function Goals() {
             <input
               type="date"
               value={targetDate}
-              onChange={(e) =>
-                setTargetDate(e.target.value)
-              }
+              onChange={(e) => setTargetDate(e.target.value)}
               className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-indigo-500"
             />
           </div>
@@ -352,9 +382,7 @@ function Goals() {
               type="submit"
               className="flex-1 rounded-lg bg-indigo-600 px-5 py-3 font-semibold text-white transition hover:bg-indigo-700"
             >
-              {editingGoalId !== null
-                ? "Update Goal"
-                : "Save Goal"}
+              {editingGoalId !== null ? "Update Goal" : "Save Goal"}
             </button>
 
             {editingGoalId !== null && (
@@ -374,9 +402,7 @@ function Goals() {
 
       {goals.length === 0 ? (
         <div className="rounded-xl bg-white p-10 text-center shadow-md">
-          <div className="text-4xl">
-            🎯
-          </div>
+          <div className="text-4xl">🎯</div>
 
           <h2 className="mt-3 text-xl font-semibold text-slate-900">
             No goals yet
@@ -394,9 +420,7 @@ function Goals() {
               goal={goal}
               onDelete={handleDeleteGoal}
               onOpen={handleEditGoal}
-              onAddSavings={
-                handleOpenSavings
-              }
+              onAddSavings={handleOpenSavings}
             />
           ))}
         </div>

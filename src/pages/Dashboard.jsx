@@ -11,7 +11,6 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 function Dashboard() {
-  
   const [incomeInput, setIncomeInput] = useState("");
   const [expenseInput, setExpenseInput] = useState("");
 
@@ -23,7 +22,7 @@ function Dashboard() {
   const [incomeDate, setIncomeDate] = useState(today);
   const [expenseDate, setExpenseDate] = useState(today);
 
-  const { transactions, setTransactions } = useFinance();
+  const { transactions, setTransactions, goals } = useFinance();
 
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -45,6 +44,11 @@ function Dashboard() {
     0,
   );
   const balance = income - expenses;
+
+  const savings = goals.reduce(
+    (total, goal) => total + (Number(goal.currentAmount) || 0),
+    0,
+  );
 
   // pie chart data for expenses by category
   const expenseChartData = Object.values(
@@ -145,7 +149,7 @@ function Dashboard() {
     },
     {
       title: "Savings",
-      amount: 300000,
+      amount: savings,
       icon: PiggyBank,
       iconBg: "bg-purple-100",
       iconColor: "text-purple-600",
@@ -161,7 +165,6 @@ function Dashboard() {
 
     return matchesFilter && matchesSearch;
   });
-
 
   const handleUpdateTransaction = () => {
     if (!editingTransaction) return;
@@ -272,12 +275,9 @@ function Dashboard() {
             setExpenseCategory={setExpenseCategory}
             setExpenseDate={setExpenseDate}
             setExpenseInput={setExpenseInput}
-            
             expenseCategory={expenseCategory}
-            
             expenseDate={expenseDate}
             expenseInput={expenseInput}
-            
             onSubmit={handleAddExpense}
             buttonText="Add Expense"
           />
@@ -345,5 +345,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-
-
