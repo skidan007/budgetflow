@@ -7,6 +7,8 @@ function GoalForm({
   setGoalTarget,
   goalDate,
   setGoalDate,
+  goalCurrency,
+  setGoalCurrency,
   onSubmit,
   buttonText,
   formTitle,
@@ -15,7 +17,9 @@ function GoalForm({
 }) {
   return (
     <div className="rounded-xl bg-white p-6 shadow-md">
-      <h2 className="mb-4 text-xl font-semibold">{formTitle}</h2>
+      <h2 className="mb-5 text-xl font-bold text-slate-900">
+        {formTitle}
+      </h2>
 
       <div className="space-y-4">
         <input
@@ -25,32 +29,38 @@ function GoalForm({
           placeholder="Emergency Fund"
           className="w-full rounded-lg border p-3"
         />
+
         <select
           value={goalIcon}
           onChange={(e) => setGoalIcon(e.target.value)}
           className="w-full rounded-lg border p-3"
         >
           <option value="🎯">🎯 Goal</option>
-
           <option value="🏠">🏠 House</option>
-
           <option value="🚗">🚗 Car</option>
-
           <option value="💻">💻 Laptop</option>
-
           <option value="✈️">✈️ Vacation</option>
-
           <option value="💍">💍 Wedding</option>
-
           <option value="🎓">🎓 Education</option>
-
           <option value="📱">📱 Phone</option>
-
           <option value="🏍️">🏍️ Motorcycle</option>
-
           <option value="👶">👶 Baby</option>
-
           <option value="❤️">❤️ Family</option>
+        </select>
+
+        <select
+          value={goalCurrency}
+          onChange={(e) => setGoalCurrency(e.target.value)}
+          className="w-full rounded-lg border p-3"
+        >
+          <option value="₦">₦ Nigerian Naira</option>
+          <option value="$">$ US Dollar</option>
+          <option value="£">£ British Pound</option>
+          <option value="€">€ Euro</option>
+          <option value="¥">¥ Japanese Yen</option>
+          <option value="C$">C$ Canadian Dollar</option>
+          <option value="A$">A$ Australian Dollar</option>
+          <option value="CHF">CHF Swiss Franc</option>
         </select>
 
         <input

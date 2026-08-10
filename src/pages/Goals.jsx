@@ -19,11 +19,11 @@ function Goals() {
   const [goalType, setGoalType] = useState("🎯 Goal");
   const [targetAmount, setTargetAmount] = useState("");
   const [targetDate, setTargetDate] = useState("");
+  const [goalCurrency, setGoalCurrency] = useState("NGN");
 
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [selectedGoal, setSelectedGoal] = useState(null);
-
-  const currency = "₦";
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
   // -----------------------------
   // RESET FORM
@@ -34,9 +34,9 @@ function Goals() {
     setGoalType("🎯 Goal");
     setTargetAmount("");
     setTargetDate("");
+    setGoalCurrency("NGN");
     setEditingGoalId(null);
   };
-
   // -----------------------------
   // SAVE / UPDATE GOAL
   // -----------------------------
@@ -82,10 +82,9 @@ function Goals() {
             type: goalType,
             targetAmount: amount,
             targetDate: targetDate,
+            currency: goalCurrency,
           };
         });
-
-        console.log("UPDATED GOALS:", updatedGoals);
 
         return updatedGoals;
       });
@@ -107,11 +106,9 @@ function Goals() {
       targetAmount: amount,
       currentAmount: 0,
       targetDate,
-      currency: "₦",
+      currency: goalCurrency,
       savingsHistory: [],
     };
-
-    console.log("NEW GOAL:", newGoal);
 
     setGoals((prevGoals) => [...prevGoals, newGoal]);
 
@@ -135,6 +132,7 @@ function Goals() {
     }
 
     setEditingGoalId(goal.id);
+    setGoalCurrency(goal.currency || "NGN");
 
     setGoalName(goal.name || "");
     setGoalType(goal.type || "🎯 Goal");
@@ -151,19 +149,31 @@ function Goals() {
   // -----------------------------
 
   const handleDeleteGoal = (goalId) => {
-    toast(
+    // Prevent another delete confirmation from opening
+    if (pendingDeleteId !== null) {
+      toast.error("Please confirm or cancel the current delete first.");
+      return;
+    }
+
+    setPendingDeleteId(goalId);
+
+    toast.custom(
       (t) => (
-        <div className="w-72">
-          <p className="font-semibold text-slate-900">Delete this goal?</p>
+        <div className="w-[320px] rounded-xl bg-white p-5 shadow-xl">
+          <h3 className="text-base font-semibold text-slate-900">
+            Delete this goal?
+          </h3>
 
           <p className="mt-1 text-sm text-slate-500">
             This action cannot be undone.
           </p>
 
           <div className="mt-4 flex gap-2">
+            {/* CANCEL */}
             <button
               type="button"
               onClick={() => {
+                setPendingDeleteId(null);
                 toast.dismiss(t.id);
               }}
               className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -171,12 +181,15 @@ function Goals() {
               Cancel
             </button>
 
+            {/* DELETE */}
             <button
               type="button"
               onClick={() => {
                 setGoals((prevGoals) =>
                   prevGoals.filter((goal) => goal.id !== goalId),
                 );
+
+                setPendingDeleteId(null);
 
                 toast.dismiss(t.id);
 
@@ -191,6 +204,7 @@ function Goals() {
       ),
       {
         duration: Infinity,
+        position: "top-right",
       },
     );
   };
@@ -373,6 +387,30 @@ function Goals() {
 
               <option value="💼 Business">💼 Business</option>
             </select>
+
+            {/* CURRENCY */}
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Currency
+              </label>
+
+              <select
+                value={goalCurrency}
+                onChange={(e) => setGoalCurrency(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none focus:border-indigo-500"
+              >
+                <option value="NGN">₦ Nigerian Naira</option>
+                <option value="USD">$ US Dollar</option>
+                <option value="GBP">£ British Pound</option>
+                <option value="EUR">€ Euro</option>
+                <option value="JPY">¥ Japanese Yen</option>
+                <option value="CNY">¥ Chinese Yuan</option>
+                <option value="CAD">C$ Canadian Dollar</option>
+                <option value="AUD">A$ Australian Dollar</option>
+                <option value="CHF">CHF Swiss Franc</option>
+              </select>
+            </div>
           </div>
 
           {/* TARGET AMOUNT */}
@@ -384,7 +422,7 @@ function Goals() {
 
             <div className="flex">
               <span className="flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-4 text-slate-600">
-                {currency}
+                {goalCurrency}
               </span>
 
               <input

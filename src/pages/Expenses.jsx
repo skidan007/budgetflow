@@ -3,24 +3,49 @@ import { useFinance } from "../context/FinanceContext";
 import Modal from "../components/Modal";
 import ExpenseForm from "../components/ExpenseForm";
 import toast from "react-hot-toast";
+
+const currencyMap = {
+  NGN: "₦",
+  USD: "$",
+  GBP: "£",
+  EUR: "€",
+  JPY: "¥",
+  CNY: "¥",
+  CAD: "C$",
+  AUD: "A$",
+  CHF: "CHF",
+};
+
 const Expenses = () => {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("Newest");
   const [editingExpense, setEditingExpense] = useState(null);
 
-  const { transactions, setTransactions } = useFinance();
+  const {
+    transactions,
+    setTransactions,
+    defaultCurrency,
+  } = useFinance();
+
+  // Only expenses belonging to the current/default currency
   const expenses = transactions.filter(
-    (transaction) => transaction.type === "Expense",
+    (transaction) =>
+      transaction.type === "Expense" &&
+      (transaction.currency || "NGN") === defaultCurrency,
   );
+
+  const currencySymbol =
+    currencyMap[defaultCurrency] || "₦";
 
   const filteredExpenses = expenses.filter((expense) => {
     const matchesSearch = expense.category
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(search.toLowerCase());
 
     const matchesCategory =
-      selectedCategory === "All" || expense.category === selectedCategory;
+      selectedCategory === "All" ||
+      expense.category === selectedCategory;
 
     return matchesSearch && matchesCategory;
   });
@@ -34,22 +59,29 @@ const Expenses = () => {
         return new Date(a.date) - new Date(b.date);
 
       case "Highest Amount":
-        return b.amount - a.amount;
+        return Number(b.amount) - Number(a.amount);
 
       case "Lowest Amount":
-        return a.amount - b.amount;
+        return Number(a.amount) - Number(b.amount);
 
       default:
         return 0;
     }
   });
+
+  // Total only for the selected/default currency
   const totalExpenses = expenses.reduce(
-    (total, expense) => total + expense.amount,
+    (total, expense) =>
+      total + (Number(expense.amount) || 0),
     0,
   );
 
   const handleDeleteExpense = (id) => {
-    if (!window.confirm("Are you sure you want to delete this expense?")) {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this expense?",
+      )
+    ) {
       return;
     }
 
@@ -68,43 +100,54 @@ const Expenses = () => {
   };
 
   const handleUpdateExpense = () => {
-  if (!editingExpense) return;
+    if (!editingExpense) return;
 
-  const amount = Number(editingExpense.amount);
+    const amount = Number(editingExpense.amount);
 
-  if (!amount || amount <= 0 || Number.isNaN(amount)) {
-    toast.error("Enter a valid amount");
-    return;
-  }
+    if (!amount || amount <= 0 || Number.isNaN(amount)) {
+      toast.error("Enter a valid amount");
+      return;
+    }
 
-  setTransactions((prev) =>
-    prev.map((transaction) =>
-      transaction.id === editingExpense.id
-        ? {
-            ...editingExpense,
-            amount,
-          }
-        : transaction
-    )
-  );
+    setTransactions((prev) =>
+      prev.map((transaction) =>
+        transaction.id === editingExpense.id
+          ? {
+              ...editingExpense,
+              amount,
+            }
+          : transaction,
+      ),
+    );
 
-  toast.success("Expense updated successfully!");
+    toast.success("Expense updated successfully!");
 
-  setEditingExpense(null);
-};
+    setEditingExpense(null);
+  };
+
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Expenses</h1>
-      <p className="text-gray-500 mt-2">Track and categorize your spending.</p>
+      <h1 className="text-3xl font-bold text-slate-900">
+        Expenses
+      </h1>
 
+      <p className="text-gray-500">
+        Track and categorize your spending.
+      </p>
+
+      {/* TOTAL EXPENSES */}
       <div className="mt-6 mb-6 rounded-xl bg-white p-6 shadow-md">
-        <p className="text-sm text-slate-500">Total Expenses</p>
+        <p className="text-sm text-slate-500">
+          Total Expenses
+        </p>
 
         <h2 className="mt-2 text-3xl font-bold text-red-600">
-          ₦{totalExpenses.toLocaleString()}
+          {currencySymbol}
+          {totalExpenses.toLocaleString()}
         </h2>
       </div>
 
+      {/* FILTERS */}
       <div className="mb-6 flex flex-col gap-4 md:flex-row">
         <input
           type="text"
@@ -116,7 +159,9 @@ const Expenses = () => {
 
         <select
           value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
+          onChange={(e) =>
+            setSelectedCategory(e.target.value)
+          }
           className="rounded-lg border p-3"
         >
           <option>All</option>
@@ -140,44 +185,69 @@ const Expenses = () => {
         </select>
       </div>
 
+      {/* EXPENSE LIST */}
       <div className="space-y-4">
         {sortedExpenses.length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-center text-slate-500">
             No expenses yet.
           </p>
         ) : (
-          sortedExpenses.map((expense) => (
-            <div
-              key={expense.id}
-              className="flex items-center justify-between rounded-xl border p-4 shadow-sm"
-            >
-              <div>
-                <h3 className="font-semibold">{expense.category}</h3>
+          sortedExpenses.map((expense) => {
+            const expenseCurrency =
+              currencyMap[expense.currency] || "₦";
 
-                <p className="text-sm text-slate-500">{expense.date}</p>
-              </div>
+            return (
+              <div
+                key={expense.id}
+                className="flex items-center justify-between rounded-xl border p-4 shadow-sm"
+              >
+                <div>
+                  <h3 className="font-semibold">
+                    {expense.category}
+                  </h3>
 
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-red-600">
-                  ₦{expense.amount.toLocaleString()}
-                </span>
-                <button
-                  onClick={() => setEditingExpense({ ...expense })}
-                  className="rounded bg-blue-500 px-3 py-1 text-sm text-white transition hover:bg-blue-600"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDeleteExpense(expense.id)}
-                  className="rounded bg-red-500 px-3 py-1 text-sm text-white transition hover:bg-red-600"
-                >
-                  Delete
-                </button>
+                  <p className="text-sm text-slate-500">
+                    {expense.date}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-red-600">
+                    {expenseCurrency}
+                    {Number(
+                      expense.amount || 0,
+                    ).toLocaleString()}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingExpense({
+                        ...expense,
+                      })
+                    }
+                    className="rounded bg-blue-500 px-3 py-1 text-sm text-white transition hover:bg-blue-600"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDeleteExpense(expense.id)
+                    }
+                    className="rounded bg-red-500 px-3 py-1 text-sm text-white transition hover:bg-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
+
+      {/* EDIT MODAL */}
       <Modal
         isOpen={editingExpense !== null}
         onClose={() => setEditingExpense(null)}
@@ -185,11 +255,19 @@ const Expenses = () => {
       >
         <ExpenseForm
           expenseInput={editingExpense?.amount || ""}
-          setExpenseInput={(value) => handleEditChange("amount", value)}
-          expenseCategory={editingExpense?.category || "Food"}
-          setExpenseCategory={(value) => handleEditChange("category", value)}
+          setExpenseInput={(value) =>
+            handleEditChange("amount", value)
+          }
+          expenseCategory={
+            editingExpense?.category || "Food"
+          }
+          setExpenseCategory={(value) =>
+            handleEditChange("category", value)
+          }
           expenseDate={editingExpense?.date || ""}
-          setExpenseDate={(value) => handleEditChange("date", value)}
+          setExpenseDate={(value) =>
+            handleEditChange("date", value)
+          }
           onSubmit={handleUpdateExpense}
           buttonText="Update Expense"
         />

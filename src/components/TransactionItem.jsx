@@ -1,3 +1,15 @@
+const currencyMap = {
+  NGN: "₦",
+  USD: "$",
+  GBP: "£",
+  EUR: "€",
+  JPY: "¥",
+  CNY: "¥",
+  CAD: "C$",
+  AUD: "A$",
+  CHF: "CHF",
+};
+
 const TransactionItem = ({
   transaction,
   onDelete,
@@ -5,6 +17,9 @@ const TransactionItem = ({
   showActions = true,
 }) => {
   const isIncome = transaction.type === "Income";
+
+  const transactionCurrency =
+    currencyMap[transaction.currency] || "₦";
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -31,7 +46,8 @@ const TransactionItem = ({
             isIncome ? "text-green-600" : "text-red-600"
           }`}
         >
-          {isIncome ? "+" : "-"}₦
+          {isIncome ? "+" : "-"}
+          {transactionCurrency}
           {Number(transaction.amount || 0).toLocaleString()}
         </p>
       </div>
