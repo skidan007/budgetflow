@@ -6,7 +6,7 @@ import SummaryCard from "../components/SummaryCard";
 import { Wallet, TrendingUp, Receipt, PiggyBank } from "lucide-react";
 import { useFinance } from "../context/FinanceContext";
 import ExpenseForm from "../components/ExpenseForm";
-// import DashboardGoals from "../components/DashboardGoals";
+import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -22,11 +22,13 @@ function Dashboard() {
   const [incomeDate, setIncomeDate] = useState(today);
   const [expenseDate, setExpenseDate] = useState(today);
 
-  const { transactions, setTransactions, goals } = useFinance();
+  const { transactions, setTransactions } = useFinance();
 
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [editingTransaction, setEditingTransaction] = useState(null);
+
+  const navigate = useNavigate();
 
   const income = transactions.reduce(
     (total, transaction) =>
@@ -45,10 +47,26 @@ function Dashboard() {
   );
   const balance = income - expenses;
 
+  const { goals } = useFinance();
   const savings = goals.reduce(
     (total, goal) => total + (Number(goal.currentAmount) || 0),
     0,
   );
+
+  const totalGoals = goals.length;
+
+  const totalTarget = goals.reduce(
+    (total, goal) => total + Number(goal.targetAmount || 0),
+    0,
+  );
+
+  const totalSaved = goals.reduce(
+    (total, goal) => total + Number(goal.currentAmount || 0),
+    0,
+  );
+
+  const overallProgress =
+    totalTarget > 0 ? Math.min((totalSaved / totalTarget) * 100, 100) : 0;
 
   // pie chart data for expenses by category
   const expenseChartData = Object.values(
@@ -68,16 +86,41 @@ function Dashboard() {
       }, {}),
   );
   // bar chart data for income vs expenses
-  const incomeExpenseChartData = [
-    {
-      name: "Income",
-      value: income,
-    },
-    {
-      name: "Expense",
-      value: expenses,
-    },
-  ];
+  const incomeExpenseChartData = (() => {
+    const monthlyData = {};
+
+    transactions.forEach((transaction) => {
+      if (!transaction?.date) return;
+
+      const date = new Date(transaction.date);
+
+      if (Number.isNaN(date.getTime())) return;
+
+      const month = date.toLocaleString("en-US", {
+        month: "short",
+      });
+
+      if (!monthlyData[month]) {
+        monthlyData[month] = {
+          name: month,
+          Income: 0,
+          Expense: 0,
+        };
+      }
+
+      const amount = Number(transaction.amount) || 0;
+
+      if (transaction.type === "Income") {
+        monthlyData[month].Income += amount;
+      }
+
+      if (transaction.type === "Expense") {
+        monthlyData[month].Expense += amount;
+      }
+    });
+
+    return Object.values(monthlyData);
+  })();
   // ✅ 2. Save transactions whenever they change
   useEffect(() => {
     localStorage.setItem("transactions", JSON.stringify(transactions));
@@ -217,6 +260,149 @@ function Dashboard() {
         ))}
       </div>
 
+      <div className="mt-6 rounded-xl bg-white p-6 shadow-md">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">
+              Goals Overview
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Track your savings goals from your dashboard.
+            </p>
+          </div>
+
+          <div className="text-3xl">🎯</div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {/* TOTAL GOALS */}
+          <div className="rounded-lg bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">Total Goals</p>
+
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {totalGoals}
+            </p>
+          </div>
+
+          {/* TOTAL TARGET */}
+          <div className="rounded-lg bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">Total Target</p>
+
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              ₦{totalTarget.toLocaleString()}
+            </p>
+          </div>
+
+          {/* TOTAL SAVED */}
+          <div className="rounded-lg bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">Total Saved</p>
+
+            <p className="mt-2 text-2xl font-bold text-green-600">
+              ₦{totalSaved.toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        {/* OVERALL PROGRESS */}
+        <div className="mt-6">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-600">
+              Overall Progress
+            </span>
+
+            <span className="text-sm font-semibold text-slate-900">
+              {overallProgress.toFixed(1)}%
+            </span>
+          </div>
+
+          <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full transition-all ${
+                overallProgress >= 100 ? "bg-green-500" : "bg-indigo-600"
+              }`}
+              style={{
+                width: `${overallProgress}%`,
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl bg-white p-6 shadow-md">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-slate-900">Your Goals</h2>
+
+          {goals.length > 0 && (
+            <button
+              type="button"
+              onClick={() => navigate("/goals")}
+              className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              View All Goals →
+            </button>
+          )}
+        </div>
+        {goals.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">
+            You haven't created any goals yet.
+          </p>
+        ) : (
+          <div className="mt-5 space-y-4">
+            {goals.map((goal) => {
+              const target = Number(goal.targetAmount || 0);
+              const saved = Number(goal.currentAmount || 0);
+
+              const progress =
+                target > 0 ? Math.min((saved / target) * 100, 100) : 0;
+
+              return (
+                <div
+                  key={goal.id}
+                  onClick={() => navigate("/goals")}
+                  className="cursor-pointer rounded-lg border border-slate-200 p-4 transition hover:border-indigo-300 hover:bg-slate-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-slate-900">
+                        {goal.name}
+                      </h3>
+
+                      <p className="text-sm text-slate-500">{goal.type}</p>
+                    </div>
+
+                    <span className="font-semibold text-slate-700">
+                      {progress.toFixed(0)}%
+                    </span>
+                  </div>
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        progress >= 100 ? "bg-green-500" : "bg-indigo-600"
+                      }`}
+                      style={{
+                        width: `${progress}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-2 flex justify-between text-sm">
+                    <span className="text-slate-500">
+                      Saved: ₦{saved.toLocaleString()}
+                    </span>
+
+                    <span className="text-slate-500">
+                      Target: ₦{target.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* <DashboardGoals /> */}
 
       <div>
@@ -290,7 +476,7 @@ function Dashboard() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="rounded-xl bg-white p-6 shadow">
+        <div className="mt-6 rounded-xl bg-white p-6 shadow">
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h2 className="text-xl font-semibold">Recent Transactions</h2>
 
