@@ -119,7 +119,24 @@ function Dashboard() {
       }
     });
 
-    return Object.values(monthlyData);
+    const monthOrder = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    return Object.values(monthlyData).sort(
+      (a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name),
+    );
   })();
   // ✅ 2. Save transactions whenever they change
   useEffect(() => {
@@ -506,14 +523,15 @@ function Dashboard() {
             ) : filteredTransactions.length === 0 ? (
               <p className="text-center text-gray-500">No matching results.</p>
             ) : (
-              filteredTransactions.slice(0, 5).map((transaction) => (
-                <TransactionItem
-                  key={transaction.id}
-                  transaction={transaction}
-                  // onDelete={handleDelete}
-                  // onEdit={handleEdit}
-                />
-              ))
+              filteredTransactions
+                .slice(0, 5)
+                .map((transaction) => (
+                  <TransactionItem
+                    key={transaction.id}
+                    transaction={transaction}
+                    showActions={false}
+                  />
+                ))
             )}
             <div className="mt-6 flex justify-center">
               <Link
