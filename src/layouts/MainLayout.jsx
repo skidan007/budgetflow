@@ -1,18 +1,32 @@
+import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import { Outlet } from "react-router-dom";
 
 const MainLayout = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleOpenSidebar = () => {
+    setSidebarOpen(true);
+  };
+
+  const handleCloseSidebar = () => {
+    setSidebarOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={handleCloseSidebar}
+      />
 
       {/* Main Content */}
-      <div className="ml-64 min-h-screen">
-        <Navbar />
+      <div className="min-h-screen md:ml-64">
+        <Navbar onMenuClick={handleOpenSidebar} />
 
-        <main className="p-6">
+        <main className="p-4 md:p-6">
           <Outlet />
         </main>
       </div>
