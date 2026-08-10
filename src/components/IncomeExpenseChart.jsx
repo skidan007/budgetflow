@@ -1,33 +1,44 @@
-function IncomeExpenseChart({ data = [] }) {
+function IncomeExpenseChart({ data = [], currency = "₦" }) {
   const maxValue = Math.max(
     ...data.flatMap((item) => [
       Number(item.Income) || 0,
-      Number(item.Expense) || 0,
+      Number(item.Expenses) || 0,
     ]),
     0,
   );
 
+  const formatAmount = (value) =>
+    `${currency}${Number(value).toLocaleString("en-US")}`;
+
   if (data.length === 0) {
     return (
-      <div className="flex h-80 items-center justify-center rounded-xl bg-white p-6 shadow-md">
-        <p className="text-sm text-slate-500">
-          No income or expense data available yet.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-xl bg-white p-6 shadow-md">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">
+      <div className="rounded-xl bg-white p-5 shadow-md">
+        <h2 className="text-lg font-semibold text-slate-900">
           Income vs Expenses
         </h2>
 
         <p className="mt-1 text-sm text-slate-500">
           Monthly financial activity.
         </p>
+
+        <div className="flex h-80 items-center justify-center">
+          <p className="text-sm text-slate-500">
+            No income or expense data available yet.
+          </p>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-white p-5 shadow-md">
+      <h2 className="text-lg font-semibold text-slate-900">
+        Income vs Expenses
+      </h2>
+
+      <p className="mt-1 text-sm text-slate-500">
+        Monthly financial activity.
+      </p>
 
       {/* LEGEND */}
       <div className="mt-5 flex gap-6 text-sm">
@@ -46,7 +57,7 @@ function IncomeExpenseChart({ data = [] }) {
       <div className="mt-6 space-y-5">
         {data.map((item) => {
           const income = Number(item.Income) || 0;
-          const expense = Number(item.Expense) || 0;
+          const expense = Number(item.Expenses) || 0;
 
           const incomeWidth =
             maxValue > 0 ? (income / maxValue) * 100 : 0;
@@ -55,19 +66,19 @@ function IncomeExpenseChart({ data = [] }) {
             maxValue > 0 ? (expense / maxValue) * 100 : 0;
 
           return (
-            <div key={item.name}>
+            <div key={item.month}>
               <div className="mb-2 flex items-center justify-between">
                 <span className="font-medium text-slate-700">
-                  {item.name}
+                  {item.month}
                 </span>
 
                 <div className="text-right text-xs text-slate-500">
                   <span>
-                    Income: ₦{income.toLocaleString()}
+                    Income: {formatAmount(income)}
                   </span>
 
                   <span className="ml-3">
-                    Expense: ₦{expense.toLocaleString()}
+                    Expense: {formatAmount(expense)}
                   </span>
                 </div>
               </div>

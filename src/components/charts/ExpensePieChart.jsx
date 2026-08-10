@@ -17,23 +17,30 @@ const COLORS = [
   "#EC4899",
 ];
 
-function ExpensePieChart({ transactions }) {
-  const expenseData = transactions
-    .filter((t) => t.type === "Expense")
-    .reduce((acc, transaction) => {
-      const existing = acc.find((item) => item.name === transaction.category);
+function ExpensePieChart({ data, transactions = [] }) {
+  const formatNumber = (value) =>
+    Number(value || 0).toLocaleString("en-US");
 
-      if (existing) {
-        existing.value += transaction.amount;
-      } else {
-        acc.push({
-          name: transaction.category,
-          value: transaction.amount,
-        });
-      }
+  const expenseData = Array.isArray(data)
+    ? data
+    : (Array.isArray(transactions) ? transactions : [])
+        .filter((t) => t?.type === "Expense")
+        .reduce((acc, transaction) => {
+          const category = transaction?.category || "Other";
+          const amount = Number(transaction?.amount) || 0;
+          const existing = acc.find((item) => item.name === category);
 
-      return acc;
-    }, []);
+          if (existing) {
+            existing.value += amount;
+          } else {
+            acc.push({
+              name: category,
+              value: amount,
+            });
+          }
+
+          return acc;
+        }, []);
 
   return (
     <div className="rounded-2xl bg-white p-6 shadow-md">
@@ -49,14 +56,14 @@ function ExpensePieChart({ transactions }) {
               dataKey="value"
               nameKey="name"
               outerRadius={120}
-              label
+              label={({ value }) => formatNumber(value)}
             >
               {expenseData.map((entry, index) => (
                 <Cell key={index} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
 
-            <Tooltip />
+            <Tooltip formatter={(value) => formatNumber(value)} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>

@@ -8,7 +8,7 @@ import { Wallet, TrendingDown, PiggyBank, Landmark } from "lucide-react";
 function Reports() {
   const [selectedMonth, setSelectedMonth] = useState("All");
 
-  const { transactions, goals } = useFinance();
+  const { transactions, goals, currencySymbol } = useFinance();
 
   const months = [
     "All",
@@ -53,45 +53,41 @@ function Reports() {
       ).length
     : 0;
 
-    const goalSavingsByCurrency = Array.isArray(goals)
-  ? goals.reduce((acc, goal) => {
-      const currency = goal.currency || "₦";
-      const amount = Number(goal.currentAmount || 0);
+  const goalSavingsByCurrency = Array.isArray(goals)
+    ? goals.reduce((acc, goal) => {
+        const currency = goal.currency || "₦";
+        const amount = Number(goal.currentAmount || 0);
 
-      acc[currency] = (acc[currency] || 0) + amount;
+        acc[currency] = (acc[currency] || 0) + amount;
+
+        return acc;
+      }, {})
+    : {};
+
+  const goalTargetsByCurrency = Array.isArray(goals)
+    ? goals.reduce((acc, goal) => {
+        const currency = goal.currency || "₦";
+        const amount = Number(goal.targetAmount || 0);
+
+        acc[currency] = (acc[currency] || 0) + amount;
+
+        return acc;
+      }, {})
+    : {};
+
+  const goalRemainingByCurrency = Object.keys(goalTargetsByCurrency).reduce(
+    (acc, currency) => {
+      const target = goalTargetsByCurrency[currency] || 0;
+      const saved = goalSavingsByCurrency[currency] || 0;
+
+      acc[currency] = Math.max(target - saved, 0);
 
       return acc;
-    }, {})
-  : {};
-
-const goalTargetsByCurrency = Array.isArray(goals)
-  ? goals.reduce((acc, goal) => {
-      const currency = goal.currency || "₦";
-      const amount = Number(goal.targetAmount || 0);
-
-      acc[currency] = (acc[currency] || 0) + amount;
-
-      return acc;
-    }, {})
-  : {};
-
-const goalRemainingByCurrency = Object.keys(
-  goalTargetsByCurrency,
-).reduce((acc, currency) => {
-  const target = goalTargetsByCurrency[currency] || 0;
-  const saved = goalSavingsByCurrency[currency] || 0;
-
-  acc[currency] = Math.max(target - saved, 0);
-
-  return acc;
-}, {});
+    },
+    {},
+  );
 
   const totalGoals = Array.isArray(goals) ? goals.length : 0;
-
-  
-
-  
-  
 
   const difference = totalIncome - totalExpenses;
 
@@ -104,12 +100,12 @@ const goalRemainingByCurrency = Object.keys(
         }
       : difference > 0
         ? {
-            insight: `🎉 Great job! Your income exceeded your expenses by ₦${difference.toLocaleString()}. Keep it up!`,
+            insight: `🎉 Great job! Your income exceeded your expenses by ${currencySymbol}${difference.toLocaleString()}. Keep it up!`,
             insightColor: "border-green-200 bg-green-50 text-green-700",
           }
         : difference < 0
           ? {
-              insight: `⚠️ You spent ₦${Math.abs(difference).toLocaleString()} more than you earned. Consider reducing your expenses.`,
+              insight: `⚠️ You spent ${currencySymbol}${Math.abs(difference).toLocaleString()} more than you earned. Consider reducing your expenses.`,
               insightColor: "border-red-200 bg-red-50 text-red-700",
             }
           : {
@@ -175,10 +171,17 @@ const goalRemainingByCurrency = Object.keys(
     .filter((t) => t.type === "Expense")
     .reduce((acc, transaction) => {
       acc[transaction.category] =
-        (acc[transaction.category] || 0) + transaction.amount;
+        (acc[transaction.category] || 0) + Number(transaction.amount || 0);
 
       return acc;
     }, {});
+
+  const expenseChartData = Object.entries(categoryTotals).map(
+    ([name, value]) => ({
+      name,
+      value: Number(value),
+    }),
+  );
 
   const topCategory = Object.entries(categoryTotals).sort(
     (a, b) => b[1] - a[1],
@@ -250,6 +253,7 @@ const goalRemainingByCurrency = Object.keys(
         <SummaryCard
           title="Total Income"
           amount={totalIncome}
+          currency={currencySymbol}
           icon={Wallet}
           iconBg="bg-green-100"
           iconColor="text-green-600"
@@ -258,6 +262,7 @@ const goalRemainingByCurrency = Object.keys(
         <SummaryCard
           title="Total Expenses"
           amount={totalExpenses}
+          currency={currencySymbol}
           icon={TrendingDown}
           iconBg="bg-red-100"
           iconColor="text-red-600"
@@ -265,6 +270,7 @@ const goalRemainingByCurrency = Object.keys(
 
         <SummaryCard
           title="Savings"
+          currency={currencySymbol}
           amount={totalSavings}
           icon={PiggyBank}
           iconBg="bg-blue-100"
@@ -273,6 +279,7 @@ const goalRemainingByCurrency = Object.keys(
 
         <SummaryCard
           title="Net Balance"
+          currency={currencySymbol}
           amount={totalSavings}
           icon={Landmark}
           iconBg="bg-purple-100"
@@ -467,7 +474,10 @@ const goalRemainingByCurrency = Object.keys(
           <>
             <p className="mt-3 text-2xl font-bold">{topCategory[0]}</p>
 
-            <p className="text-lg">₦{topCategory[1].toLocaleString()}</p>
+            <p className="text-lg">
+              {currencySymbol}
+              {topCategory[1].toLocaleString()}
+            </p>
 
             <p className="text-sm text-slate-600">
               {topCategoryPercentage.toFixed(1)}% of all expenses
@@ -479,9 +489,9 @@ const goalRemainingByCurrency = Object.keys(
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <IncomeExpenseChart data={monthlyData} />
+        <IncomeExpenseChart data={monthlyData} currency={currencySymbol} />
 
-        <ExpensePieChart transactions={filteredTransactions} />
+        <ExpensePieChart data={expenseChartData} currency={currencySymbol} />
       </div>
     </section>
   );

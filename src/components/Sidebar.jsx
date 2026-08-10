@@ -39,23 +39,25 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 z-50 flex h-screen w-64 flex-col bg-slate-900 text-white transition-transform duration-300
-        ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0`}
       >
-        {/* Logo */}
-        <div className="flex items-center justify-between border-b border-slate-700 p-6">
-          <img src={logo} alt="BudgetFlow" className="h-13 rounded-full w-13 mr-1" />
-          <span className="text-xl font-bold text-white">
-            BudgetFlow
-          </span>
+        <div className="flex h-20 shrink-0 items-center border-b border-slate-800 px-5">
+          <div className="flex items-center gap-2">
+            <img
+              src={logo}
+              alt="BudgetFlow"
+              className="h-12 w-auto rounded-full object-contain"
+            />
 
-          {/* Close button - mobile only */}
+            <span className="text-xl font-bold text-white">BudgetFlow</span>
+          </div>
+
+          {/* Mobile close button */}
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-white md:hidden"
+            className="ml-auto rounded-lg p-2 text-slate-300 hover:bg-slate-800 md:hidden"
           >
             <X size={22} />
           </button>
@@ -79,9 +81,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               >
                 <Icon size={20} />
 
-                <span className="ml-3">
-                  {menu.name}
-                </span>
+                <span className="ml-3">{menu.name}</span>
               </NavLink>
             );
           })}

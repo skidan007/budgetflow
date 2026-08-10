@@ -10,6 +10,8 @@ import {
 } from "recharts";
 
 function IncomeExpenseChart({ data }) {
+  const formatNumber = (value) =>
+    Number(value || 0).toLocaleString("en-US");
 
   return (
     <div className="rounded-2xl bg-white p-6 shadow-md">
@@ -23,9 +25,9 @@ function IncomeExpenseChart({ data }) {
 
           <XAxis dataKey="month" />
 
-          <YAxis />
+          <YAxis tickFormatter={formatNumber} />
 
-          <Tooltip />
+          <Tooltip formatter={(value) => formatNumber(value)} />
 
           <Legend />
 
