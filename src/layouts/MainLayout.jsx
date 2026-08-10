@@ -30,6 +30,9 @@ const MainLayout = () => {
           <Outlet  />
         </main>
       </div>
+      <div>
+        <p>Created by DeeTek</p>
+      </div>
     </div>
   );
 };
