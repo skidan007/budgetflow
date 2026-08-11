@@ -307,7 +307,7 @@ function Dashboard() {
 
       {/* SUMMARY CARDS */}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {summaryCards.map((card) => (
           <SummaryCard
             key={card.title}
@@ -466,7 +466,7 @@ function Dashboard() {
 
       {/* ADD INCOME / EXPENSE */}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-2 lg:grid-cols-2">
         {/* INCOME */}
 
         <div className="rounded-xl bg-white p-6 shadow">

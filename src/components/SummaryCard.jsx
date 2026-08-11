@@ -15,7 +15,7 @@ const SummaryCard = ({
   const isNegative = safeAmount < 0;
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow-md">
+    <div className="rounded-xl bg-white p-6 shadow-md grid grid-cols-2 gap-4 md:grid-cols-2 xl:grid-cols-4">
       {Icon && (
         <div
           className={`mb-5 flex h-12 w-12 items-center justify-center rounded-full ${iconBg}`}
@@ -29,7 +29,7 @@ const SummaryCard = ({
       </h3>
 
       <p
-        className={`mt-2 text-3xl font-bold tracking-tight ${
+        className={`mt-2 text-xl font-bold sm:text-2xl tracking-tight ${
           isNegative ? "text-red-600" : "text-slate-900"
         }`}
       >

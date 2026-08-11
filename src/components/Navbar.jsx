@@ -1,5 +1,5 @@
 import { Menu } from "lucide-react";
-import logo from "../assets/budgetflow-logo.png";
+
 
 const Navbar = ({ onMenuClick }) => {
   return (
@@ -20,11 +20,11 @@ const Navbar = ({ onMenuClick }) => {
 
           {/* MOBILE LOGO */}
           <div className="flex items-center gap-2 md:hidden">
-            <img
+            {/* <img
               src={logo}
               alt="BudgetFlow"
               className="h-12 w-auto rounded-full object-contain"
-            />
+            /> */}
 
             <span className="text-lg font-bold text-slate-900">
               BudgetFlow
