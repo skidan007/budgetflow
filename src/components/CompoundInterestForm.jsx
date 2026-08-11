@@ -183,7 +183,7 @@ function CompoundInterestForm({
         {/* Inflation Rate */}
         <div>
           <label className="mb-2 block text-sm font-medium">
-            Inflation Rate (%)
+            Inflation Rate
           </label>
           <div className="flex items-center rounded-lg border border-slate-300 bg-white pr-2">
             <input
@@ -226,7 +226,7 @@ function CompoundInterestForm({
         {/* Contribution Frequency */}
         <div>
           <label className="mb-2 block text-sm font-medium">
-            Contribution Frequency
+            Contribute Every
           </label>
 
           <select
