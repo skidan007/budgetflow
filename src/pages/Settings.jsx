@@ -52,14 +52,15 @@ const currencies = [
 const Settings = () => {
   const { defaultCurrency, setDefaultCurrency } = useFinance();
   const [saved, setSaved] = useState(false);
+  const { theme, setTheme } = useFinance();
 
   const handleSave = () => {
-  setSaved(true);
+    setSaved(true);
 
-  setTimeout(() => {
-    setSaved(false);
-  }, 3000);
-};
+    setTimeout(() => {
+      setSaved(false);
+    }, 3000);
+  };
 
   const selectedCurrency = currencies.find(
     (currency) => currency.code === defaultCurrency,
@@ -131,6 +132,38 @@ const Settings = () => {
             ✓ Currency settings saved successfully.
           </p>
         )}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+            Appearance
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Choose how BudgetFlow looks on your device.
+          </p>
+        </div>
+
+        <div className="mt-5">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Theme
+          </label>
+
+          <select
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+          >
+            <option value="system">🖥️ System</option>
+            <option value="light">☀️ Light</option>
+            <option value="dark">🌙 Dark</option>
+          </select>
+
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+            System automatically follows your device's theme.
+          </p>
+        </div>
       </div>
     </section>
   );

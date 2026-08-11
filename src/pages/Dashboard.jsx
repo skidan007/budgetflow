@@ -655,7 +655,7 @@ function Dashboard() {
                   type="date"
                   value={incomeDate}
                   onChange={(e) => setIncomeDate(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
+                  className="w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-slate-300 p-3"
                 />
               </div>
 

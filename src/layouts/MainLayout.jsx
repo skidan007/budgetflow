@@ -27,11 +27,11 @@ const MainLayout = () => {
       <div className="min-h-screen md:ml-64">
         <Navbar onMenuClick={handleOpenSidebar} />
 
-        <main className=" p-4 pt-30 md:p-6 md:pt-30">
+        <main className=" p-4 pt-30 md:p-6 md:pt-30 ">
           <Outlet  />
         </main>
       </div>
-      <Footer />
+      <Footer className="mt-4 text-center" />
     </div>
   );
 };
