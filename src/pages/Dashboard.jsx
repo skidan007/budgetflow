@@ -373,9 +373,9 @@ function Dashboard() {
 
       if (!monthlyData[month]) {
         monthlyData[month] = {
-          name: month,
+          month,
           Income: 0,
-          Expense: 0,
+          Expenses: 0,
         };
       }
 
@@ -386,7 +386,7 @@ function Dashboard() {
       }
 
       if (transaction.type === "Expense") {
-        monthlyData[month].Expense += amount;
+        monthlyData[month].Expenses += amount;
       }
     });
 
@@ -406,7 +406,7 @@ function Dashboard() {
     ];
 
     return Object.values(monthlyData).sort(
-      (a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name),
+      (a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month),
     );
   })();
 
