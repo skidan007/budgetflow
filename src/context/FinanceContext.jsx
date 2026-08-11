@@ -205,27 +205,6 @@ export function FinanceProvider({ children }) {
   // THEME
   // -----------------------------
 
-  
-
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-
-    const root = document.documentElement;
-
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else if (theme === "light") {
-      root.classList.remove("dark");
-    } else {
-      // System theme
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      ).matches;
-
-      root.classList.toggle("dark", prefersDark);
-    }
-  }, [theme]);
-
   // -----------------------------
   // TRANSACTIONS
   // -----------------------------
@@ -289,24 +268,30 @@ export function FinanceProvider({ children }) {
     localStorage.setItem("theme", theme);
 
     const root = document.documentElement;
+    const body = document.body;
+
+    const applyTheme = (isDark) => {
+      root.classList.toggle("dark", isDark);
+      body.classList.toggle("dark", isDark);
+    };
 
     if (theme === "dark") {
-      root.classList.add("dark");
+      applyTheme(true);
       return;
     }
 
     if (theme === "light") {
-      root.classList.remove("dark");
+      applyTheme(false);
       return;
     }
 
     // System theme
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-    root.classList.toggle("dark", mediaQuery.matches);
+    applyTheme(mediaQuery.matches);
 
     const handleChange = (event) => {
-      root.classList.toggle("dark", event.matches);
+      applyTheme(event.matches);
     };
 
     mediaQuery.addEventListener("change", handleChange);

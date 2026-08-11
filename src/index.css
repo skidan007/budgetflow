@@ -1,6 +1,111 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --app-bg: #f1f5f9;
+  --app-bg-muted: #e2e8f0;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f8fafc;
+  --app-text: #0f172a;
+  --app-text-soft: #334155;
+  --app-text-muted: #64748b;
+  --app-text-subtle: #94a3b8;
+  --app-border: #cbd5e1;
+  --app-input-bg: #ffffff;
+  --app-input-text: #0f172a;
+  --app-input-placeholder: #94a3b8;
+  --app-shadow:
+    0 1px 3px rgb(15 23 42 / 0.08),
+    0 8px 24px rgb(15 23 42 / 0.08);
+}
+
+.dark {
+  --app-bg: #020617;
+  --app-bg-muted: #0b1220;
+  --app-surface: #0f172a;
+  --app-surface-muted: #111827;
+  --app-text: #f8fafc;
+  --app-text-soft: #cbd5e1;
+  --app-text-muted: #94a3b8;
+  --app-text-subtle: #64748b;
+  --app-border: #334155;
+  --app-input-bg: #0b1220;
+  --app-input-text: #e2e8f0;
+  --app-input-placeholder: #64748b;
+  --app-shadow:
+    0 1px 3px rgb(0 0 0 / 0.45),
+    0 10px 25px rgb(0 0 0 / 0.25);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.bg-white {
+  background-color: var(--app-surface) !important;
+}
+
+.bg-slate-50 {
+  background-color: var(--app-surface-muted) !important;
+}
+
+.bg-slate-100 {
+  background-color: var(--app-bg-muted) !important;
+}
+
+.text-slate-900 {
+  color: var(--app-text) !important;
+}
+
+.text-slate-700 {
+  color: var(--app-text-soft) !important;
+}
+
+.text-slate-600,
+.text-slate-500,
+.text-gray-500 {
+  color: var(--app-text-muted) !important;
+}
+
+.text-slate-400 {
+  color: var(--app-text-subtle) !important;
+}
+
+.border-slate-300,
+.border-slate-200 {
+  border-color: var(--app-border) !important;
+}
+
+input,
+select,
+textarea {
+  background-color: var(--app-input-bg);
+  color: var(--app-input-text);
+  border-color: var(--app-border);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--app-input-placeholder);
+}
+
+.shadow,
+.shadow-sm,
+.shadow-md,
+.shadow-lg,
+.shadow-xl {
+  box-shadow: var(--app-shadow) !important;
+}
+
 @media print {
   body {
     background: white !important;

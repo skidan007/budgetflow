@@ -8,7 +8,7 @@ import { Wallet, TrendingDown, PiggyBank, Landmark } from "lucide-react";
 function Reports() {
   const [selectedMonth, setSelectedMonth] = useState("All");
 
-  const { transactions, goals, currencySymbol } = useFinance();
+  const { transactions, goals, currencySymbol, defaultCurrency } = useFinance();
 
   const months = [
     "All",
@@ -44,6 +44,12 @@ function Reports() {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const totalSavings = totalIncome - totalExpenses;
+
+  const goalSavingsTotal = Array.isArray(goals)
+    ? goals
+        .filter((goal) => (goal.currency || "NGN") === defaultCurrency)
+        .reduce((sum, goal) => sum + Number(goal.currentAmount || 0), 0)
+    : 0;
 
   const savingsRate = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0;
   const completedGoals = Array.isArray(goals)
@@ -271,7 +277,7 @@ function Reports() {
         <SummaryCard
           title="Savings"
           currency={currencySymbol}
-          amount={totalSavings}
+          amount={goalSavingsTotal}
           icon={PiggyBank}
           iconBg="bg-blue-100"
           iconColor="text-blue-600"
@@ -287,16 +293,16 @@ function Reports() {
         />
       </div>
 
-      <div className="mt-6 rounded-xl border border-purple-200 bg-purple-50 p-6">
+      <div className="mt-6 rounded-xl border border-purple-200 bg-purple-50 p-6 dark:border-purple-700/40 dark:bg-purple-950/40">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-purple-700">Savings Rate</p>
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-200">Savings Rate</p>
 
-            <p className="mt-2 text-3xl font-bold text-purple-900">
+            <p className="mt-2 text-3xl font-bold text-purple-900 dark:text-purple-100">
               {savingsRate.toFixed(1)}%
             </p>
 
-            <p className="mt-1 text-sm text-purple-700">
+            <p className="mt-1 text-sm text-purple-700 dark:text-purple-200/90">
               Percentage of your income remaining after expenses.
             </p>
           </div>
@@ -309,40 +315,40 @@ function Reports() {
         <p className="font-medium">{insight}</p>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-orange-200 bg-orange-50 p-6">
+      <div className="mt-6 rounded-2xl border border-orange-200 bg-orange-50 p-6 dark:border-orange-700/40 dark:bg-orange-950/30">
         <div className="mt-8">
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
             💡 Financial Insights
           </h2>
 
           <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <div className="rounded-xl border border-green-200 bg-green-50 p-5">
-              <p className="font-medium text-green-800">Savings Performance</p>
+            <div className="rounded-xl border border-green-200 bg-green-50 p-5 dark:border-green-700/40 dark:bg-green-950/30">
+              <p className="font-medium text-green-800 dark:text-green-200">Savings Performance</p>
 
-              <p className="mt-2 text-sm text-green-700">{savingsInsight}</p>
+              <p className="mt-2 text-sm text-green-700 dark:text-green-100/90">{savingsInsight}</p>
             </div>
 
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
-              <p className="font-medium text-blue-800">Spending Pattern</p>
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-700/40 dark:bg-blue-950/30">
+              <p className="font-medium text-blue-800 dark:text-blue-200">Spending Pattern</p>
 
-              <p className="mt-2 text-sm text-blue-700">{spendingInsight}</p>
+              <p className="mt-2 text-sm text-blue-700 dark:text-blue-100/90">{spendingInsight}</p>
             </div>
 
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-              <p className="font-medium text-amber-800">Expense Level</p>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-700/40 dark:bg-amber-950/30">
+              <p className="font-medium text-amber-800 dark:text-amber-200">Expense Level</p>
 
-              <p className="mt-2 text-sm text-amber-700">{expenseInsight}</p>
+              <p className="mt-2 text-sm text-amber-700 dark:text-amber-100/90">{expenseInsight}</p>
             </div>
           </div>
 
           <div className="mt-8">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                   🎯 Savings Goals
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Track your progress toward your financial goals.
                 </p>
               </div>
@@ -357,14 +363,14 @@ function Reports() {
             </div>
 
             <div className="mt-5 space-y-4">
-              <div className="mb-5 rounded-xl border border-indigo-200 bg-indigo-50 p-5">
-                <p className="text-sm font-medium text-indigo-700">
+              <div className="mb-5 rounded-xl border border-indigo-200 bg-indigo-50 p-5 dark:border-indigo-700/40 dark:bg-indigo-950/30">
+                <p className="text-sm font-medium text-indigo-700 dark:text-indigo-200">
                   Total saved toward goals
                 </p>
 
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {Object.entries(goalSavingsByCurrency).length === 0 ? (
-                    <p className="text-sm text-indigo-700">
+                    <p className="text-sm text-indigo-700 dark:text-indigo-100/90">
                       No savings recorded yet.
                     </p>
                   ) : (
@@ -466,7 +472,7 @@ function Reports() {
             </div>
           </div>
         </div>
-        <h2 className=" mt-6 text-xl font-bold text-orange-700">
+        <h2 className=" mt-6 text-xl font-bold text-orange-700 dark:text-orange-200">
           🏆 Top Spending Category
         </h2>
 

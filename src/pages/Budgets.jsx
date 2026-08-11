@@ -14,9 +14,23 @@ function Budgets() {
 
   const [budgetCategory, setBudgetCategory] = useState("Food");
   const [budgetAmount, setBudgetAmount] = useState("");
+  const [editingBudgetId, setEditingBudgetId] = useState(null);
 
   const currentCurrencyBudgets = budgets.filter(
     (budget) => (budget.currency || "NGN") === defaultCurrency,
+  );
+
+  const totalIncome = transactions
+    .filter(
+      (transaction) =>
+        transaction.type === "Income" &&
+        (transaction.currency || "NGN") === defaultCurrency,
+    )
+    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+
+  const totalBudgetAmount = currentCurrencyBudgets.reduce(
+    (total, budget) => total + Number(budget.amount || 0),
+    0,
   );
 
   const handleAddBudget = () => {
@@ -27,18 +41,64 @@ function Budgets() {
       return;
     }
 
+    if (totalIncome <= 0) {
+      toast.error("Add income first before creating a budget.");
+      return;
+    }
+
+    if (amount > totalIncome) {
+      toast.error(
+        `A single budget cannot be greater than your total income (${currencySymbol}${totalIncome.toLocaleString()}).`,
+      );
+      return;
+    }
+
+    const existing = currentCurrencyBudgets.find(
+      (budget) => budget.category === budgetCategory,
+    );
+
+    if (
+      editingBudgetId &&
+      existing &&
+      existing.id !== editingBudgetId
+    ) {
+      toast.error(
+        `A ${budgetCategory} budget already exists. Edit that budget instead.`,
+      );
+      return;
+    }
+
+    const editingBudget = editingBudgetId
+      ? currentCurrencyBudgets.find((budget) => budget.id === editingBudgetId)
+      : null;
+
+    const budgetToReplace = editingBudget || existing;
+
+    const adjustedTotal =
+      totalBudgetAmount - Number(budgetToReplace?.amount || 0) + amount;
+
+    if (adjustedTotal > totalIncome) {
+      toast.error(
+        `Total budget cannot exceed total income (${currencySymbol}${totalIncome.toLocaleString()}).`,
+      );
+      return;
+    }
+
     setBudgets((prev) => {
-      const existing = prev.find(
+      const existingBudget = prev.find(
         (budget) =>
           budget.category === budgetCategory &&
           (budget.currency || "NGN") === defaultCurrency,
       );
 
-      if (existing) {
+      const targetBudgetId = editingBudgetId || existingBudget?.id;
+
+      if (targetBudgetId) {
         return prev.map((budget) =>
-          budget.id === existing.id
+          budget.id === targetBudgetId
             ? {
                 ...budget,
+                category: budgetCategory,
                 amount,
                 currency: defaultCurrency,
               }
@@ -59,8 +119,37 @@ function Budgets() {
 
     setBudgetAmount("");
     setBudgetCategory("Food");
+    setEditingBudgetId(null);
 
-    toast.success("Budget saved successfully!");
+    toast.success(
+      editingBudgetId
+        ? "Budget updated successfully!"
+        : "Budget saved successfully!",
+    );
+  };
+
+  const handleEditBudget = (budget) => {
+    setEditingBudgetId(budget.id);
+    setBudgetCategory(budget.category);
+    setBudgetAmount(String(budget.amount || ""));
+  };
+
+  const handleDeleteBudget = (budgetId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this budget?",
+    );
+
+    if (!confirmed) return;
+
+    setBudgets((prev) => prev.filter((budget) => budget.id !== budgetId));
+
+    if (editingBudgetId === budgetId) {
+      setEditingBudgetId(null);
+      setBudgetCategory("Food");
+      setBudgetAmount("");
+    }
+
+    toast.success("Budget deleted successfully!");
   };
 
   const progressItems = currentCurrencyBudgets;
@@ -72,6 +161,12 @@ function Budgets() {
       {/* Budget planner */}
       <div className="rounded-xl bg-white p-6 shadow-md">
         <h2 className="mb-4 text-xl font-semibold">Budget Planner</h2>
+
+        <p className="mb-4 text-sm text-slate-500">
+          Total Budget: {currencySymbol}
+          {totalBudgetAmount.toLocaleString()} / Total Income: {currencySymbol}
+          {totalIncome.toLocaleString()}
+        </p>
 
         <div className="space-y-4">
           <select
@@ -99,8 +194,22 @@ function Budgets() {
             onClick={handleAddBudget}
             className="w-full rounded-lg bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700"
           >
-            Save Budget
+            {editingBudgetId ? "Update Budget" : "Save Budget"}
           </button>
+
+          {editingBudgetId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingBudgetId(null);
+                setBudgetCategory("Food");
+                setBudgetAmount("");
+              }}
+              className="w-full rounded-lg border border-slate-300 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel Edit
+            </button>
+          )}
         </div>
       </div>
 
@@ -132,6 +241,8 @@ function Budgets() {
                   budget={budget.amount}
                   spent={spent}
                   currencySymbol={currencySymbol}
+                  onEdit={() => handleEditBudget(budget)}
+                  onDelete={() => handleDeleteBudget(budget.id)}
                 />
               );
             })

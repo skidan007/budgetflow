@@ -1,4 +1,11 @@
-function BudgetProgress({ category, budget, spent, currencySymbol = "₦" }) {
+function BudgetProgress({
+  category,
+  budget,
+  spent,
+  currencySymbol = "₦",
+  onEdit,
+  onDelete,
+}) {
   const safeBudget = Number(budget) || 0;
   const safeSpent = Number(spent) || 0;
   const remaining = safeBudget - safeSpent;
@@ -69,6 +76,30 @@ function BudgetProgress({ category, budget, spent, currencySymbol = "₦" }) {
           {percentage.toFixed(0)}%
         </span>
       </div>
+
+      {(onEdit || onDelete) && (
+        <div className="mt-6 flex gap-3">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="w-full rounded-lg border border-slate-300 px-4 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Edit
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="w-full rounded-lg bg-red-600 px-4 py-3 font-medium text-white transition hover:bg-red-700"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
