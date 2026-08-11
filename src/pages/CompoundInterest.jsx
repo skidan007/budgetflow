@@ -74,21 +74,26 @@ function CompoundInterest() {
   } = calculationResults;
 
   const handleExportPDF = async () => {
-    await exportCompoundInterestPDF({
-      currency,
-      principal,
-      monthlyContribution,
-      interestRate,
-      inflationRate,
-      years,
-      frequency,
-      futureValue,
-      totalContributions,
-      interestEarned,
-      inflationAdjustedValue,
-      rateComparisonData,
-      yearlyData,
-    });
+    try {
+      await exportCompoundInterestPDF({
+        currency,
+        principal,
+        monthlyContribution,
+        interestRate,
+        inflationRate,
+        years,
+        frequency,
+        futureValue,
+        totalContributions,
+        interestEarned,
+        inflationAdjustedValue,
+        rateComparisonData,
+        yearlyData,
+      });
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      alert("Unable to export PDF. Please try again.");
+    }
   };
 
   const handlePrint = () => {
@@ -172,7 +177,7 @@ Inflation Adjusted Value: ${currency}${Number(
         inflationAdjustedValue={inflationAdjustedValue}
       />
 
-      <div className="flex lg:flex-row flex-col gap-3">
+      <div className="flex lg:flex-row flex-col gap-3 justify-center">
         <button
           type="button"
           onClick={handleCopyResults}
