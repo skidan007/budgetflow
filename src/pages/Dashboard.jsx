@@ -627,7 +627,7 @@ function Dashboard() {
               </p>
             </div>
 
-            <div className="grid gap-4 w-full min-w-0">
+            <div className="grid gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Category
@@ -646,7 +646,7 @@ function Dashboard() {
                 </select>
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Date
                 </label>
