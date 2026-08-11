@@ -90,7 +90,7 @@ function CompoundInterestForm({
             min="0"
             value={principal}
             onChange={(e) => setPrincipal(e.target.value)}
-            className={inputClass(errors.principal)}
+            className={`${inputClass(errors.principal)}  no-spinner`}
             placeholder="Enter initial investment"
           />
 
@@ -104,7 +104,7 @@ function CompoundInterestForm({
         {/* Contribution Amount */}
         <div>
           <label className="mb-2 block text-sm font-medium">
-            Contribution Amount
+            Additional Amount
           </label>
 
           <input
@@ -113,7 +113,7 @@ function CompoundInterestForm({
             value={monthlyContribution}
             onChange={(e) => setMonthlyContribution(e.target.value)}
             placeholder="Enter monthly contribution"
-            className={inputClass(errors.contribution)}
+            className={`${inputClass(errors.contribution)}  no-spinner`}
           />
           {errors.contribution && (
             <p className="mt-1 text-sm text-red-600">
@@ -122,20 +122,33 @@ function CompoundInterestForm({
           )}
         </div>
 
-        {/* Investment Duration */}
-        <div>
-          <label className="mb-2 block text-sm font-medium">
-            Investment Duration (Years)
-          </label>
+        {/* <div className="flex items-center justify-between rounded-lg border p-3">
+          
 
           <input
             type="number"
-            min="1"
-            value={years}
-            onChange={(e) => setYears(e.target.value)}
-            placeholder="Enter investment duration in years"
-            className={inputClass(errors.years)}
+            className="w-32 text-left outline-none"
+            placeholder="0"
           />
+          <span className="text-slate-500">Income</span>
+        </div> */}
+
+        {/* Investment Duration */}
+        <div>
+          <label className="mb-2 block text-sm font-medium">Duration</label>
+          <div className="flex items-center rounded-lg border border-slate-300 bg-white pr-2">
+            <input
+              type="number"
+              min="1"
+              value={years}
+              onChange={(e) => setYears(e.target.value)}
+              placeholder="Enter duration"
+              className={`${inputClass(errors.years)} flex-1 border-0 bg-transparent outline-none no-spinner`}
+            />
+
+            <span className="ml-5 text-slate-500">Years</span>
+          </div>
+
           {errors.years && (
             <p className="mt-1 text-sm text-red-600">
               Investment duration must be at least 1 year.
@@ -146,48 +159,50 @@ function CompoundInterestForm({
         {/* Annual Interest Rate */}
         <div>
           <label className="mb-2 block text-sm font-medium">
-            Annual Interest Rate (%)
+            Annual Interest
           </label>
-
-          <input
-            type="number"
-            min="0"
-            step="0.1"
-            value={interestRate}
-            onChange={(e) => setInterestRate(e.target.value)}
-            className={inputClass(errors.interestRate)}
-            placeholder="Enter annual interest rate"
-          />
+          <div className="flex items-center rounded-lg border border-slate-300 bg-white pr-2">
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              value={interestRate}
+              onChange={(e) => setInterestRate(e.target.value)}
+              className={`${inputClass(errors.interestRate)} flex-1 border-0 bg-transparent outline-none no-spinner`}
+              placeholder="Enter annual interest rate"
+            />
+            <span className="ml-5 text-slate-500">%</span>
+          </div>
           {errors.interestRate && (
             <p className="mt-1 text-sm text-red-600">
               Interest rate cannot be negative.
             </p>
           )}
         </div>
-        
 
         {/* Inflation Rate */}
         <div>
           <label className="mb-2 block text-sm font-medium">
             Inflation Rate (%)
           </label>
-
-          <input
-            type="number"
-            min="0"
-            step="0.1"
-            value={inflationRate}
-            onChange={(e) => setInflationRate(e.target.value)}
-            className={inputClass(errors.inflationRate)}
-            placeholder="Enter inflation rate"
-          />
+          <div className="flex items-center rounded-lg border border-slate-300 bg-white pr-2">
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              value={inflationRate}
+              onChange={(e) => setInflationRate(e.target.value)}
+              className={`${inputClass(errors.inflationRate)} flex-1 border-0 bg-transparent outline-none no-spinner`}
+              placeholder="Enter inflation rate"
+            />
+            <span className="ml-5 text-slate-500">%</span>
+          </div>
           {errors.inflationRate && (
             <p className="mt-1 text-sm text-red-600">
               Inflation rate cannot be negative.
             </p>
           )}
         </div>
-        
 
         {/* Compound Frequency */}
         <div>
