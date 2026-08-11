@@ -1,4 +1,4 @@
-function BudgetProgress({ category, budget, spent }) {
+function BudgetProgress({ category, budget, spent, currencySymbol = "₦" }) {
   const safeBudget = Number(budget) || 0;
   const safeSpent = Number(spent) || 0;
   const remaining = safeBudget - safeSpent;
@@ -24,13 +24,19 @@ function BudgetProgress({ category, budget, spent }) {
         <div className="flex justify-between">
           <span className="text-slate-500">Budget</span>
 
-          <span className="font-semibold">₦{safeBudget.toLocaleString()}</span>
+          <span className="font-semibold">
+            {currencySymbol}
+            {safeBudget.toLocaleString()}
+          </span>
         </div>
 
         <div className="flex justify-between">
           <span className="text-slate-500">Spent</span>
 
-          <span className="font-semibold">₦{safeSpent.toLocaleString()}</span>
+          <span className="font-semibold">
+            {currencySymbol}
+            {safeSpent.toLocaleString()}
+          </span>
         </div>
 
         <div className="flex justify-between">
@@ -43,7 +49,8 @@ function BudgetProgress({ category, budget, spent }) {
               isOverBudget ? "text-red-600" : "text-green-600"
             }`}
           >
-            ₦{Math.abs(remaining).toLocaleString()}
+            {currencySymbol}
+            {Math.abs(remaining).toLocaleString()}
           </span>
         </div>
       </div>

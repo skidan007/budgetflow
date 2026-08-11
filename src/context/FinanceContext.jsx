@@ -152,17 +152,33 @@ function normalizeBudgets(items) {
   return Object.values(
     items.reduce((acc, budget) => {
       const amount = Number(budget?.amount ?? budget?.budget ?? 0);
+      const category =
+        typeof budget?.category === "string" ? budget.category.trim() : "";
+      const currency =
+        typeof budget?.currency === "string" && budget.currency
+          ? budget.currency
+          : "NGN";
+      const month =
+        typeof budget?.month === "string" && budget.month
+          ? budget.month
+          : "";
 
-      if (!budget?.category || amount <= 0 || Number.isNaN(amount)) {
+      if (!category || amount <= 0 || Number.isNaN(amount)) {
         return acc;
       }
 
-      acc[budget.category] = {
-        id: budget.id ?? `budget-${budget.category}`,
+      const budgetKey = `${category}::${currency}::${month}`;
 
-        category: budget.category,
+      acc[budgetKey] = {
+        id: budget.id ?? `budget-${budgetKey}`,
+
+        category,
 
         amount,
+
+        currency,
+
+        month,
       };
 
       return acc;

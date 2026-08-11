@@ -17,6 +17,7 @@ function Dashboard() {
   const {
     transactions,
     setTransactions,
+    budgets,
     goals,
     defaultCurrency,
     currencySymbol,
@@ -33,7 +34,7 @@ function Dashboard() {
 
   const [incomeCategory, setIncomeCategory] = useState("Salary");
 
-  const [expenseCategory, setExpenseCategory] = useState("Food");
+  const [expenseCategory, setExpenseCategory] = useState("");
 
   const [incomeDate, setIncomeDate] = useState(today);
   const [expenseDate, setExpenseDate] = useState(today);
@@ -56,6 +57,51 @@ function Dashboard() {
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
+
+  const currentCurrencyBudgets = budgets.filter(
+    (budget) => (budget.currency || "NGN") === defaultCurrency,
+  );
+
+  const budgetedCategories = currentCurrencyBudgets
+    .map((budget) => budget.category)
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+
+  const effectiveExpenseCategory = budgetedCategories.includes(expenseCategory)
+    ? expenseCategory
+    : budgetedCategories[0] || "";
+
+  const getBudgetForCategory = (category) => {
+    return currentCurrencyBudgets.find((budget) => budget.category === category);
+  };
+
+  const getCategorySpent = (category, excludedTransactionId = null) => {
+    return transactions
+      .filter(
+        (transaction) =>
+          transaction.type === "Expense" &&
+          (transaction.currency || "NGN") === defaultCurrency &&
+          transaction.category === category &&
+          transaction.id !== excludedTransactionId,
+      )
+      .reduce((total, transaction) => total + (Number(transaction.amount) || 0), 0);
+  };
+
+  const getCategoryRemaining = (category, excludedTransactionId = null) => {
+    const budget = getBudgetForCategory(category);
+
+    if (!budget) {
+      return 0;
+    }
+
+    const spent = getCategorySpent(category, excludedTransactionId);
+
+    return Number(budget.amount || 0) - spent;
+  };
+
+  const selectedCategoryRemaining = effectiveExpenseCategory
+    ? getCategoryRemaining(effectiveExpenseCategory)
+    : 0;
   // -----------------------------
   // FINANCIAL CALCULATIONS
   // -----------------------------
@@ -142,16 +188,50 @@ function Dashboard() {
   // -----------------------------
 
   const handleAddExpense = () => {
+    if (budgetedCategories.length === 0) {
+      toast.error("Create a budget first before adding expenses.");
+      return;
+    }
+
+    if (!effectiveExpenseCategory) {
+      toast.error("Select a budgeted category.");
+      return;
+    }
+
     if (!expenseInput || Number(expenseInput) <= 0) {
       toast.error("Please enter a valid expense amount.");
+      return;
+    }
+
+    const budget = getBudgetForCategory(effectiveExpenseCategory);
+
+    if (!budget) {
+      toast.error(`You have not created a budget for ${effectiveExpenseCategory}.`);
+      return;
+    }
+
+    const expenseAmount = Number(expenseInput);
+    const remaining = getCategoryRemaining(effectiveExpenseCategory);
+
+    if (remaining <= 0) {
+      toast.error(
+        `${effectiveExpenseCategory} budget is exhausted. Increase budget before adding this expense.`,
+      );
+      return;
+    }
+
+    if (expenseAmount > remaining) {
+      toast.error(
+        `Only ${currencySymbol}${remaining.toLocaleString()} remains in your ${effectiveExpenseCategory} budget.`,
+      );
       return;
     }
 
     const newExpense = {
       id: Date.now(),
       type: "Expense",
-      amount: Number(expenseInput),
-      category: expenseCategory,
+      amount: expenseAmount,
+      category: effectiveExpenseCategory,
       date: expenseDate,
       currency: defaultCurrency,
     };
@@ -173,9 +253,34 @@ function Dashboard() {
   const handleUpdateTransaction = () => {
     if (!editingTransaction) return;
 
-    if (!editingTransaction.amount || Number(editingTransaction.amount) <= 0) {
+    const amount = Number(editingTransaction.amount);
+
+    if (!amount || amount <= 0) {
       toast.error("Please enter a valid amount.");
       return;
+    }
+
+    if (editingTransaction.type === "Expense") {
+      const budget = getBudgetForCategory(editingTransaction.category);
+
+      if (!budget) {
+        toast.error(
+          `You have not created a budget for ${editingTransaction.category}.`,
+        );
+        return;
+      }
+
+      const remaining = getCategoryRemaining(
+        editingTransaction.category,
+        editingTransaction.id,
+      );
+
+      if (amount > remaining) {
+        toast.error(
+          `Only ${currencySymbol}${remaining.toLocaleString()} remains in your ${editingTransaction.category} budget.`,
+        );
+        return;
+      }
     }
 
     setTransactions((prev) =>
@@ -183,7 +288,7 @@ function Dashboard() {
         transaction.id === editingTransaction.id
           ? {
               ...transaction,
-              amount: Number(editingTransaction.amount),
+              amount,
               category: editingTransaction.category,
               date: editingTransaction.date,
             }
@@ -715,11 +820,15 @@ function Dashboard() {
               setExpenseCategory={setExpenseCategory}
               setExpenseDate={setExpenseDate}
               setExpenseInput={setExpenseInput}
-              expenseCategory={expenseCategory}
+              expenseCategory={effectiveExpenseCategory}
               expenseDate={expenseDate}
               expenseInput={expenseInput}
               onSubmit={handleAddExpense}
               buttonText="Add Expense"
+              categoryOptions={budgetedCategories}
+              currencySymbol={currencySymbol}
+              selectedCategoryRemaining={selectedCategoryRemaining}
+              noBudgetMessage="No budget found for this currency yet. Add a budget first to start spending."
             />
           </div>
         </div>
@@ -839,13 +948,17 @@ function Dashboard() {
                     </>
                   ) : (
                     <>
-                      <option>Food</option>
-                      <option>Transport</option>
-                      <option>Shopping</option>
-                      <option>Bills</option>
-                      <option>Entertainment</option>
-                      <option>Health</option>
-                      <option>Other</option>
+                      {budgetedCategories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+
+                      {!budgetedCategories.includes(editingTransaction.category) && (
+                        <option value={editingTransaction.category}>
+                          {editingTransaction.category}
+                        </option>
+                      )}
                     </>
                   )}
                 </select>

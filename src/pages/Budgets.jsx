@@ -1,34 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import BudgetProgress from "../components/BudgetProgress";
 import { useFinance } from "../context/FinanceContext";
 import toast from "react-hot-toast";
 
 function Budgets() {
-  const { transactions } = useFinance();
-  const [budgets, setBudgets] = useState(() => {
-    const savedBudgets = localStorage.getItem("budgets");
-
-    if (!savedBudgets) return [];
-
-    const parsed = JSON.parse(savedBudgets);
-
-    // Keep only the latest budget for each category
-    const uniqueBudgets = Object.values(
-      parsed.reduce((acc, budget) => {
-        acc[budget.category] = budget;
-        return acc;
-      }, {}),
-    );
-
-    return uniqueBudgets;
-  });
-
-  useEffect(() => {
-    localStorage.setItem("budgets", JSON.stringify(budgets));
-  }, [budgets]);
+  const {
+    transactions,
+    budgets,
+    setBudgets,
+    defaultCurrency,
+    currencySymbol,
+  } = useFinance();
 
   const [budgetCategory, setBudgetCategory] = useState("Food");
   const [budgetAmount, setBudgetAmount] = useState("");
+
+  const currentCurrencyBudgets = budgets.filter(
+    (budget) => (budget.currency || "NGN") === defaultCurrency,
+  );
 
   const handleAddBudget = () => {
     const amount = Number(budgetAmount);
@@ -40,12 +29,20 @@ function Budgets() {
 
     setBudgets((prev) => {
       const existing = prev.find(
-        (budget) => budget.category === budgetCategory,
+        (budget) =>
+          budget.category === budgetCategory &&
+          (budget.currency || "NGN") === defaultCurrency,
       );
 
       if (existing) {
         return prev.map((budget) =>
-          budget.category === budgetCategory ? { ...budget, amount } : budget,
+          budget.id === existing.id
+            ? {
+                ...budget,
+                amount,
+                currency: defaultCurrency,
+              }
+            : budget,
         );
       }
 
@@ -55,6 +52,7 @@ function Budgets() {
           id: Date.now(),
           category: budgetCategory,
           amount,
+          currency: defaultCurrency,
         },
       ];
     });
@@ -65,7 +63,7 @@ function Budgets() {
     toast.success("Budget saved successfully!");
   };
 
-  const progressItems = budgets;
+  const progressItems = currentCurrencyBudgets;
 
   return (
     <div>
@@ -117,11 +115,12 @@ function Budgets() {
               progress.
             </p>
           ) : (
-            budgets.map((budget) => {
+            currentCurrencyBudgets.map((budget) => {
               const spent = transactions
                 .filter(
                   (transaction) =>
                     transaction.type === "Expense" &&
+                    (transaction.currency || "NGN") === defaultCurrency &&
                     transaction.category === budget.category,
                 )
                 .reduce((total, transaction) => total + transaction.amount, 0);
@@ -132,6 +131,7 @@ function Budgets() {
                   category={budget.category}
                   budget={budget.amount}
                   spent={spent}
+                  currencySymbol={currencySymbol}
                 />
               );
             })
