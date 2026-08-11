@@ -12,7 +12,7 @@ function ExpenseForm({
     <div className="rounded-xl bg-white p-6 shadow-md">
       <h2 className="mb-4 text-xl font-semibold">{buttonText}</h2>
 
-      <div className="space-y-4">
+      <div className="space-y-4 w-full min-w-0">
         <select
           value={expenseCategory}
           onChange={(e) => setExpenseCategory(e.target.value)}
