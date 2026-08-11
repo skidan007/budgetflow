@@ -627,7 +627,7 @@ function Dashboard() {
               </p>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-4 w-full min-w-0">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Category
@@ -678,7 +678,7 @@ function Dashboard() {
                 onClick={handleAddIncome}
                 className="mt-2 rounded-lg bg-green-600 py-3 font-semibold text-white hover:bg-green-700"
               >
-                Add Income
+                Add Income.
               </button>
             </div>
           </div>
