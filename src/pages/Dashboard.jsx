@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Wallet, TrendingUp, Receipt, PiggyBank } from "lucide-react";
+import { Wallet, TrendingUp, Receipt, PiggyBank,  X } from "lucide-react";
 import toast from "react-hot-toast";
 
 import ExpensePieChart from "../components/ExpensePieChart";
@@ -53,6 +53,8 @@ function Dashboard() {
     (transaction) => (transaction.currency || "NGN") === defaultCurrency,
   );
 
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   // -----------------------------
   // FINANCIAL CALCULATIONS
   // -----------------------------
@@ -84,8 +86,6 @@ function Dashboard() {
   // -----------------------------
   // GOALS
   // -----------------------------
-
-  
 
   const totalGoals = goals.length;
 
@@ -131,6 +131,8 @@ function Dashboard() {
 
     setIncomeInput("");
 
+    setShowIncomeModal(false);
+
     toast.success("Income added successfully!");
   };
 
@@ -156,7 +158,7 @@ function Dashboard() {
     setTransactions((prev) => [newExpense, ...prev]);
 
     setExpenseInput("");
-
+    setShowExpenseModal(false);
     toast.success("Expense added successfully!");
   };
 
@@ -466,9 +468,40 @@ function Dashboard() {
 
       {/* ADD INCOME / EXPENSE */}
 
-      <div className="grid gap-6 grid-cols-2 lg:grid-cols-2">
-        {/* INCOME */}
+      {/* ADD INCOME / EXPENSE */}
 
+      {/* MOBILE BUTTONS */}
+      <div className="grid grid-cols-2 gap-4 md:hidden">
+        {/* ADD INCOME BUTTON */}
+        <button
+          type="button"
+          onClick={() => setShowIncomeModal(true)}
+          className="flex flex-col items-center justify-center gap-2 rounded-xl bg-green-600 p-5 text-white shadow-md transition hover:bg-green-700 active:scale-95"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+            <TrendingUp size={26} />
+          </div>
+
+          <span className="text-sm font-semibold">Add Income</span>
+        </button>
+
+        {/* ADD EXPENSE BUTTON */}
+        <button
+          type="button"
+          onClick={() => setShowExpenseModal(true)}
+          className="flex flex-col items-center justify-center gap-2 rounded-xl bg-red-600 p-5 text-white shadow-md transition hover:bg-red-700 active:scale-95"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+            <Receipt size={26} />
+          </div>
+
+          <span className="text-sm font-semibold">Add Expense</span>
+        </button>
+      </div>
+
+      {/* DESKTOP FORMS */}
+      <div className="hidden gap-6 md:grid md:grid-cols-2">
+        {/* INCOME */}
         <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">Add Income</h2>
 
@@ -503,7 +536,7 @@ function Dashboard() {
             <button
               type="button"
               onClick={handleAddIncome}
-              className="rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700"
+              className="rounded-lg bg-green-600 py-3 font-semibold text-white hover:bg-green-700"
             >
               Add Income
             </button>
@@ -511,7 +544,6 @@ function Dashboard() {
         </div>
 
         {/* EXPENSE */}
-
         <ExpenseForm
           setExpenseCategory={setExpenseCategory}
           setExpenseDate={setExpenseDate}
@@ -523,6 +555,141 @@ function Dashboard() {
           buttonText="Add Expense"
         />
       </div>
+      {/* MOBILE INCOME MODAL */}
+
+{showIncomeModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:hidden">
+
+    <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+
+      {/* CLOSE BUTTON */}
+      <button
+        type="button"
+        onClick={() => setShowIncomeModal(false)}
+        className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
+      >
+        <X size={20} />
+      </button>
+
+      <div className="mb-6">
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
+          <TrendingUp size={24} />
+        </div>
+
+        <h2 className="text-xl font-bold text-slate-900">
+          Add Income
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Record money you've received.
+        </p>
+      </div>
+
+      <div className="grid gap-4">
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            Category
+          </label>
+
+          <select
+            value={incomeCategory}
+            onChange={(e) => setIncomeCategory(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
+          >
+            <option>Salary</option>
+            <option>Business</option>
+            <option>Investment</option>
+            <option>Gift</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            Date
+          </label>
+
+          <input
+            type="date"
+            value={incomeDate}
+            onChange={(e) => setIncomeDate(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            Amount
+          </label>
+
+          <input
+            type="number"
+            value={incomeInput}
+            onChange={(e) => setIncomeInput(e.target.value)}
+            placeholder="Enter amount"
+            className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleAddIncome}
+          className="mt-2 rounded-lg bg-green-600 py-3 font-semibold text-white hover:bg-green-700"
+        >
+          Add Income
+        </button>
+
+      </div>
+    </div>
+  </div>
+)}
+
+
+{/* MOBILE EXPENSE MODAL */}
+
+{showExpenseModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:hidden">
+
+    <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+
+      {/* CLOSE BUTTON */}
+      <button
+        type="button"
+        onClick={() => setShowExpenseModal(false)}
+        className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
+      >
+        <X size={20} />
+      </button>
+
+      <div className="mb-6">
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+          <Receipt size={24} />
+        </div>
+
+        <h2 className="text-xl font-bold text-slate-900">
+          Add Expense
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Record money you've spent.
+        </p>
+      </div>
+
+      <ExpenseForm
+        setExpenseCategory={setExpenseCategory}
+        setExpenseDate={setExpenseDate}
+        setExpenseInput={setExpenseInput}
+        expenseCategory={expenseCategory}
+        expenseDate={expenseDate}
+        expenseInput={expenseInput}
+        onSubmit={handleAddExpense}
+        buttonText="Add Expense"
+      />
+
+    </div>
+  </div>
+)}
 
       {/* CHARTS */}
 
