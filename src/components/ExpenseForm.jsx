@@ -31,7 +31,7 @@ function ExpenseForm({
           value={expenseDate}
           max={new Date().toISOString().split("T")[0]}
           onChange={(e) => setExpenseDate(e.target.value)}
-          className="w-full rounded-lg border p-3"
+          className="w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-slate-300 p-3"
         />
 
         <input
@@ -39,7 +39,7 @@ function ExpenseForm({
           placeholder="Amount"
           value={expenseInput}
           onChange={(e) => setExpenseInput(e.target.value)}
-          className="w-full rounded-lg border p-3"
+          className="w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-slate-300 p-3"
         />
 
         <button
