@@ -15,31 +15,31 @@ const SummaryCard = ({
   const isNegative = safeAmount < 0;
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow-md grid grid-cols-2 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {Icon && (
-        <div
-          className={`mb-5 flex h-12 w-12 items-center justify-center rounded-full ${iconBg}`}
+    <div className="rounded-xl bg-white p-6 shadow-md">
+      <div className="mb-2 flex gap-3 items-center justify-between">
+        {Icon && (
+          <div
+            className={`mb-2 flex h-10 w-12 items-center justify-center rounded-full ${iconBg}`}
+          >
+            <Icon className={iconColor} size={24} />
+          </div>
+        )}
+
+        <h3 className="text-sm font-medium text-slate-500">{title}</h3>
+      </div>
+
+      <div className="grid md:col-2  items-center gap-2">
+        <p
+          className={`mt-2 text-xl font-bold sm:text tracking-tight ${
+            isNegative ? "text-red-600" : "text-slate-900"
+          }`}
         >
-          <Icon className={iconColor} size={24} />
-        </div>
-      )}
+          {currency}
+          {safeAmount.toLocaleString()}
+        </p>
 
-      <h3 className="text-sm font-medium text-slate-500">
-        {title}
-      </h3>
-
-      <p
-        className={`mt-2 text-xl font-bold sm:text-2xl tracking-tight ${
-          isNegative ? "text-red-600" : "text-slate-900"
-        }`}
-      >
-        {currency}
-        {safeAmount.toLocaleString()}
-      </p>
-
-      <p className="mt-2 text-xs text-slate-400">
-        Updated today
-      </p>
+        <p className="mt-2 text-xs text-slate-400">Updated today</p>
+      </div> 
     </div>
   );
 };

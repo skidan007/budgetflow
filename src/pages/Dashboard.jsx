@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Wallet, TrendingUp, Receipt, PiggyBank,  X } from "lucide-react";
+import { Wallet, TrendingUp, Receipt, PiggyBank, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 import ExpensePieChart from "../components/ExpensePieChart";
@@ -55,6 +55,7 @@ function Dashboard() {
 
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   // -----------------------------
   // FINANCIAL CALCULATIONS
   // -----------------------------
@@ -162,6 +163,52 @@ function Dashboard() {
     toast.success("Expense added successfully!");
   };
 
+  const handleEditTransaction = (transaction) => {
+    setEditingTransaction({
+      ...transaction,
+      amount: String(transaction.amount),
+    });
+  };
+
+  const handleUpdateTransaction = () => {
+    if (!editingTransaction) return;
+
+    if (!editingTransaction.amount || Number(editingTransaction.amount) <= 0) {
+      toast.error("Please enter a valid amount.");
+      return;
+    }
+
+    setTransactions((prev) =>
+      prev.map((transaction) =>
+        transaction.id === editingTransaction.id
+          ? {
+              ...transaction,
+              amount: Number(editingTransaction.amount),
+              category: editingTransaction.category,
+              date: editingTransaction.date,
+            }
+          : transaction,
+      ),
+    );
+
+    setEditingTransaction(null);
+
+    toast.success("Transaction updated successfully!");
+  };
+
+  const handleDeleteTransaction = (id) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this transaction?",
+    );
+
+    if (!confirmed) return;
+
+    setTransactions((prev) =>
+      prev.filter((transaction) => transaction.id !== id),
+    );
+
+    toast.success("Transaction deleted successfully!");
+  };
   // -----------------------------
   // FILTER TRANSACTIONS
   // -----------------------------
@@ -323,6 +370,38 @@ function Dashboard() {
         ))}
       </div>
 
+      {/* ADD INCOME / EXPENSE */}
+
+      {/* MOBILE BUTTONS */}
+      <div className="grid grid-cols-2 gap-4 justify-center md:w-2/3 mx-auto  ">
+        
+        {/* ADD INCOME BUTTON */}
+        <button
+          type="button"
+          onClick={() => setShowIncomeModal(true)}
+          className="flex flex-col items-center justify-center gap-2 rounded-xl bg-green-600 p-5 text-white shadow-md transition hover:bg-green-700 active:scale-95"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+            <TrendingUp size={26} />
+          </div>
+
+          <span className="text-sm font-semibold">Add Income</span>
+        </button>
+
+        {/* ADD EXPENSE BUTTON */}
+        <button
+          type="button"
+          onClick={() => setShowExpenseModal(true)}
+          className="flex flex-col items-center justify-center gap-2 rounded-xl bg-red-600 p-5 text-white shadow-md transition hover:bg-red-700 active:scale-95"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+            <Receipt size={26} />
+          </div>
+
+          <span className="text-sm font-semibold">Add Expense</span>
+        </button>
+      </div>
+
       {/* GOALS OVERVIEW */}
 
       <div className="rounded-xl bg-white p-6 shadow-md">
@@ -466,43 +545,10 @@ function Dashboard() {
         )}
       </div>
 
-      {/* ADD INCOME / EXPENSE */}
-
-      {/* ADD INCOME / EXPENSE */}
-
-      {/* MOBILE BUTTONS */}
-      <div className="grid grid-cols-2 gap-4 md:hidden">
-        {/* ADD INCOME BUTTON */}
-        <button
-          type="button"
-          onClick={() => setShowIncomeModal(true)}
-          className="flex flex-col items-center justify-center gap-2 rounded-xl bg-green-600 p-5 text-white shadow-md transition hover:bg-green-700 active:scale-95"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <TrendingUp size={26} />
-          </div>
-
-          <span className="text-sm font-semibold">Add Income</span>
-        </button>
-
-        {/* ADD EXPENSE BUTTON */}
-        <button
-          type="button"
-          onClick={() => setShowExpenseModal(true)}
-          className="flex flex-col items-center justify-center gap-2 rounded-xl bg-red-600 p-5 text-white shadow-md transition hover:bg-red-700 active:scale-95"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <Receipt size={26} />
-          </div>
-
-          <span className="text-sm font-semibold">Add Expense</span>
-        </button>
-      </div>
-
       {/* DESKTOP FORMS */}
-      <div className="hidden gap-6 md:grid md:grid-cols-2">
+      {/* <div className="hidden gap-6 md:grid md:grid-cols-2"> */}
         {/* INCOME */}
-        <div className="rounded-xl bg-white p-6 shadow">
+        {/* <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">Add Income</h2>
 
           <div className="grid gap-4">
@@ -541,10 +587,10 @@ function Dashboard() {
               Add Income
             </button>
           </div>
-        </div>
+        </div> */}
 
         {/* EXPENSE */}
-        <ExpenseForm
+        {/* <ExpenseForm
           setExpenseCategory={setExpenseCategory}
           setExpenseDate={setExpenseDate}
           setExpenseInput={setExpenseInput}
@@ -554,142 +600,130 @@ function Dashboard() {
           onSubmit={handleAddExpense}
           buttonText="Add Expense"
         />
-      </div>
+      </div> */}
       {/* MOBILE INCOME MODAL */}
 
-{showIncomeModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:hidden">
+      {showIncomeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-transform duration-300">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            {/* CLOSE BUTTON */}
+            <button
+              type="button"
+              onClick={() => setShowIncomeModal(false)}
+              className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
+            >
+              <X size={20} />
+            </button>
 
-    <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-6">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
+                <TrendingUp size={24} />
+              </div>
 
-      {/* CLOSE BUTTON */}
-      <button
-        type="button"
-        onClick={() => setShowIncomeModal(false)}
-        className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
-      >
-        <X size={20} />
-      </button>
+              <h2 className="text-xl font-bold text-slate-900">Add Income</h2>
 
-      <div className="mb-6">
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
-          <TrendingUp size={24} />
+              <p className="mt-1 text-sm text-slate-500">
+                Record money you've received.
+              </p>
+            </div>
+
+            <div className="grid gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Category
+                </label>
+
+                <select
+                  value={incomeCategory}
+                  onChange={(e) => setIncomeCategory(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
+                >
+                  <option>Salary</option>
+                  <option>Business</option>
+                  <option>Investment</option>
+                  <option>Gift</option>
+                  <option>Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Date
+                </label>
+
+                <input
+                  type="date"
+                  value={incomeDate}
+                  onChange={(e) => setIncomeDate(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Amount
+                </label>
+
+                <input
+                  type="number"
+                  value={incomeInput}
+                  onChange={(e) => setIncomeInput(e.target.value)}
+                  placeholder="Enter amount"
+                  className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddIncome}
+                className="mt-2 rounded-lg bg-green-600 py-3 font-semibold text-white hover:bg-green-700"
+              >
+                Add Income
+              </button>
+            </div>
+          </div>
         </div>
+      )}
 
-        <h2 className="text-xl font-bold text-slate-900">
-          Add Income
-        </h2>
+      {/* MOBILE EXPENSE MODAL */}
 
-        <p className="mt-1 text-sm text-slate-500">
-          Record money you've received.
-        </p>
-      </div>
+      {showExpenseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 transition-transform duration-300">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            {/* CLOSE BUTTON */}
+            <button
+              type="button"
+              onClick={() => setShowExpenseModal(false)}
+              className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
+            >
+              <X size={20} />
+            </button>
 
-      <div className="grid gap-4">
+            <div className="mb-6">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <Receipt size={24} />
+              </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Category
-          </label>
+              <h2 className="text-xl font-bold text-slate-900">Add Expense</h2>
 
-          <select
-            value={incomeCategory}
-            onChange={(e) => setIncomeCategory(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
-          >
-            <option>Salary</option>
-            <option>Business</option>
-            <option>Investment</option>
-            <option>Gift</option>
-            <option>Other</option>
-          </select>
+              <p className="mt-1 text-sm text-slate-500">
+                Record money you've spent.
+              </p>
+            </div>
+
+            <ExpenseForm
+              setExpenseCategory={setExpenseCategory}
+              setExpenseDate={setExpenseDate}
+              setExpenseInput={setExpenseInput}
+              expenseCategory={expenseCategory}
+              expenseDate={expenseDate}
+              expenseInput={expenseInput}
+              onSubmit={handleAddExpense}
+              buttonText="Add Expense"
+            />
+          </div>
         </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Date
-          </label>
-
-          <input
-            type="date"
-            value={incomeDate}
-            onChange={(e) => setIncomeDate(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Amount
-          </label>
-
-          <input
-            type="number"
-            value={incomeInput}
-            onChange={(e) => setIncomeInput(e.target.value)}
-            placeholder="Enter amount"
-            className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={handleAddIncome}
-          className="mt-2 rounded-lg bg-green-600 py-3 font-semibold text-white hover:bg-green-700"
-        >
-          Add Income
-        </button>
-
-      </div>
-    </div>
-  </div>
-)}
-
-
-{/* MOBILE EXPENSE MODAL */}
-
-{showExpenseModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:hidden">
-
-    <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-
-      {/* CLOSE BUTTON */}
-      <button
-        type="button"
-        onClick={() => setShowExpenseModal(false)}
-        className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
-      >
-        <X size={20} />
-      </button>
-
-      <div className="mb-6">
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
-          <Receipt size={24} />
-        </div>
-
-        <h2 className="text-xl font-bold text-slate-900">
-          Add Expense
-        </h2>
-
-        <p className="mt-1 text-sm text-slate-500">
-          Record money you've spent.
-        </p>
-      </div>
-
-      <ExpenseForm
-        setExpenseCategory={setExpenseCategory}
-        setExpenseDate={setExpenseDate}
-        setExpenseInput={setExpenseInput}
-        expenseCategory={expenseCategory}
-        expenseDate={expenseDate}
-        expenseInput={expenseInput}
-        onSubmit={handleAddExpense}
-        buttonText="Add Expense"
-      />
-
-    </div>
-  </div>
-)}
+      )}
 
       {/* CHARTS */}
 
@@ -740,7 +774,9 @@ function Dashboard() {
                 <TransactionItem
                   key={transaction.id}
                   transaction={transaction}
-                  showActions={false}
+                  showActions={true}
+                  onEdit={handleEditTransaction}
+                  onDelete={handleDeleteTransaction}
                 />
               ))
           )}
@@ -755,6 +791,120 @@ function Dashboard() {
           </Link>
         </div>
       </div>
+
+      {editingTransaction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            {/* CLOSE */}
+            <button
+              type="button"
+              onClick={() => setEditingTransaction(null)}
+              className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-bold text-slate-900">
+              Edit {editingTransaction.type}
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Update your transaction details.
+            </p>
+
+            <div className="mt-6 grid gap-4">
+              {/* CATEGORY */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Category
+                </label>
+
+                <select
+                  value={editingTransaction.category}
+                  onChange={(e) =>
+                    setEditingTransaction((prev) => ({
+                      ...prev,
+                      category: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-slate-300 p-3"
+                >
+                  {editingTransaction.type === "Income" ? (
+                    <>
+                      <option>Salary</option>
+                      <option>Business</option>
+                      <option>Investment</option>
+                      <option>Gift</option>
+                      <option>Other</option>
+                    </>
+                  ) : (
+                    <>
+                      <option>Food</option>
+                      <option>Transport</option>
+                      <option>Shopping</option>
+                      <option>Bills</option>
+                      <option>Entertainment</option>
+                      <option>Health</option>
+                      <option>Other</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              {/* DATE */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Date
+                </label>
+
+                <input
+                  type="date"
+                  value={editingTransaction.date}
+                  onChange={(e) =>
+                    setEditingTransaction((prev) => ({
+                      ...prev,
+                      date: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-slate-300 p-3"
+                />
+              </div>
+
+              {/* AMOUNT */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Amount
+                </label>
+
+                <input
+                  type="number"
+                  value={editingTransaction.amount}
+                  onChange={(e) =>
+                    setEditingTransaction((prev) => ({
+                      ...prev,
+                      amount: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-slate-300 p-3"
+                />
+              </div>
+
+              {/* BUTTON */}
+              <button
+                type="button"
+                onClick={handleUpdateTransaction}
+                className={`mt-2 rounded-lg py-3 font-semibold text-white ${
+                  editingTransaction.type === "Income"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

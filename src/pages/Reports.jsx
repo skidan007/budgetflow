@@ -249,7 +249,7 @@ function Reports() {
         </select>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           title="Total Income"
           amount={totalIncome}
