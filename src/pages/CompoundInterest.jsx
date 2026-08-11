@@ -177,7 +177,7 @@ Inflation Adjusted Value: ${currency}${Number(
         inflationAdjustedValue={inflationAdjustedValue}
       />
 
-      <div className="flex lg:flex-row flex-col gap-3 justify-center">
+      <div className="flex lg:flex-row flex-col-2 gap-3 justify-center">
         <button
           type="button"
           onClick={handleCopyResults}

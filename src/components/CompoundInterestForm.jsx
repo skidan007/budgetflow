@@ -61,7 +61,7 @@ function CompoundInterestForm({
     <div className="rounded-xl bg-white p-6 shadow-md">
       <h2 className="mb-6 text-xl font-semibold">Investment Details</h2>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-2 gap-6 md:grid-cols-2">
         {/* Currency */}
         <div>
           <label className="mb-2 block text-sm font-medium">Currency</label>
@@ -91,7 +91,7 @@ function CompoundInterestForm({
             value={principal}
             onChange={(e) => setPrincipal(e.target.value)}
             className={inputClass(errors.principal)}
-            placeholder="100000"
+            placeholder="Enter initial investment"
           />
 
           {errors.principal && (
@@ -111,8 +111,8 @@ function CompoundInterestForm({
             type="number"
             min="0"
             value={monthlyContribution}
-            onChange={(e) => setMonthlyContribution(Number(e.target.value))}
-            placeholder="25000"
+            onChange={(e) => setMonthlyContribution(e.target.value)}
+            placeholder="Enter monthly contribution"
             className={inputClass(errors.contribution)}
           />
           {errors.contribution && (
@@ -132,8 +132,8 @@ function CompoundInterestForm({
             type="number"
             min="1"
             value={years}
-            onChange={(e) => setYears(Number(e.target.value))}
-            placeholder="10"
+            onChange={(e) => setYears(e.target.value)}
+            placeholder="Enter investment duration in years"
             className={inputClass(errors.years)}
           />
           {errors.years && (
@@ -154,9 +154,9 @@ function CompoundInterestForm({
             min="0"
             step="0.1"
             value={interestRate}
-            onChange={(e) => setInterestRate(Number(e.target.value))}
+            onChange={(e) => setInterestRate(e.target.value)}
             className={inputClass(errors.interestRate)}
-            placeholder="12"
+            placeholder="Enter annual interest rate"
           />
           {errors.interestRate && (
             <p className="mt-1 text-sm text-red-600">
@@ -177,9 +177,9 @@ function CompoundInterestForm({
             min="0"
             step="0.1"
             value={inflationRate}
-            onChange={(e) => setInflationRate(Number(e.target.value))}
+            onChange={(e) => setInflationRate(e.target.value)}
             className={inputClass(errors.inflationRate)}
-            placeholder="8"
+            placeholder="Enter inflation rate"
           />
           {errors.inflationRate && (
             <p className="mt-1 text-sm text-red-600">
