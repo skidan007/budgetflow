@@ -646,7 +646,7 @@ function Dashboard() {
                 </select>
               </div>
 
-              <div className="col-span-6 sm:col-span-3">
+              <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Date
                 </label>
