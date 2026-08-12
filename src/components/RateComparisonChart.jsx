@@ -1,4 +1,5 @@
 import {
+  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,
@@ -6,57 +7,68 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
 } from "recharts";
 
-function RateComparisonChart({ data, currency, comparisonRates, currentRate }) {
+function RateComparisonChart({
+  data,
+  currency,
+  comparisonRates,
+  currentRate,
+}) {
   return (
-    <div className="rounded-xl bg-white p-6 shadow-md">
-      <div className="mb-6">
+    <div className="rounded-xl bg-white p-4 shadow-md sm:p-6">
+      <div className="mb-4 sm:mb-6">
         <h2 className="text-xl font-semibold">Interest Rate Comparison</h2>
 
         <p className="mt-1 text-sm text-slate-500">
-          Compare your current rate with alternative interest rates.
+          Compare how different interest rates could affect your investment
+          growth.
         </p>
       </div>
 
-      <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="w-full overflow-hidden">
+        <ResponsiveContainer width="100%" height={260} minWidth={260}>
           <LineChart
             data={data}
-            margin={{
-              top: 10,
-              right: 20,
-              left: 20,
-              bottom: 20,
-            }}
+            margin={{ top: 10, right: 12, left: 0, bottom: 18 }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
 
             <XAxis
               dataKey="year"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11 }}
+              padding={{ left: 8, right: 8 }}
+              minTickGap={4}
               label={{
                 value: "Year",
                 position: "insideBottom",
-                offset: -10,
+                offset: -8,
+                style: { fontSize: 12 },
               }}
             />
 
             <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11 }}
+              width={52}
               tickFormatter={(value) =>
-                `${currency}${Number(value).toLocaleString()}`
+                `${currency}${(value / 1000).toFixed(0)}k`
               }
             />
 
             <Tooltip
-              formatter={(value) =>
+              formatter={(value) => [
                 `${currency}${Number(value).toLocaleString(undefined, {
                   maximumFractionDigits: 2,
-                })}`
-              }
+                })}`,
+                "Investment Value",
+              ]}
             />
 
-            <Legend />
+            <Legend wrapperStyle={{ paddingTop: 10, fontSize: "11px" }} />
 
             {comparisonRates.map((rate) => {
               const isCurrentRate = rate === currentRate;
@@ -69,6 +81,7 @@ function RateComparisonChart({ data, currency, comparisonRates, currentRate }) {
                   name={isCurrentRate ? `${rate}% (Current)` : `${rate}%`}
                   strokeWidth={isCurrentRate ? 4 : 2}
                   dot={false}
+                  strokeLinecap="round"
                 />
               );
             })}

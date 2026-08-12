@@ -43,7 +43,7 @@ function CompoundInterestSummary({
             })}
           </h3>
         </div>
-        <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+        <div className="rounded-xl border border-orange-200 bg-orange-50 p-5 md:col-span-3">
           <h3 className="text-sm font-medium text-orange-700">
             Purchasing Power Today
           </h3>

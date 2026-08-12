@@ -18,8 +18,8 @@ function CompoundInterestChart({
   const xAxisLabel = xKey === "year" ? "Year" : "Month";
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow-md">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="rounded-xl bg-white p-4 shadow-md sm:p-6">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold">Investment Growth</h2>
 
@@ -38,44 +38,56 @@ function CompoundInterestChart({
         </select>
       </div>
 
-      <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
+      <div className="w-full overflow-hidden">
+        <ResponsiveContainer width="100%" height={260} minWidth={260}>
+          <LineChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 18 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
 
-          <XAxis
-            dataKey={xKey}
-            label={{
-              value: xAxisLabel,
-              position: "insideBottom",
-              offset: -5,
-            }}
-          />
+            <XAxis
+              dataKey={xKey}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11 }}
+              padding={{ left: 8, right: 8 }}
+              minTickGap={4}
+              label={{
+                value: xAxisLabel,
+                position: "insideBottom",
+                offset: -8,
+                style: { fontSize: 12 },
+              }}
+            />
 
-          <YAxis
-            tickFormatter={(value) =>
-              `${currency}${(value / 1000).toFixed(0)}k`
-            }
-          />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11 }}
+              width={52}
+              tickFormatter={(value) =>
+                `${currency}${(value / 1000).toFixed(0)}k`
+              }
+            />
 
-          <Tooltip
-            formatter={(value) => [
-              `${currency}${Number(value).toLocaleString(undefined, {
-                maximumFractionDigits: 2,
-              })}`,
-              "Investment Value",
-            ]}
-          />
+            <Tooltip
+              formatter={(value) => [
+                `${currency}${Number(value).toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                })}`,
+                "Investment Value",
+              ]}
+            />
 
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke="#4F46E5"
-            strokeWidth={3}
-            dot={{ r: 4 }}
-            activeDot={{ r: 7 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#4F46E5"
+              strokeWidth={3}
+              dot={{ r: 4 }}
+              activeDot={{ r: 7 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

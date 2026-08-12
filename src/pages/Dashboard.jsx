@@ -7,7 +7,7 @@ import ExpensePieChart from "../components/ExpensePieChart";
 import IncomeExpenseChart from "../components/IncomeExpenseChart";
 import TransactionItem from "../components/TransactionItem";
 import SummaryCard from "../components/SummaryCard";
-import ExpenseForm from "../components/ExpenseForm";
+import ExpenseForm, { TransactionForm } from "../components/ExpenseForm";
 
 import { useFinance } from "../context/FinanceContext";
 
@@ -732,60 +732,28 @@ function Dashboard() {
               </p>
             </div>
 
-            <div className="grid gap-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Category
-                </label>
-
-                <select
-                  value={incomeCategory}
-                  onChange={(e) => setIncomeCategory(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
-                >
-                  <option>Salary</option>
-                  <option>Business</option>
-                  <option>Investment</option>
-                  <option>Gift</option>
-                  <option>Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Date
-                </label>
-
-                <input
-                  type="date"
-                  value={incomeDate}
-                  onChange={(e) => setIncomeDate(e.target.value)}
-                  className="w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-slate-300 p-3"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Amount
-                </label>
-
-                <input
-                  type="number"
-                  value={incomeInput}
-                  onChange={(e) => setIncomeInput(e.target.value)}
-                  placeholder="Enter amount"
-                  className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-green-500"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleAddIncome}
-                className="mt-2 rounded-lg bg-green-600 py-3 font-semibold text-white hover:bg-green-700"
-              >
-                Add Income.
-              </button>
-            </div>
+            <TransactionForm
+              amount={incomeInput}
+              setAmount={setIncomeInput}
+              category={incomeCategory}
+              setCategory={setIncomeCategory}
+              date={incomeDate}
+              setDate={setIncomeDate}
+              onSubmit={handleAddIncome}
+              buttonText="Add Income"
+              categoryOptions={[
+                "Salary",
+                "Business",
+                "Investment",
+                "Gift",
+                "Other",
+              ]}
+              type="Income"
+              categoryLabel="Category"
+              dateLabel="Date"
+              amountLabel="Amount"
+              amountPlaceholder="Enter amount"
+            />
           </div>
         </div>
       )}
