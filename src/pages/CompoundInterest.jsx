@@ -1,26 +1,28 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { toast } from "react-hot-toast";
-import YearlyBreakdownTable from "../components/YearlyBreakdownTable";
-import CompoundInterestChart from "../components/CompoundInterestChart";
 import { calculateCompoundInterest } from "../utils/compoundInterest";
 import CompoundInterestSummary from "../components/CompoundInterestSummary";
 import CompoundInterestForm from "../components/CompoundInterestForm";
-import RateComparisonChart from "../components/RateComparisonChart";
-import RateComparisonControls from "../components/RateComparisonControls";
-import { exportCompoundInterestPDF } from "../utils/exportCompoundInterestPDF";
-import FinancialInsights from "../components/FinancialInsights";
+
+const YearlyBreakdownTable = lazy(() => import("../components/YearlyBreakdownTable"));
+const CompoundInterestChart = lazy(() => import("../components/CompoundInterestChart"));
+const RateComparisonChart = lazy(() => import("../components/RateComparisonChart"));
+const RateComparisonControls = lazy(
+  () => import("../components/RateComparisonControls"),
+);
+const FinancialInsights = lazy(() => import("../components/FinancialInsights"));
 
 function CompoundInterest() {
   const [currency, setCurrency] = useState("₦");
-  const [principal, setPrincipal] = useState(100000);
-  const [monthlyContribution, setMonthlyContribution] = useState(25000);
-  const [years, setYears] = useState(10);
+  const [principal, setPrincipal] = useState("");
+  const [monthlyContribution, setMonthlyContribution] = useState("");
+  const [years, setYears] = useState("");
   const [frequency, setFrequency] = useState("Monthly");
   const [growthView, setGrowthView] = useState("Yearly");
 
-  const [interestRate, setInterestRate] = useState(12);
+  const [interestRate, setInterestRate] = useState("");
 
-  const [inflationRate, setInflationRate] = useState(8);
+  const [inflationRate, setInflationRate] = useState("");
   const [comparisonRates, setComparisonRates] = useState([10, 12, 15]);
   const [contributionFrequency, setContributionFrequency] = useState("Monthly");
 
@@ -75,6 +77,10 @@ function CompoundInterest() {
 
   const handleExportPDF = async () => {
     try {
+      const { exportCompoundInterestPDF } = await import(
+        "../utils/exportCompoundInterestPDF"
+      );
+
       await exportCompoundInterestPDF({
         currency,
         principal,
@@ -177,7 +183,7 @@ Inflation Adjusted Value: ${currency}${Number(
         inflationAdjustedValue={inflationAdjustedValue}
       />
 
-      <div className="flex lg:flex-row flex-col-2 gap-3 justify-center">
+      <div className="flex lg:flex-row flex-col gap-3 ">
         <button
           type="button"
           onClick={handleCopyResults}
@@ -208,7 +214,13 @@ Inflation Adjusted Value: ${currency}${Number(
 
       {isFormValid &&
         (growthView === "Yearly" ? (
-          <>
+          <Suspense
+            fallback={
+              <div className="rounded-xl bg-slate-50 p-6 text-sm text-slate-500">
+                Loading chart...
+              </div>
+            }
+          >
             <CompoundInterestChart
               data={yearlyData}
               currency={currency}
@@ -218,9 +230,15 @@ Inflation Adjusted Value: ${currency}${Number(
             />
 
             <YearlyBreakdownTable data={yearlyData} currency={currency} />
-          </>
+          </Suspense>
         ) : (
-          <>
+          <Suspense
+            fallback={
+              <div className="rounded-xl bg-slate-50 p-6 text-sm text-slate-500">
+                Loading chart...
+              </div>
+            }
+          >
             <CompoundInterestChart
               data={monthlyData}
               currency={currency}
@@ -230,13 +248,19 @@ Inflation Adjusted Value: ${currency}${Number(
             />
 
             <YearlyBreakdownTable data={monthlyData} currency={currency} />
-          </>
+          </Suspense>
         ))}
 
       {/* Interest Rate Comparison */}
 
       {isFormValid && (
-        <>
+        <Suspense
+          fallback={
+            <div className="rounded-xl bg-slate-50 p-6 text-sm text-slate-500">
+              Loading comparison tools...
+            </div>
+          }
+        >
           <RateComparisonControls
             comparisonRates={comparisonRates}
             setComparisonRates={setComparisonRates}
@@ -249,7 +273,7 @@ Inflation Adjusted Value: ${currency}${Number(
             comparisonRates={ratesToCompare}
             currentRate={Number(interestRate)}
           />
-        </>
+        </Suspense>
       )}
       {!isFormValid && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -284,15 +308,23 @@ Inflation Adjusted Value: ${currency}${Number(
           ))}
         </div>
       </div>
-      <FinancialInsights
-        currency={currency}
-        years={years}
-        futureValue={futureValue}
-        totalContributions={totalContributions}
-        interestEarned={interestEarned}
-        inflationAdjustedValue={inflationAdjustedValue}
-        rateComparisonData={rateComparisonData}
-      />
+      <Suspense
+        fallback={
+          <div className="rounded-xl bg-slate-50 p-6 text-sm text-slate-500">
+            Loading insights...
+          </div>
+        }
+      >
+        <FinancialInsights
+          currency={currency}
+          years={years}
+          futureValue={futureValue}
+          totalContributions={totalContributions}
+          interestEarned={interestEarned}
+          inflationAdjustedValue={inflationAdjustedValue}
+          rateComparisonData={rateComparisonData}
+        />
+      </Suspense>
     </section>
   );
 }
