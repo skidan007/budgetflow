@@ -1,5 +1,4 @@
-import { Menu } from "lucide-react";
-
+import { Menu, User } from "lucide-react";
 
 const Navbar = ({ onMenuClick }) => {
   return (
@@ -37,10 +36,14 @@ const Navbar = ({ onMenuClick }) => {
           </h2> */}
         </div>
 
-        {/* USERNAME */}
-        <div className="font-semibold text-slate-700">
-          Daniel
-        </div>
+        {/* USER AVATAR */}
+        <button
+          type="button"
+          aria-label="User profile"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-white shadow-sm transition hover:bg-slate-700"
+        >
+          <User size={20} />
+        </button>
 
       </div>
     </header>

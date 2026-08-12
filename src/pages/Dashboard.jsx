@@ -451,7 +451,7 @@ function Dashboard() {
   ];
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-8">
       {/* HEADER */}
 
       <div>
@@ -466,7 +466,7 @@ function Dashboard() {
 
       {/* SUMMARY CARDS */}
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 items-stretch md:grid-cols-2 md:gap-5 xl:grid-cols-4 xl:gap-6">
         {summaryCards.map((card) => (
           <SummaryCard
             key={card.title}
