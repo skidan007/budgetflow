@@ -1,10 +1,6 @@
 import SavingsHistory from "./SavingsHistory";
 
-function GoalCard({  goal,
-  onOpen,
-  onDelete,
-  onAddSavings,
-  onDeleteSaving, }) {
+function GoalCard({ goal, onOpen, onDelete, onAddSavings, onDeleteSaving }) {
   const targetAmount = Number(goal?.targetAmount) || 0;
   const currentAmount = Number(goal?.currentAmount) || 0;
 
@@ -110,7 +106,7 @@ function GoalCard({  goal,
         >
           {progress >= 100 ? "🔒 Savings Completed" : "Add Savings"}
         </button>
-        <SavingsHistory goal={goal} onDeleteSaving={onDeleteSaving} />
+        <SavingsHistory goal={goal} onDeleteSaving={onDeleteSaving}  />
       </div>
     </div>
   );

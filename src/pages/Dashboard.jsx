@@ -21,6 +21,7 @@ function Dashboard() {
     goals,
     defaultCurrency,
     currencySymbol,
+    currentMonth,
   } = useFinance();
 
   // -----------------------------
@@ -59,7 +60,9 @@ function Dashboard() {
   const [editingTransaction, setEditingTransaction] = useState(null);
 
   const currentCurrencyBudgets = budgets.filter(
-    (budget) => (budget.currency || "NGN") === defaultCurrency,
+    (budget) =>
+      (budget.currency || "NGN") === defaultCurrency &&
+      (budget.month || currentMonth) === currentMonth,
   );
 
   const budgetedCategories = currentCurrencyBudgets
@@ -72,7 +75,9 @@ function Dashboard() {
     : budgetedCategories[0] || "";
 
   const getBudgetForCategory = (category) => {
-    return currentCurrencyBudgets.find((budget) => budget.category === category);
+    return currentCurrencyBudgets.find(
+      (budget) => budget.category === category,
+    );
   };
 
   const getCategorySpent = (category, excludedTransactionId = null) => {
@@ -84,7 +89,10 @@ function Dashboard() {
           transaction.category === category &&
           transaction.id !== excludedTransactionId,
       )
-      .reduce((total, transaction) => total + (Number(transaction.amount) || 0), 0);
+      .reduce(
+        (total, transaction) => total + (Number(transaction.amount) || 0),
+        0,
+      );
   };
 
   const getCategoryRemaining = (category, excludedTransactionId = null) => {
@@ -172,6 +180,9 @@ function Dashboard() {
       category: incomeCategory,
       date: incomeDate,
       currency: defaultCurrency,
+
+      // Automatically assign income to its month
+      month: incomeDate.slice(0, 7),
     };
 
     setTransactions((prev) => [newIncome, ...prev]);
@@ -203,7 +214,11 @@ function Dashboard() {
       .replace(/,/g, "");
     const parsedExpenseAmount = Number(sanitizedExpenseInput);
 
-    if (!sanitizedExpenseInput || !Number.isFinite(parsedExpenseAmount) || parsedExpenseAmount <= 0) {
+    if (
+      !sanitizedExpenseInput ||
+      !Number.isFinite(parsedExpenseAmount) ||
+      parsedExpenseAmount <= 0
+    ) {
       toast.error("Please enter a valid expense amount.");
       return;
     }
@@ -211,7 +226,9 @@ function Dashboard() {
     const budget = getBudgetForCategory(effectiveExpenseCategory);
 
     if (!budget) {
-      toast.error(`You have not created a budget for ${effectiveExpenseCategory}.`);
+      toast.error(
+        `You have not created a budget for ${effectiveExpenseCategory}.`,
+      );
       return;
     }
 
@@ -239,6 +256,9 @@ function Dashboard() {
       category: effectiveExpenseCategory,
       date: expenseDate,
       currency: defaultCurrency,
+
+      // Automatically assign expense to its month
+      month: expenseDate.slice(0, 7),
     };
 
     setTransactions((prev) => [newExpense, ...prev]);
@@ -296,6 +316,7 @@ function Dashboard() {
               amount,
               category: editingTransaction.category,
               date: editingTransaction.date,
+              month: editingTransaction.date.slice(0, 7),
             }
           : transaction,
       ),
@@ -484,7 +505,6 @@ function Dashboard() {
 
       {/* MOBILE BUTTONS */}
       <div className="grid grid-cols-2 gap-4 justify-center md:w-2/3 mx-auto  ">
-        
         {/* ADD INCOME BUTTON */}
         <button
           type="button"
@@ -657,8 +677,8 @@ function Dashboard() {
 
       {/* DESKTOP FORMS */}
       {/* <div className="hidden gap-6 md:grid md:grid-cols-2"> */}
-        {/* INCOME */}
-        {/* <div className="rounded-xl bg-white p-6 shadow">
+      {/* INCOME */}
+      {/* <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">Add Income</h2>
 
           <div className="grid gap-4">
@@ -699,8 +719,8 @@ function Dashboard() {
           </div>
         </div> */}
 
-        {/* EXPENSE */}
-        {/* <ExpenseForm
+      {/* EXPENSE */}
+      {/* <ExpenseForm
           setExpenseCategory={setExpenseCategory}
           setExpenseDate={setExpenseDate}
           setExpenseInput={setExpenseInput}
@@ -927,7 +947,9 @@ function Dashboard() {
                         </option>
                       ))}
 
-                      {!budgetedCategories.includes(editingTransaction.category) && (
+                      {!budgetedCategories.includes(
+                        editingTransaction.category,
+                      ) && (
                         <option value={editingTransaction.category}>
                           {editingTransaction.category}
                         </option>

@@ -3,36 +3,54 @@ import SummaryCard from "../components/SummaryCard";
 import { useFinance } from "../context/FinanceContext";
 import ExpensePieChart from "../components/charts/ExpensePieChart";
 import IncomeExpenseChart from "../components/charts/IncomeExpenseChart";
-import { Wallet, TrendingDown, PiggyBank, Landmark } from "lucide-react";
+import { Wallet, TrendingDown, PiggyBank, Landmark, X } from "lucide-react";
+
+function getTransactionMonth(transaction) {
+  return transaction.month || transaction.date?.slice(0, 7) || "";
+}
+
+function formatShortMonth(monthKey) {
+  if (!monthKey) return "";
+
+  const [year, monthNumber] = monthKey.split("-");
+
+  const date = new Date(Number(year), Number(monthNumber) - 1, 1);
+
+  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
 
 function Reports() {
   const [selectedMonth, setSelectedMonth] = useState("All");
+  const [drilldownMonth, setDrilldownMonth] = useState(null);
 
-  const { transactions, goals, currencySymbol, defaultCurrency } = useFinance();
+  const {
+    transactions,
+    budgets,
+    goals,
+    currencySymbol,
+    defaultCurrency,
+    currentMonth,
+    getMonthLabel,
+  } = useFinance();
 
-  const months = [
-    "All",
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
+  // All financial months present in the data, most recent first.
+  const allMonthKeys = Array.from(
+    new Set([
+      currentMonth,
+      ...transactions.map(getTransactionMonth),
+      ...budgets.map((budget) => budget.month).filter(Boolean),
+    ]),
+  )
+    .filter(Boolean)
+    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+
+  const months = ["All", ...allMonthKeys];
 
   const filteredTransactions =
     selectedMonth === "All"
       ? transactions
       : transactions.filter(
-          (transaction) =>
-            new Date(transaction.date).getMonth() + 1 ===
-            months.indexOf(selectedMonth),
+          (transaction) => getTransactionMonth(transaction) === selectedMonth,
         );
 
   const totalIncome = filteredTransactions
@@ -121,40 +139,27 @@ function Reports() {
 
   const monthlyData =
     selectedMonth === "All"
-      ? [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ].map((month, index) => {
-          const income = transactions
-            .filter(
-              (t) =>
-                t.type === "Income" && new Date(t.date).getMonth() === index,
-            )
-            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      ? [...allMonthKeys]
+          .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+          .map((monthKey) => {
+            const income = transactions
+              .filter(
+                (t) => t.type === "Income" && getTransactionMonth(t) === monthKey,
+              )
+              .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-          const expenses = transactions
-            .filter(
-              (t) =>
-                t.type === "Expense" && new Date(t.date).getMonth() === index,
-            )
-            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+            const expenses = transactions
+              .filter(
+                (t) => t.type === "Expense" && getTransactionMonth(t) === monthKey,
+              )
+              .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-          return {
-            month,
-            Income: income,
-            Expenses: expenses,
-          };
-        })
+            return {
+              month: formatShortMonth(monthKey),
+              Income: income,
+              Expenses: expenses,
+            };
+          })
       : (() => {
           const income = filteredTransactions
             .filter((t) => t.type === "Income")
@@ -166,12 +171,74 @@ function Reports() {
 
           return [
             {
-              month: selectedMonth,
+              month: formatShortMonth(selectedMonth),
               Income: income,
               Expenses: expenses,
             },
           ];
         })();
+
+  // -------------------------------------
+  // BUDGET HISTORY (per financial month)
+  // -------------------------------------
+
+  const budgetHistory = allMonthKeys.map((monthKey) => {
+    const monthTransactions = transactions.filter(
+      (t) =>
+        (t.currency || "NGN") === defaultCurrency &&
+        getTransactionMonth(t) === monthKey,
+    );
+
+    const monthBudgets = budgets.filter(
+      (budget) =>
+        (budget.currency || "NGN") === defaultCurrency &&
+        budget.month === monthKey,
+    );
+
+    const income = monthTransactions
+      .filter((t) => t.type === "Income")
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+    const expenses = monthTransactions
+      .filter((t) => t.type === "Expense")
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+    const budgetTotal = monthBudgets.reduce(
+      (sum, budget) => sum + Number(budget.amount || 0),
+      0,
+    );
+
+    const incomeByCategory = monthTransactions
+      .filter((t) => t.type === "Income")
+      .reduce((acc, t) => {
+        acc[t.category] = (acc[t.category] || 0) + Number(t.amount || 0);
+        return acc;
+      }, {});
+
+    const expensesByCategory = monthTransactions
+      .filter((t) => t.type === "Expense")
+      .reduce((acc, t) => {
+        acc[t.category] = (acc[t.category] || 0) + Number(t.amount || 0);
+        return acc;
+      }, {});
+
+    return {
+      month: monthKey,
+      label: getMonthLabel(monthKey),
+      status: monthKey === currentMonth ? "Current" : "Completed",
+      income,
+      expenses,
+      budgetTotal,
+      remaining: budgetTotal - expenses,
+      incomeByCategory,
+      expensesByCategory,
+      budgets: monthBudgets,
+    };
+  });
+
+  const drilldownData = drilldownMonth
+    ? budgetHistory.find((entry) => entry.month === drilldownMonth)
+    : null;
 
   const categoryTotals = filteredTransactions
     .filter((t) => t.type === "Expense")
@@ -249,7 +316,11 @@ function Reports() {
         >
           {months.map((month) => (
             <option key={month} value={month}>
-              {month}
+              {month === "All"
+                ? "All"
+                : `${getMonthLabel(month)}${
+                    month === currentMonth ? " (Current)" : ""
+                  }`}
             </option>
           ))}
         </select>
@@ -498,6 +569,204 @@ function Reports() {
         <IncomeExpenseChart data={monthlyData} currency={currencySymbol} />
 
         <ExpensePieChart data={expenseChartData} currency={currencySymbol} />
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-md dark:border-slate-700 dark:bg-slate-900">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+          📅 Budget History
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Every financial month is preserved. Select a month to view its full report.
+        </p>
+
+        {budgetHistory.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">
+            No budget periods yet. Add income, budgets, or expenses to build your history.
+          </p>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-160 text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                  <th className="py-2 pr-4 font-medium">Month</th>
+                  <th className="py-2 pr-4 font-medium">Income</th>
+                  <th className="py-2 pr-4 font-medium">Budget</th>
+                  <th className="py-2 pr-4 font-medium">Expenses</th>
+                  <th className="py-2 pr-4 font-medium">Remaining</th>
+                  <th className="py-2 font-medium"></th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {budgetHistory.map((entry) => (
+                  <tr
+                    key={entry.month}
+                    className="border-b border-slate-100 last:border-0 dark:border-slate-800"
+                  >
+                    <td className="py-3 pr-4 font-semibold text-slate-900 dark:text-slate-100">
+                      {entry.label}
+                      <span
+                        className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${
+                          entry.status === "Current"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {entry.status}
+                      </span>
+                    </td>
+
+                    <td className="py-3 pr-4">
+                      {currencySymbol}
+                      {entry.income.toLocaleString()}
+                    </td>
+
+                    <td className="py-3 pr-4">
+                      {currencySymbol}
+                      {entry.budgetTotal.toLocaleString()}
+                    </td>
+
+                    <td className="py-3 pr-4">
+                      {currencySymbol}
+                      {entry.expenses.toLocaleString()}
+                    </td>
+
+                    <td
+                      className={`py-3 pr-4 font-medium ${
+                        entry.remaining < 0 ? "text-red-600" : "text-slate-900 dark:text-slate-100"
+                      }`}
+                    >
+                      {currencySymbol}
+                      {entry.remaining.toLocaleString()}
+                    </td>
+
+                    <td className="py-3">
+                      <button
+                        type="button"
+                        onClick={() => setDrilldownMonth(entry.month)}
+                        className="font-medium text-indigo-600 hover:underline"
+                      >
+                        View Report →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {drilldownData && (
+          <div className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50/60 p-6 dark:border-indigo-700/40 dark:bg-indigo-950/30">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {drilldownData.label}
+              </h3>
+
+              <button
+                type="button"
+                onClick={() => setDrilldownMonth(null)}
+                className="rounded-full p-1 text-slate-500 hover:bg-slate-200/60 dark:text-slate-400"
+                aria-label="Close report"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-6 md:grid-cols-3">
+              <div>
+                <p className="font-semibold text-slate-700 dark:text-slate-200">Income</p>
+
+                <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                  {Object.entries(drilldownData.incomeByCategory).length === 0 ? (
+                    <li>No income recorded.</li>
+                  ) : (
+                    Object.entries(drilldownData.incomeByCategory).map(
+                      ([category, amount]) => (
+                        <li key={category} className="flex justify-between gap-4">
+                          <span>{category}</span>
+                          <span>
+                            {currencySymbol}
+                            {amount.toLocaleString()}
+                          </span>
+                        </li>
+                      ),
+                    )
+                  )}
+                </ul>
+
+                <p className="mt-2 border-t border-slate-200 pt-2 text-sm font-semibold dark:border-slate-700">
+                  Total income: {currencySymbol}
+                  {drilldownData.income.toLocaleString()}
+                </p>
+              </div>
+
+              <div>
+                <p className="font-semibold text-slate-700 dark:text-slate-200">Budget</p>
+
+                <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                  {drilldownData.budgets.length === 0 ? (
+                    <li>No budget set.</li>
+                  ) : (
+                    drilldownData.budgets.map((budget) => (
+                      <li key={budget.id} className="flex justify-between gap-4">
+                        <span>{budget.category}</span>
+                        <span>
+                          {currencySymbol}
+                          {Number(budget.amount || 0).toLocaleString()}
+                        </span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+
+                <p className="mt-2 border-t border-slate-200 pt-2 text-sm font-semibold dark:border-slate-700">
+                  Total budget: {currencySymbol}
+                  {drilldownData.budgetTotal.toLocaleString()}
+                </p>
+              </div>
+
+              <div>
+                <p className="font-semibold text-slate-700 dark:text-slate-200">
+                  Actual Expenses
+                </p>
+
+                <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                  {Object.entries(drilldownData.expensesByCategory).length === 0 ? (
+                    <li>No expenses recorded.</li>
+                  ) : (
+                    Object.entries(drilldownData.expensesByCategory).map(
+                      ([category, amount]) => (
+                        <li key={category} className="flex justify-between gap-4">
+                          <span>{category}</span>
+                          <span>
+                            {currencySymbol}
+                            {amount.toLocaleString()}
+                          </span>
+                        </li>
+                      ),
+                    )
+                  )}
+                </ul>
+
+                <p className="mt-2 border-t border-slate-200 pt-2 text-sm font-semibold dark:border-slate-700">
+                  Total spent: {currencySymbol}
+                  {drilldownData.expenses.toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <p
+              className={`mt-4 text-sm font-semibold ${
+                drilldownData.remaining < 0 ? "text-red-600" : "text-green-700"
+              }`}
+            >
+              Remaining: {currencySymbol}
+              {drilldownData.remaining.toLocaleString()}
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -14,6 +14,35 @@ const currencyMap = {
   CHF: "CHF",
 };
 
+// -------------------------------------
+// MONTH HELPERS
+// -------------------------------------
+
+function getCurrentMonth() {
+  const date = new Date();
+
+  return `${date.getFullYear()}-${String(
+    date.getMonth() + 1,
+  ).padStart(2, "0")}`;
+}
+
+function getMonthLabel(month) {
+  if (!month) return "";
+
+  const [year, monthNumber] = month.split("-");
+
+  const date = new Date(
+    Number(year),
+    Number(monthNumber) - 1,
+    1,
+  );
+
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function readStoredValue(key, fallbackValue) {
   const storedValue = localStorage.getItem(key);
 
@@ -32,6 +61,10 @@ function parseStoredArray(key) {
   const parsedValue = readStoredValue(key, []);
   return Array.isArray(parsedValue) ? parsedValue : [];
 }
+
+// -------------------------------------
+// TRANSACTIONS
+// -------------------------------------
 
 function normalizeTransactions(items) {
   return items.reduce((acc, transaction, index) => {
@@ -74,11 +107,21 @@ function normalizeTransactions(items) {
       amount,
       date,
       currency,
+
+      // NEW
+      month:
+        typeof transaction.month === "string" && transaction.month
+          ? transaction.month
+          : getCurrentMonth(),
     });
 
     return acc;
   }, []);
 }
+
+// -------------------------------------
+// GOALS
+// -------------------------------------
 
 function normalizeGoals(items) {
   return items.reduce((acc, goal, index) => {
@@ -128,13 +171,19 @@ function normalizeGoals(items) {
 
       name,
 
-      type: typeof goal.type === "string" && goal.type ? goal.type : "🎯 Goal",
+      type:
+        typeof goal.type === "string" && goal.type
+          ? goal.type
+          : "🎯 Goal",
 
       targetAmount,
 
       currentAmount: Number.isNaN(currentAmount) ? 0 : currentAmount,
 
-      targetDate: typeof goal.targetDate === "string" ? goal.targetDate : "",
+      targetDate:
+        typeof goal.targetDate === "string"
+          ? goal.targetDate
+          : "",
 
       currency:
         typeof goal.currency === "string" && goal.currency
@@ -148,29 +197,52 @@ function normalizeGoals(items) {
   }, []);
 }
 
+// -------------------------------------
+// BUDGETS
+// -------------------------------------
+
 function normalizeBudgets(items) {
+  const currentMonth = getCurrentMonth();
+
   return Object.values(
     items.reduce((acc, budget) => {
-      const amount = Number(budget?.amount ?? budget?.budget ?? 0);
+      const amount = Number(
+        budget?.amount ?? budget?.budget ?? 0,
+      );
+
       const category =
-        typeof budget?.category === "string" ? budget.category.trim() : "";
-      const currency =
-        typeof budget?.currency === "string" && budget.currency
-          ? budget.currency
-          : "NGN";
-      const month =
-        typeof budget?.month === "string" && budget.month
-          ? budget.month
+        typeof budget?.category === "string"
+          ? budget.category.trim()
           : "";
 
-      if (!category || amount <= 0 || Number.isNaN(amount)) {
+      const currency =
+        typeof budget?.currency === "string" &&
+        budget.currency
+          ? budget.currency
+          : "NGN";
+
+      // OLD budgets without a month are assigned
+      // to the current month.
+      const month =
+        typeof budget?.month === "string" &&
+        budget.month
+          ? budget.month
+          : currentMonth;
+
+      if (
+        !category ||
+        amount <= 0 ||
+        Number.isNaN(amount)
+      ) {
         return acc;
       }
 
       const budgetKey = `${category}::${currency}::${month}`;
 
       acc[budgetKey] = {
-        id: budget.id ?? `budget-${budgetKey}`,
+        id:
+          budget.id ??
+          `budget-${budgetKey}`,
 
         category,
 
@@ -186,39 +258,88 @@ function normalizeBudgets(items) {
   );
 }
 
+// -------------------------------------
+// PROVIDER
+// -------------------------------------
+
 export function FinanceProvider({ children }) {
+  // -----------------------------
+  // CURRENT MONTH
+  // -----------------------------
+
+  const [currentMonth, setCurrentMonth] = useState(
+    getCurrentMonth(),
+  );
+
+  // Check periodically so the app notices
+  // when the calendar month changes.
+  useEffect(() => {
+    const checkMonth = () => {
+      const newMonth = getCurrentMonth();
+
+      if (newMonth !== currentMonth) {
+        setCurrentMonth(newMonth);
+      }
+    };
+
+    checkMonth();
+
+    const interval = setInterval(
+      checkMonth,
+      60 * 60 * 1000,
+    );
+
+    return () => clearInterval(interval);
+  }, [currentMonth]);
+
+  const currentMonthLabel =
+    getMonthLabel(currentMonth);
+
+    
+
   // -----------------------------
   // CURRENCY
   // -----------------------------
 
-  const [defaultCurrency, setDefaultCurrency] = useState(
-    () => localStorage.getItem("defaultCurrency") || "NGN",
-  );
+  const [defaultCurrency, setDefaultCurrency] =
+    useState(
+      () =>
+        localStorage.getItem("defaultCurrency") ||
+        "NGN",
+    );
 
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem("theme") || "system",
-  );
-
-  const currencySymbol = currencyMap[defaultCurrency] || "₦";
+  const currencySymbol =
+    currencyMap[defaultCurrency] || "₦";
 
   // -----------------------------
   // THEME
   // -----------------------------
 
+  const [theme, setTheme] = useState(
+    () =>
+      localStorage.getItem("theme") ||
+      "system",
+  );
+
   // -----------------------------
   // TRANSACTIONS
   // -----------------------------
 
-  const [transactions, setTransactions] = useState(() => {
-    return normalizeTransactions(parseStoredArray("transactions"));
-  });
+  const [transactions, setTransactions] =
+    useState(() => {
+      return normalizeTransactions(
+        parseStoredArray("transactions"),
+      );
+    });
 
   // -----------------------------
   // GOALS
   // -----------------------------
 
   const [goals, setGoals] = useState(() => {
-    return normalizeGoals(parseStoredArray("goals"));
+    return normalizeGoals(
+      parseStoredArray("goals"),
+    );
   });
 
   // -----------------------------
@@ -226,15 +347,22 @@ export function FinanceProvider({ children }) {
   // -----------------------------
 
   const [budgets, setBudgets] = useState(() => {
-    return normalizeBudgets(parseStoredArray("budgets"));
+    return normalizeBudgets(
+      parseStoredArray("budgets"),
+    );
   });
 
   // -----------------------------
   // INVESTMENTS
   // -----------------------------
 
-  const [investmentScenarios, setInvestmentScenarios] = useState(() => {
-    return parseStoredArray("investmentScenarios");
+  const [
+    investmentScenarios,
+    setInvestmentScenarios,
+  ] = useState(() => {
+    return parseStoredArray(
+      "investmentScenarios",
+    );
   });
 
   // -----------------------------
@@ -242,37 +370,68 @@ export function FinanceProvider({ children }) {
   // -----------------------------
 
   useEffect(() => {
-    localStorage.setItem("transactions", JSON.stringify(transactions));
+    localStorage.setItem(
+      "transactions",
+      JSON.stringify(transactions),
+    );
   }, [transactions]);
 
   useEffect(() => {
-    localStorage.setItem("goals", JSON.stringify(goals));
+    localStorage.setItem(
+      "goals",
+      JSON.stringify(goals),
+    );
   }, [goals]);
 
   useEffect(() => {
-    localStorage.setItem("budgets", JSON.stringify(budgets));
+    localStorage.setItem(
+      "budgets",
+      JSON.stringify(budgets),
+    );
   }, [budgets]);
 
   useEffect(() => {
     localStorage.setItem(
       "investmentScenarios",
-      JSON.stringify(investmentScenarios),
+      JSON.stringify(
+        investmentScenarios,
+      ),
     );
   }, [investmentScenarios]);
 
   useEffect(() => {
-    localStorage.setItem("defaultCurrency", defaultCurrency);
+    localStorage.setItem(
+      "defaultCurrency",
+      defaultCurrency,
+    );
   }, [defaultCurrency]);
 
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
+  // -----------------------------
+  // THEME EFFECT
+  // -----------------------------
 
-    const root = document.documentElement;
-    const body = document.body;
+  useEffect(() => {
+    localStorage.setItem(
+      "theme",
+      theme,
+    );
+
+    const root =
+      document.documentElement;
+
+    const body =
+      document.body;
 
     const applyTheme = (isDark) => {
-      root.classList.toggle("dark", isDark);
-      body.classList.toggle("dark", isDark);
+      root.classList.toggle(
+        "dark",
+        isDark,
+      );
+
+      body.classList.toggle(
+        "dark",
+        isDark,
+      );
     };
 
     if (theme === "dark") {
@@ -285,19 +444,29 @@ export function FinanceProvider({ children }) {
       return;
     }
 
-    // System theme
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery =
+      window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      );
 
     applyTheme(mediaQuery.matches);
 
     const handleChange = (event) => {
-      applyTheme(event.matches);
+      applyTheme(
+        event.matches,
+      );
     };
 
-    mediaQuery.addEventListener("change", handleChange);
+    mediaQuery.addEventListener(
+      "change",
+      handleChange,
+    );
 
     return () => {
-      mediaQuery.removeEventListener("change", handleChange);
+      mediaQuery.removeEventListener(
+        "change",
+        handleChange,
+      );
     };
   }, [theme]);
 
@@ -308,25 +477,35 @@ export function FinanceProvider({ children }) {
   return (
     <FinanceContext.Provider
       value={{
+        // Transactions
         transactions,
         setTransactions,
 
+        // Goals
         goals,
         setGoals,
 
+        // Budgets
         budgets,
         setBudgets,
 
+        // Investments
         investmentScenarios,
         setInvestmentScenarios,
 
+        // Currency
         defaultCurrency,
         setDefaultCurrency,
-
         currencySymbol,
 
+        // Theme
         theme,
         setTheme,
+
+        // Monthly budget system
+        currentMonth,
+        currentMonthLabel,
+        getMonthLabel,
       }}
     >
       {children}
