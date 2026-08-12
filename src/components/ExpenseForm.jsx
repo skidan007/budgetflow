@@ -1,10 +1,16 @@
 function TransactionForm({
-  amount,
-  setAmount,
-  category,
-  setCategory,
-  date,
-  setDate,
+  amount: incomingAmount,
+  setAmount: setIncomingAmount,
+  category: incomingCategory,
+  setCategory: setIncomingCategory,
+  date: incomingDate,
+  setDate: setIncomingDate,
+  expenseInput,
+  setExpenseInput,
+  expenseCategory,
+  setExpenseCategory,
+  expenseDate,
+  setExpenseDate,
   onSubmit,
   buttonText,
   categoryOptions,
@@ -18,6 +24,13 @@ function TransactionForm({
   amountPlaceholder = "Amount",
   className = "",
 }) {
+  const amount = incomingAmount ?? expenseInput ?? "";
+  const setAmount = setIncomingAmount ?? setExpenseInput ?? (() => {});
+  const category = incomingCategory ?? expenseCategory ?? "";
+  const setCategory = setIncomingCategory ?? setExpenseCategory ?? (() => {});
+  const date = incomingDate ?? expenseDate ?? "";
+  const setDate = setIncomingDate ?? setExpenseDate ?? (() => {});
+
   const fallbackCategories =
     type === "Income"
       ? ["Salary", "Business", "Investment", "Gift", "Other"]
@@ -30,6 +43,7 @@ function TransactionForm({
 
   const isBudgetMode = Array.isArray(categoryOptions);
   const disableSubmit = isBudgetMode && categoryOptions.length === 0;
+  const isDateSelected = Boolean(date);
 
   const accentClasses =
     type === "Income"
@@ -105,9 +119,20 @@ function TransactionForm({
         </label>
 
         <input
-          type="date"
+          type={isDateSelected ? "date" : "text"}
           value={date}
           max={new Date().toISOString().split("T")[0]}
+          placeholder="Select date"
+          onFocus={(e) => {
+            if (!date) {
+              e.target.type = "date";
+            }
+          }}
+          onBlur={(e) => {
+            if (!date) {
+              e.target.type = "text";
+            }
+          }}
           onChange={(e) => setDate(e.target.value)}
           className={`w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-slate-300 p-3 outline-none transition ${accentClasses.focus}`}
         />

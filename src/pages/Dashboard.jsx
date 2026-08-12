@@ -198,7 +198,12 @@ function Dashboard() {
       return;
     }
 
-    if (!expenseInput || Number(expenseInput) <= 0) {
+    const sanitizedExpenseInput = String(expenseInput ?? "")
+      .trim()
+      .replace(/,/g, "");
+    const parsedExpenseAmount = Number(sanitizedExpenseInput);
+
+    if (!sanitizedExpenseInput || !Number.isFinite(parsedExpenseAmount) || parsedExpenseAmount <= 0) {
       toast.error("Please enter a valid expense amount.");
       return;
     }
@@ -210,7 +215,7 @@ function Dashboard() {
       return;
     }
 
-    const expenseAmount = Number(expenseInput);
+    const expenseAmount = parsedExpenseAmount;
     const remaining = getCategoryRemaining(effectiveExpenseCategory);
 
     if (remaining <= 0) {
