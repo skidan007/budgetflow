@@ -112,7 +112,7 @@ function normalizeTransactions(items) {
       month:
         typeof transaction.month === "string" && transaction.month
           ? transaction.month
-          : getCurrentMonth(),
+          : date.slice(0, 7) || getCurrentMonth(),
     });
 
     return acc;

@@ -59,10 +59,15 @@ function Dashboard() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
 
+  const getTransactionMonth = (date) =>
+    date?.slice(0, 7) || currentMonth;
+
+  const expenseMonth = getTransactionMonth(expenseDate);
+
   const currentCurrencyBudgets = budgets.filter(
     (budget) =>
       (budget.currency || "NGN") === defaultCurrency &&
-      (budget.month || currentMonth) === currentMonth,
+      (budget.month || currentMonth) === expenseMonth,
   );
 
   const budgetedCategories = currentCurrencyBudgets
@@ -74,19 +79,27 @@ function Dashboard() {
     ? expenseCategory
     : budgetedCategories[0] || "";
 
-  const getBudgetForCategory = (category) => {
-    return currentCurrencyBudgets.find(
-      (budget) => budget.category === category,
+  const getBudgetForCategory = (category, month = expenseMonth) => {
+    return budgets.find(
+      (budget) =>
+        (budget.currency || "NGN") === defaultCurrency &&
+        budget.category === category &&
+        (budget.month || currentMonth) === month,
     );
   };
 
-  const getCategorySpent = (category, excludedTransactionId = null) => {
+  const getCategorySpent = (
+    category,
+    month = expenseMonth,
+    excludedTransactionId = null,
+  ) => {
     return transactions
       .filter(
         (transaction) =>
           transaction.type === "Expense" &&
           (transaction.currency || "NGN") === defaultCurrency &&
           transaction.category === category &&
+          (transaction.month || transaction.date?.slice(0, 7)) === month &&
           transaction.id !== excludedTransactionId,
       )
       .reduce(
@@ -95,14 +108,18 @@ function Dashboard() {
       );
   };
 
-  const getCategoryRemaining = (category, excludedTransactionId = null) => {
-    const budget = getBudgetForCategory(category);
+  const getCategoryRemaining = (
+    category,
+    month = expenseMonth,
+    excludedTransactionId = null,
+  ) => {
+    const budget = getBudgetForCategory(category, month);
 
     if (!budget) {
       return 0;
     }
 
-    const spent = getCategorySpent(category, excludedTransactionId);
+    const spent = getCategorySpent(category, month, excludedTransactionId);
 
     return Number(budget.amount || 0) - spent;
   };
@@ -286,7 +303,11 @@ function Dashboard() {
     }
 
     if (editingTransaction.type === "Expense") {
-      const budget = getBudgetForCategory(editingTransaction.category);
+      const editingMonth = getTransactionMonth(editingTransaction.date);
+      const budget = getBudgetForCategory(
+        editingTransaction.category,
+        editingMonth,
+      );
 
       if (!budget) {
         toast.error(
@@ -297,6 +318,7 @@ function Dashboard() {
 
       const remaining = getCategoryRemaining(
         editingTransaction.category,
+        getTransactionMonth(editingTransaction.date),
         editingTransaction.id,
       );
 
