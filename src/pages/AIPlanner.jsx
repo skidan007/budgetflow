@@ -65,24 +65,15 @@ function AIPlanner() {
       return PiggyBank;
     }
 
-    if (
-      name.includes("invest") ||
-      name.includes("wealth")
-    ) {
+    if (name.includes("invest") || name.includes("wealth")) {
       return TrendingUp;
     }
 
-    if (
-      name.includes("emergency") ||
-      name.includes("buffer")
-    ) {
+    if (name.includes("emergency") || name.includes("buffer")) {
       return ShieldCheck;
     }
 
-    if (
-      name.includes("personal") ||
-      name.includes("flexible")
-    ) {
+    if (name.includes("personal") || name.includes("flexible")) {
       return Target;
     }
 
@@ -104,10 +95,7 @@ function AIPlanner() {
       };
     }
 
-    if (
-      name.includes("invest") ||
-      name.includes("wealth")
-    ) {
+    if (name.includes("invest") || name.includes("wealth")) {
       return {
         iconBg: "bg-purple-100",
         iconColor: "text-purple-600",
@@ -115,10 +103,7 @@ function AIPlanner() {
       };
     }
 
-    if (
-      name.includes("emergency") ||
-      name.includes("buffer")
-    ) {
+    if (name.includes("emergency") || name.includes("buffer")) {
       return {
         iconBg: "bg-red-100",
         iconColor: "text-red-600",
@@ -126,10 +111,7 @@ function AIPlanner() {
       };
     }
 
-    if (
-      name.includes("personal") ||
-      name.includes("flexible")
-    ) {
+    if (name.includes("personal") || name.includes("flexible")) {
       return {
         iconBg: "bg-orange-100",
         iconColor: "text-orange-600",
@@ -159,9 +141,7 @@ function AIPlanner() {
     }
 
     if (!goal.trim()) {
-      toast.error(
-        "Tell BudgetFlow what you want to achieve.",
-      );
+      toast.error("Tell BudgetFlow what you want to achieve.");
       return;
     }
 
@@ -175,15 +155,18 @@ function AIPlanner() {
        * AI API response.
        */
 
-      await new Promise((resolve) =>
-        setTimeout(resolve, 700),
-      );
+      await new Promise((resolve) => setTimeout(resolve, 700));
 
-      const essentials = amount * 0.4;
+      const food = amount * 0.15;
+      const transport = amount * 0.1;
+      const bills = amount * 0.15;
+      const entertainment = amount * 0.05;
+      const shopping = amount * 0.05;
+      const health = amount * 0.05;
+
       const savings = amount * 0.2;
       const investment = amount * 0.15;
-      const personal = amount * 0.1;
-      const emergency = amount * 0.15;
+      const emergency = amount * 0.1;
 
       setPlan({
         income: amount,
@@ -194,63 +177,85 @@ function AIPlanner() {
         categories: [
           {
             id: 1,
-            name: "Essentials",
-            amount: essentials,
-            percentage: 40,
-            description:
-              "Food, transportation, bills and other necessary expenses.",
+            name: "Food",
+            amount: food,
+            percentage: 15,
+            description: "Food, groceries and daily meals.",
           },
 
           {
             id: 2,
-            name: "Savings",
-            amount: savings,
-            percentage: 20,
-            description:
-              "Money set aside for your savings goals.",
+            name: "Transport",
+            amount: transport,
+            percentage: 10,
+            description: "Transportation and commuting expenses.",
           },
 
           {
             id: 3,
-            name: "Investment",
-            amount: investment,
+            name: "Bills",
+            amount: bills,
             percentage: 15,
             description:
-              "Money allocated toward long-term wealth building.",
+              "Electricity, internet, phone and other regular bills.",
           },
 
           {
             id: 4,
-            name: "Personal",
-            amount: personal,
-            percentage: 10,
-            description:
-              "Personal, entertainment and flexible spending.",
+            name: "Entertainment",
+            amount: entertainment,
+            percentage: 5,
+            description: "Entertainment and leisure activities.",
           },
 
           {
             id: 5,
+            name: "Shopping",
+            amount: shopping,
+            percentage: 5,
+            description: "Clothing, personal purchases and other shopping.",
+          },
+
+          {
+            id: 6,
+            name: "Health",
+            amount: health,
+            percentage: 5,
+            description:
+              "Healthcare, medication and other health-related expenses.",
+          },
+
+          {
+            id: 7,
+            name: "Savings",
+            amount: savings,
+            percentage: 20,
+            description: "Money set aside for your savings goals.",
+          },
+
+          {
+            id: 8,
+            name: "Investment",
+            amount: investment,
+            percentage: 15,
+            description: "Money allocated toward long-term wealth building.",
+          },
+
+          {
+            id: 9,
             name: "Emergency Fund",
             amount: emergency,
-            percentage: 15,
-            description:
-              "A buffer for unexpected expenses.",
+            percentage: 10,
+            description: "A financial buffer for unexpected expenses.",
           },
         ],
       });
 
-      toast.success(
-        "Your financial plan is ready!",
-      );
+      toast.success("Your financial plan is ready!");
     } catch (error) {
-      console.error(
-        "Generate plan error:",
-        error,
-      );
+      console.error("Generate plan error:", error);
 
-      toast.error(
-        "Unable to generate your financial plan.",
-      );
+      toast.error("Unable to generate your financial plan.");
     } finally {
       setLoading(false);
     }
@@ -268,52 +273,36 @@ function AIPlanner() {
   // UPDATE CATEGORY AMOUNT
   // -------------------------------------
 
-  const handleCategoryAmountChange = (
-    categoryId,
-    value,
-  ) => {
+  const handleCategoryAmountChange = (categoryId, value) => {
     const amount = Number(value);
 
     setPlan((prev) => {
       if (!prev) return prev;
 
-      const updatedCategories =
-        prev.categories.map((category) => {
-          if (category.id !== categoryId) {
-            return category;
-          }
+      const updatedCategories = prev.categories.map((category) => {
+        if (category.id !== categoryId) {
+          return category;
+        }
 
-          return {
-            ...category,
-            amount:
-              Number.isNaN(amount) || amount < 0
-                ? 0
-                : amount,
-          };
-        });
+        return {
+          ...category,
+          amount: Number.isNaN(amount) || amount < 0 ? 0 : amount,
+        };
+      });
 
       const total = updatedCategories.reduce(
-        (sum, category) =>
-          sum + Number(category.amount || 0),
+        (sum, category) => sum + Number(category.amount || 0),
         0,
       );
 
-      const categoriesWithPercent =
-        updatedCategories.map((category) => ({
-          ...category,
-          percentage:
-            total > 0
-              ? Math.round(
-                  (category.amount / total) *
-                    100,
-                )
-              : 0,
-        }));
+      const categoriesWithPercent = updatedCategories.map((category) => ({
+        ...category,
+        percentage: total > 0 ? Math.round((category.amount / total) * 100) : 0,
+      }));
 
       return {
         ...prev,
-        categories:
-          categoriesWithPercent,
+        categories: categoriesWithPercent,
       };
     });
   };
@@ -326,30 +315,22 @@ function AIPlanner() {
     if (!plan) return;
 
     const total = plan.categories.reduce(
-      (sum, category) =>
-        sum + Number(category.amount || 0),
+      (sum, category) => sum + Number(category.amount || 0),
       0,
     );
 
     if (total <= 0) {
-      toast.error(
-        "Your plan must contain at least one amount.",
-      );
+      toast.error("Your plan must contain at least one amount.");
       return;
     }
 
     setPlan((prev) => {
       if (!prev) return prev;
 
-      const categories =
-        prev.categories.map((category) => ({
-          ...category,
-          percentage: Math.round(
-            (Number(category.amount || 0) /
-              total) *
-              100,
-          ),
-        }));
+      const categories = prev.categories.map((category) => ({
+        ...category,
+        percentage: Math.round((Number(category.amount || 0) / total) * 100),
+      }));
 
       return {
         ...prev,
@@ -393,78 +374,49 @@ function AIPlanner() {
     }
 
     try {
-      const savingsCategory =
-        plan.categories.find(
-          (category) =>
-            String(category.name)
-              .toLowerCase()
-              .includes("saving"),
-        );
+      const savingsCategory = plan.categories.find((category) =>
+        String(category.name).toLowerCase().includes("saving"),
+      );
 
-      const emergencyCategory =
-        plan.categories.find(
-          (category) =>
-            String(category.name)
-              .toLowerCase()
-              .includes("emergency"),
-        );
+      const emergencyCategory = plan.categories.find((category) =>
+        String(category.name).toLowerCase().includes("emergency"),
+      );
 
       // -----------------------------------
       // CREATE / UPDATE SAVINGS GOAL
       // -----------------------------------
 
-      if (
-        savingsCategory &&
-        Number(savingsCategory.amount) > 0
-      ) {
+      if (savingsCategory && Number(savingsCategory.amount) > 0) {
         setGoals((previousGoals) => {
-          const existingGoal =
-            previousGoals.find(
-              (item) =>
-                item.name ===
-                "AI Savings Plan",
-            );
+          const existingGoal = previousGoals.find(
+            (item) => item.name === "AI Savings Plan",
+          );
 
           const newGoal = {
-            id:
-              existingGoal?.id ??
-              `ai-savings-${Date.now()}`,
+            id: existingGoal?.id ?? `ai-savings-${Date.now()}`,
 
             name: "AI Savings Plan",
 
             type: "🤖 AI Plan",
 
-            targetAmount:
-              Number(
-                savingsCategory.amount,
-              ),
+            targetAmount: Number(savingsCategory.amount),
 
-            currentAmount:
-              existingGoal?.currentAmount ??
-              0,
+            currentAmount: existingGoal?.currentAmount ?? 0,
 
             targetDate: "",
 
             currency: defaultCurrency,
 
-            savingsHistory:
-              existingGoal?.savingsHistory ??
-              [],
+            savingsHistory: existingGoal?.savingsHistory ?? [],
           };
 
           if (existingGoal) {
-            return previousGoals.map(
-              (item) =>
-                item.id === existingGoal.id
-                  ? newGoal
-                  : item,
+            return previousGoals.map((item) =>
+              item.id === existingGoal.id ? newGoal : item,
             );
           }
 
-          return [
-            ...previousGoals,
-            newGoal,
-          ];
+          return [...previousGoals, newGoal];
         });
       }
 
@@ -472,58 +424,37 @@ function AIPlanner() {
       // CREATE / UPDATE EMERGENCY GOAL
       // -----------------------------------
 
-      if (
-        emergencyCategory &&
-        Number(emergencyCategory.amount) > 0
-      ) {
+      if (emergencyCategory && Number(emergencyCategory.amount) > 0) {
         setGoals((previousGoals) => {
-          const existingGoal =
-            previousGoals.find(
-              (item) =>
-                item.name ===
-                "AI Emergency Fund",
-            );
+          const existingGoal = previousGoals.find(
+            (item) => item.name === "AI Emergency Fund",
+          );
 
           const newGoal = {
-            id:
-              existingGoal?.id ??
-              `ai-emergency-${Date.now()}`,
+            id: existingGoal?.id ?? `ai-emergency-${Date.now()}`,
 
             name: "AI Emergency Fund",
 
             type: "🛡️ Emergency Fund",
 
-            targetAmount:
-              Number(
-                emergencyCategory.amount,
-              ),
+            targetAmount: Number(emergencyCategory.amount),
 
-            currentAmount:
-              existingGoal?.currentAmount ??
-              0,
+            currentAmount: existingGoal?.currentAmount ?? 0,
 
             targetDate: "",
 
             currency: defaultCurrency,
 
-            savingsHistory:
-              existingGoal?.savingsHistory ??
-              [],
+            savingsHistory: existingGoal?.savingsHistory ?? [],
           };
 
           if (existingGoal) {
-            return previousGoals.map(
-              (item) =>
-                item.id === existingGoal.id
-                  ? newGoal
-                  : item,
+            return previousGoals.map((item) =>
+              item.id === existingGoal.id ? newGoal : item,
             );
           }
 
-          return [
-            ...previousGoals,
-            newGoal,
-          ];
+          return [...previousGoals, newGoal];
         });
       }
 
@@ -531,95 +462,70 @@ function AIPlanner() {
       // CREATE MONTHLY BUDGETS
       // -----------------------------------
 
-      const budgetCategories =
-        plan.categories.filter(
-          (category) => {
-            const name =
-              String(category.name)
-                .toLowerCase();
+      const allowedBudgetCategories = [
+        "Food",
+        "Transport",
+        "Bills",
+        "Entertainment",
+        "Shopping",
+        "Health",
+      ];
 
-            return (
-              !name.includes("saving") &&
-              !name.includes("emergency") &&
-              !name.includes("invest")
-            );
-          },
-        );
+      const budgetCategories = plan.categories.filter((category) =>
+        allowedBudgetCategories.includes(category.name),
+      );
 
       setBudgets((previousBudgets) => {
-        const updatedBudgets = [
-          ...previousBudgets,
-        ];
+        const updatedBudgets = [...previousBudgets];
 
-        budgetCategories.forEach(
-          (category) => {
-            const categoryName =
-              category.name;
+        budgetCategories.forEach((category) => {
+          const categoryName = category.name;
 
-            const categoryAmount =
-              Number(category.amount);
+          const categoryAmount = Number(category.amount);
 
-            if (categoryAmount <= 0) {
-              return;
-            }
+          if (categoryAmount <= 0) {
+            return;
+          }
 
-            const existingIndex =
-              updatedBudgets.findIndex(
-                (budget) =>
-                  budget.category ===
-                    categoryName &&
-                  budget.currency ===
-                    defaultCurrency &&
-                  budget.month ===
-                    currentMonth,
-              );
+          const existingIndex = updatedBudgets.findIndex(
+            (budget) =>
+              budget.category === categoryName &&
+              budget.currency === defaultCurrency &&
+              budget.month === currentMonth,
+          );
 
-            const newBudget = {
-              id:
-                existingIndex >= 0
-                  ? updatedBudgets[
-                      existingIndex
-                    ].id
-                  : `ai-budget-${Date.now()}-${categoryName}`,
+          const newBudget = {
+            id:
+              existingIndex >= 0
+                ? updatedBudgets[existingIndex].id
+                : `ai-budget-${Date.now()}-${categoryName}`,
 
-              category: categoryName,
+            category: categoryName,
 
-              amount: categoryAmount,
+            amount: categoryAmount,
 
-              currency: defaultCurrency,
+            currency: defaultCurrency,
 
-              month: currentMonth,
-            };
+            month: currentMonth,
+          };
 
-            if (existingIndex >= 0) {
-              updatedBudgets[
-                existingIndex
-              ] = newBudget;
-            } else {
-              updatedBudgets.push(
-                newBudget,
-              );
-            }
-          },
-        );
+          if (existingIndex >= 0) {
+            updatedBudgets[existingIndex] = newBudget;
+          } else {
+            updatedBudgets.push(newBudget);
+          }
+        });
 
         return updatedBudgets;
       });
 
       setIsEditing(false);
 
-      toast.success(
-        "Your AI plan has been added to BudgetFlow!",
-      );
+      toast.success("Your AI plan has been added to BudgetFlow!");
     } catch (error) {
-      console.error(
-        "Use AI plan error:",
-        error,
-      );
+      console.error("Use AI plan error:", error);
 
-      toast.error(
-        "Unable to apply the plan.",
-      );
+      toast.error("Unable to apply the plan.");
     }
   };
 
@@ -644,10 +550,8 @@ function AIPlanner() {
           </h1>
 
           <p className="mx-auto mt-2 max-w-2xl text-slate-500">
-            Tell BudgetFlow how much money you
-            have and what you want to achieve.
-            We'll help you create a practical
-            financial plan.
+            Tell BudgetFlow how much money you have and what you want to
+            achieve. We'll help you create a practical financial plan.
           </p>
         </div>
       )}
@@ -658,10 +562,7 @@ function AIPlanner() {
 
       {!plan && (
         <div className="rounded-2xl bg-white p-6 shadow-md sm:p-8">
-          <form
-            onSubmit={handleGeneratePlan}
-            className="space-y-6"
-          >
+          <form onSubmit={handleGeneratePlan} className="space-y-6">
             {/* INCOME */}
 
             <div>
@@ -677,11 +578,7 @@ function AIPlanner() {
                 <input
                   type="number"
                   value={income}
-                  onChange={(e) =>
-                    setIncome(
-                      e.target.value,
-                    )
-                  }
+                  onChange={(e) => setIncome(e.target.value)}
                   placeholder="500000"
                   min="0"
                   className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
@@ -702,24 +599,14 @@ function AIPlanner() {
 
               <select
                 value={planningFor}
-                onChange={(e) =>
-                  setPlanningFor(
-                    e.target.value,
-                  )
-                }
+                onChange={(e) => setPlanningFor(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               >
-                <option value="Monthly">
-                  This month
-                </option>
+                <option value="Monthly">This month</option>
 
-                <option value="Weekly">
-                  This week
-                </option>
+                <option value="Weekly">This week</option>
 
-                <option value="Custom">
-                  A specific financial goal
-                </option>
+                <option value="Custom">A specific financial goal</option>
               </select>
             </div>
 
@@ -732,9 +619,7 @@ function AIPlanner() {
 
               <textarea
                 value={goal}
-                onChange={(e) =>
-                  setGoal(e.target.value)
-                }
+                onChange={(e) => setGoal(e.target.value)}
                 placeholder="Example: I want to pay my bills, save ₦100,000, invest some money and still have enough for myself."
                 rows={5}
                 className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
@@ -750,13 +635,9 @@ function AIPlanner() {
             >
               <Sparkles size={20} />
 
-              {loading
-                ? "Creating your plan..."
-                : "Generate My Financial Plan"}
+              {loading ? "Creating your plan..." : "Generate My Financial Plan"}
 
-              {!loading && (
-                <ArrowRight size={20} />
-              )}
+              {!loading && <ArrowRight size={20} />}
             </button>
           </form>
         </div>
@@ -776,9 +657,7 @@ function AIPlanner() {
                 <div className="flex items-center gap-2 text-indigo-300">
                   <Sparkles size={20} />
 
-                  <span className="text-sm font-semibold">
-                    BudgetFlow AI
-                  </span>
+                  <span className="text-sm font-semibold">BudgetFlow AI</span>
                 </div>
 
                 <h1 className="mt-3 text-2xl font-bold sm:text-3xl">
@@ -786,11 +665,7 @@ function AIPlanner() {
                 </h1>
 
                 <p className="mt-2 text-sm text-slate-300">
-                  Based on{" "}
-                  {formatMoney(
-                    plan.income,
-                  )}{" "}
-                  and your financial goal.
+                  Based on {formatMoney(plan.income)} and your financial goal.
                 </p>
               </div>
 
@@ -804,13 +679,9 @@ function AIPlanner() {
             </div>
 
             <div className="mt-6 rounded-xl bg-white/10 p-4">
-              <p className="text-sm text-slate-300">
-                Your goal
-              </p>
+              <p className="text-sm text-slate-300">Your goal</p>
 
-              <p className="mt-1 text-sm font-medium text-white">
-                {goal}
-              </p>
+              <p className="mt-1 text-sm font-medium text-white">{goal}</p>
             </div>
 
             {plan.summary && (
@@ -823,9 +694,7 @@ function AIPlanner() {
           {/* TOTAL */}
 
           <div className="rounded-2xl bg-white p-6 shadow-md">
-            <p className="text-sm text-slate-500">
-              Available to plan
-            </p>
+            <p className="text-sm text-slate-500">Available to plan</p>
 
             <p className="mt-1 text-3xl font-bold text-slate-900">
               {formatMoney(plan.income)}
@@ -843,8 +712,7 @@ function AIPlanner() {
 
                 {isEditing && (
                   <p className="mt-1 text-sm text-slate-500">
-                    Adjust the amounts before applying
-                    your plan.
+                    Adjust the amounts before applying your plan.
                   </p>
                 )}
               </div>
@@ -862,9 +730,7 @@ function AIPlanner() {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={
-                      handleCancelEdit
-                    }
+                    onClick={handleCancelEdit}
                     className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   >
                     <X size={16} />
@@ -884,101 +750,76 @@ function AIPlanner() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {plan.categories.map(
-                (item) => {
-                  const Icon =
-                    getCategoryIcon(
-                      item.name,
-                    );
+              {plan.categories.map((item) => {
+                const Icon = getCategoryIcon(item.name);
 
-                  const style =
-                    getCategoryStyle(
-                      item.name,
-                    );
+                const style = getCategoryStyle(item.name);
 
-                  return (
-                    <div
-                      key={item.id}
-                      className="rounded-2xl bg-white p-5 shadow-md"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${style.iconBg} ${style.iconColor}`}
-                          >
-                            <Icon
-                              size={22}
-                            />
-                          </div>
-
-                          <div>
-                            <h3 className="font-semibold text-slate-900">
-                              {item.name}
-                            </h3>
-
-                            <p className="text-sm text-slate-500">
-                              {item.percentage}%
-                            </p>
-                          </div>
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl bg-white p-5 shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${style.iconBg} ${style.iconColor}`}
+                        >
+                          <Icon size={22} />
                         </div>
 
-                        {isEditing ? (
-                          <div className="relative w-32">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">
-                              {
-                                currencySymbol
-                              }
-                            </span>
+                        <div>
+                          <h3 className="font-semibold text-slate-900">
+                            {item.name}
+                          </h3>
 
-                            <input
-                              type="number"
-                              min="0"
-                              value={
-                                item.amount
-                              }
-                              onChange={(
-                                e,
-                              ) =>
-                                handleCategoryAmountChange(
-                                  item.id,
-                                  e
-                                    .target
-                                    .value,
-                                )
-                              }
-                              className="w-full rounded-lg border border-slate-300 py-2 pl-7 pr-2 text-right font-bold text-slate-900 outline-none focus:border-indigo-500"
-                            />
-                          </div>
-                        ) : (
-                          <p className="text-lg font-bold text-slate-900">
-                            {formatMoney(
-                              item.amount,
-                            )}
+                          <p className="text-sm text-slate-500">
+                            {item.percentage}%
                           </p>
-                        )}
+                        </div>
                       </div>
 
-                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className={`h-full rounded-full ${style.progress}`}
-                          style={{
-                            width: `${Math.min(
-                              item.percentage,
-                              100,
-                            )}%`,
-                          }}
-                        />
-                      </div>
+                      {isEditing ? (
+                        <div className="relative w-32">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">
+                            {currencySymbol}
+                          </span>
 
-                      <p className="mt-3 text-sm leading-5 text-slate-500">
-                        {
-                          item.description
-                        }
-                      </p>
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.amount}
+                            onChange={(e) =>
+                              handleCategoryAmountChange(
+                                item.id,
+                                e.target.value,
+                              )
+                            }
+                            className="w-full rounded-lg border border-slate-300 py-2 pl-7 pr-2 text-right font-bold text-slate-900 outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-lg font-bold text-slate-900">
+                          {formatMoney(item.amount)}
+                        </p>
+                      )}
                     </div>
-                  );
-                },
-              )}
+
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full ${style.progress}`}
+                        style={{
+                          width: `${Math.min(item.percentage, 100)}%`,
+                        }}
+                      />
+                    </div>
+
+                    <p className="mt-3 text-sm leading-5 text-slate-500">
+                      {item.description}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -993,11 +834,7 @@ function AIPlanner() {
               <span className="text-xl font-bold text-indigo-900">
                 {formatMoney(
                   plan.categories.reduce(
-                    (sum, item) =>
-                      sum +
-                      Number(
-                        item.amount || 0,
-                      ),
+                    (sum, item) => sum + Number(item.amount || 0),
                     0,
                   ),
                 )}
@@ -1005,8 +842,7 @@ function AIPlanner() {
             </div>
 
             <p className="mt-1 text-sm text-indigo-700">
-              Your plan should ideally match your
-              available amount.
+              Your plan should ideally match your available amount.
             </p>
           </div>
 
@@ -1018,8 +854,7 @@ function AIPlanner() {
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Apply this plan to your BudgetFlow
-              account.
+              Apply this plan to your BudgetFlow account.
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -1048,10 +883,7 @@ function AIPlanner() {
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex gap-3">
-              <Sparkles
-                size={20}
-                className="mt-0.5 shrink-0 text-indigo-600"
-              />
+              <Sparkles size={20} className="mt-0.5 shrink-0 text-indigo-600" />
 
               <div>
                 <h3 className="font-semibold text-slate-900">
@@ -1059,11 +891,9 @@ function AIPlanner() {
                 </h3>
 
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Savings and Emergency Fund will
-                  become real goals in your Goals
-                  page. Your spending categories will
-                  become monthly budgets. Investment
-                  remains a recommendation for now.
+                  Savings and Emergency Fund will become real goals in your
+                  Goals page. Your spending categories will become monthly
+                  budgets. Investment remains a recommendation for now.
                 </p>
               </div>
             </div>

@@ -1,21 +1,13 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  Wallet,
-  TrendingUp,
-  Receipt,
-  PiggyBank,
-  X,
-} from "lucide-react";
+import { Wallet, TrendingUp, Receipt, PiggyBank, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 import ExpensePieChart from "../components/ExpensePieChart";
 import IncomeExpenseChart from "../components/IncomeExpenseChart";
 import TransactionItem from "../components/TransactionItem";
 import SummaryCard from "../components/SummaryCard";
-import ExpenseForm, {
-  TransactionForm,
-} from "../components/ExpenseForm";
+import ExpenseForm, { TransactionForm } from "../components/ExpenseForm";
 
 import { useFinance } from "../context/FinanceContext";
 
@@ -28,17 +20,45 @@ const formatMonthLabel = (month) => {
 
   const [year, monthNumber] = month.split("-");
 
-  const date = new Date(
-    Number(year),
-    Number(monthNumber) - 1,
-    1,
-  );
+  const date = new Date(Number(year), Number(monthNumber) - 1, 1);
 
   return date.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
 };
+
+// -------------------------------------
+// EXPENSE CATEGORY → BUDGET CATEGORY
+// -------------------------------------
+
+const expenseCategoryMap = {
+  Food: "Food",
+  Transport: "Transport",
+  Bills: "Bills",
+  Health: "Health",
+  Entertainment: "Entertainment",
+  Shopping: "Shopping",
+  Other: "Other",
+};
+
+const getBudgetCategory = (expenseCategory) => {
+  return expenseCategoryMap[expenseCategory] || expenseCategory;
+};
+
+// -------------------------------------
+// EXPENSE CATEGORIES
+// -------------------------------------
+
+const expenseCategories = [
+  "Food",
+  "Transport",
+  "Bills",
+  "Health",
+  "Entertainment",
+  "Shopping",
+  "Other",
+];
 
 // -------------------------------------
 // DASHBOARD
@@ -67,15 +87,15 @@ function Dashboard() {
   const today = new Date().toISOString().split("T")[0];
 
   const [incomeInput, setIncomeInput] = useState("");
+
   const [expenseInput, setExpenseInput] = useState("");
 
-  const [incomeCategory, setIncomeCategory] =
-    useState("Salary");
+  const [incomeCategory, setIncomeCategory] = useState("Salary");
 
-  const [expenseCategory, setExpenseCategory] =
-    useState("");
+  const [expenseCategory, setExpenseCategory] = useState("");
 
   const [incomeDate, setIncomeDate] = useState(today);
+
   const [expenseDate, setExpenseDate] = useState(today);
 
   // -------------------------------------
@@ -83,20 +103,18 @@ function Dashboard() {
   // -------------------------------------
 
   const [filter, setFilter] = useState("All");
+
   const [search, setSearch] = useState("");
 
   // -------------------------------------
   // MODAL STATE
   // -------------------------------------
 
-  const [showIncomeModal, setShowIncomeModal] =
-    useState(false);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
 
-  const [showExpenseModal, setShowExpenseModal] =
-    useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
 
-  const [editingTransaction, setEditingTransaction] =
-    useState(null);
+  const [editingTransaction, setEditingTransaction] = useState(null);
 
   // -------------------------------------
   // MONTH HELPER
@@ -114,53 +132,51 @@ function Dashboard() {
   // CURRENT EXPENSE FORM MONTH
   // -------------------------------------
 
-  const expenseFormMonth =
-    getTransactionMonth(expenseDate);
-
-  // -------------------------------------
-  // CURRENT MONTH BUDGETS
-  // -------------------------------------
-
-  const currentCurrencyBudgets = budgets.filter(
-    (budget) =>
-      (budget.currency || "NGN") === defaultCurrency &&
-      (budget.month || currentMonth) ===
-        expenseFormMonth,
-  );
+  const expenseFormMonth = getTransactionMonth(expenseDate);
 
   // -------------------------------------
   // BUDGETED CATEGORIES
   // -------------------------------------
 
-  const budgetedCategories = currentCurrencyBudgets
+  const budgetedCategories = budgets
+    .filter(
+      (budget) =>
+        (budget.currency || "NGN") === defaultCurrency &&
+        (budget.month || currentMonth) === expenseFormMonth &&
+        [
+          "Food",
+          "Transport",
+          "Bills",
+          "Entertainment",
+          "Shopping",
+          "Health",
+        ].includes(budget.category),
+    )
     .map((budget) => budget.category)
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
+  // -------------------------------------
+  // GET BUDGET FOR CATEGORY
+  // -------------------------------------
+
+  const getBudgetForCategory = (category, month = currentMonth) => {
+    const budgetCategory = getBudgetCategory(category);
+
+    return budgets.find(
+      (budget) =>
+        (budget.currency || "NGN") === defaultCurrency &&
+        budget.category === budgetCategory &&
+        (budget.month || currentMonth) === month,
+    );
+  };
 
   // -------------------------------------
   // EFFECTIVE EXPENSE CATEGORY
   // -------------------------------------
 
-  const effectiveExpenseCategory =
-    budgetedCategories.includes(expenseCategory)
-      ? expenseCategory
-      : budgetedCategories[0] || "";
-
-  // -------------------------------------
-  // GET BUDGET
-  // -------------------------------------
-
-  const getBudgetForCategory = (
-    category,
-    month = currentMonth,
-  ) => {
-    return budgets.find(
-      (budget) =>
-        (budget.currency || "NGN") === defaultCurrency &&
-        budget.category === category &&
-        (budget.month || currentMonth) === month,
-    );
-  };
+  const effectiveExpenseCategory = budgetedCategories.includes(expenseCategory)
+    ? expenseCategory
+    : budgetedCategories[0] || "";
 
   // -------------------------------------
   // GET CATEGORY SPENDING
@@ -171,20 +187,19 @@ function Dashboard() {
     month = currentMonth,
     excludedTransactionId = null,
   ) => {
+    const budgetCategory = getBudgetCategory(category);
+
     return transactions
       .filter(
         (transaction) =>
           transaction.type === "Expense" &&
-          (transaction.currency || "NGN") ===
-            defaultCurrency &&
-          transaction.category === category &&
-          (transaction.month ||
-            transaction.date?.slice(0, 7)) === month &&
+          (transaction.currency || "NGN") === defaultCurrency &&
+          getBudgetCategory(transaction.category) === budgetCategory &&
+          (transaction.month || transaction.date?.slice(0, 7)) === month &&
           transaction.id !== excludedTransactionId,
       )
       .reduce(
-        (total, transaction) =>
-          total + Number(transaction.amount || 0),
+        (total, transaction) => total + Number(transaction.amount || 0),
         0,
       );
   };
@@ -198,83 +213,55 @@ function Dashboard() {
     month = currentMonth,
     excludedTransactionId = null,
   ) => {
-    const budget = getBudgetForCategory(
-      category,
-      month,
-    );
+    const budget = getBudgetForCategory(category, month);
 
     if (!budget) {
       return 0;
     }
 
-    const spent = getCategorySpent(
-      category,
-      month,
-      excludedTransactionId,
-    );
+    const spent = getCategorySpent(category, month, excludedTransactionId);
 
-    return (
-      Number(budget.amount || 0) - spent
-    );
+    return Number(budget.amount || 0) - spent;
   };
 
   // -------------------------------------
   // SELECTED CATEGORY REMAINING
   // -------------------------------------
 
-  const selectedCategoryRemaining =
-    effectiveExpenseCategory
-      ? Math.max(
-          getCategoryRemaining(
-            effectiveExpenseCategory,
-            expenseFormMonth,
-          ),
-          0,
-        )
-      : 0;
+  const selectedCategoryRemaining = effectiveExpenseCategory
+    ? Math.max(
+        getCategoryRemaining(effectiveExpenseCategory, expenseFormMonth),
+        0,
+      )
+    : 0;
 
   // -------------------------------------
   // CURRENT CURRENCY TRANSACTIONS
   // -------------------------------------
 
-  const currencyTransactions =
-    transactions.filter(
-      (transaction) =>
-        (transaction.currency || "NGN") ===
-        defaultCurrency,
-    );
+  const currencyTransactions = transactions.filter(
+    (transaction) => (transaction.currency || "NGN") === defaultCurrency,
+  );
 
   // -------------------------------------
   // FINANCIAL CALCULATIONS
   // -------------------------------------
 
-  const income = currencyTransactions.reduce(
-    (total, transaction) => {
-      if (transaction.type === "Income") {
-        return (
-          total +
-          Number(transaction.amount || 0)
-        );
-      }
+  const income = currencyTransactions.reduce((total, transaction) => {
+    if (transaction.type === "Income") {
+      return total + Number(transaction.amount || 0);
+    }
 
-      return total;
-    },
-    0,
-  );
+    return total;
+  }, 0);
 
-  const expenses = currencyTransactions.reduce(
-    (total, transaction) => {
-      if (transaction.type === "Expense") {
-        return (
-          total +
-          Number(transaction.amount || 0)
-        );
-      }
+  const expenses = currencyTransactions.reduce((total, transaction) => {
+    if (transaction.type === "Expense") {
+      return total + Number(transaction.amount || 0);
+    }
 
-      return total;
-    },
-    0,
-  );
+    return total;
+  }, 0);
 
   const balance = income - expenses;
 
@@ -283,32 +270,23 @@ function Dashboard() {
   // -------------------------------------
 
   const currencyGoals = goals.filter(
-    (goal) =>
-      (goal.currency || "NGN") ===
-      defaultCurrency,
+    (goal) => (goal.currency || "NGN") === defaultCurrency,
   );
 
   const totalGoals = currencyGoals.length;
 
   const totalTarget = currencyGoals.reduce(
-    (total, goal) =>
-      total + Number(goal.targetAmount || 0),
+    (total, goal) => total + Number(goal.targetAmount || 0),
     0,
   );
 
   const totalSaved = currencyGoals.reduce(
-    (total, goal) =>
-      total + Number(goal.currentAmount || 0),
+    (total, goal) => total + Number(goal.currentAmount || 0),
     0,
   );
 
   const overallProgress =
-    totalTarget > 0
-      ? Math.min(
-          (totalSaved / totalTarget) * 100,
-          100,
-        )
-      : 0;
+    totalTarget > 0 ? Math.min((totalSaved / totalTarget) * 100, 100) : 0;
 
   // -------------------------------------
   // ADD INCOME
@@ -318,9 +296,7 @@ function Dashboard() {
     const amount = Number(incomeInput);
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error(
-        "Please enter a valid income amount.",
-      );
+      toast.error("Please enter a valid income amount.");
       return;
     }
 
@@ -329,9 +305,7 @@ function Dashboard() {
       return;
     }
 
-    const month = getTransactionMonth(
-      incomeDate,
-    );
+    const month = getTransactionMonth(incomeDate);
 
     try {
       await addTransaction({
@@ -346,19 +320,11 @@ function Dashboard() {
       setIncomeInput("");
       setShowIncomeModal(false);
 
-      toast.success(
-        "Income added successfully!",
-      );
+      toast.success("Income added successfully!");
     } catch (error) {
-      console.error(
-        "Add income error:",
-        error,
-      );
+      console.error("Add income error:", error);
 
-      toast.error(
-        error?.message ||
-          "Failed to add income. Please try again.",
-      );
+      toast.error(error?.message || "Failed to add income. Please try again.");
     }
   };
 
@@ -369,74 +335,54 @@ function Dashboard() {
   const handleAddExpense = async () => {
     if (budgetedCategories.length === 0) {
       toast.error(
-        `Create a budget for ${formatMonthLabel(
-          expenseFormMonth,
-        )} first.`,
+        `Create a budget for ${formatMonthLabel(expenseFormMonth)} first.`,
       );
       return;
     }
 
     if (!effectiveExpenseCategory) {
-      toast.error(
-        "Select a budgeted category.",
-      );
+      toast.error("Select an expense category.");
       return;
     }
 
-    const sanitizedExpenseInput = String(
-      expenseInput ?? "",
-    )
+    const sanitizedExpenseInput = String(expenseInput ?? "")
       .trim()
       .replace(/,/g, "");
 
-    const amount = Number(
-      sanitizedExpenseInput,
-    );
+    const amount = Number(sanitizedExpenseInput);
 
-    if (
-      !sanitizedExpenseInput ||
-      !Number.isFinite(amount) ||
-      amount <= 0
-    ) {
-      toast.error(
-        "Please enter a valid expense amount.",
-      );
+    if (!sanitizedExpenseInput || !Number.isFinite(amount) || amount <= 0) {
+      toast.error("Please enter a valid expense amount.");
       return;
     }
 
-    const month =
-      getTransactionMonth(expenseDate);
+    const month = getTransactionMonth(expenseDate);
 
-    const budget = getBudgetForCategory(
-      effectiveExpenseCategory,
-      month,
-    );
+    const budget = getBudgetForCategory(effectiveExpenseCategory, month);
 
     if (!budget) {
       toast.error(
-        `${effectiveExpenseCategory} has no budget for ${formatMonthLabel(
+        `${effectiveExpenseCategory} is not covered by a budget for ${formatMonthLabel(
           month,
         )}.`,
       );
       return;
     }
 
-    const remaining =
-      getCategoryRemaining(
-        effectiveExpenseCategory,
-        month,
-      );
+    const remaining = getCategoryRemaining(effectiveExpenseCategory, month);
 
     if (remaining <= 0) {
       toast.error(
-        `${effectiveExpenseCategory} budget is exhausted.`,
+        `${getBudgetCategory(effectiveExpenseCategory)} budget is exhausted.`,
       );
       return;
     }
 
     if (amount > remaining) {
       toast.error(
-        `Only ${currencySymbol}${remaining.toLocaleString()} remains in your ${effectiveExpenseCategory} budget.`,
+        `Only ${currencySymbol}${remaining.toLocaleString()} remains in your ${getBudgetCategory(
+          effectiveExpenseCategory,
+        )} budget.`,
       );
       return;
     }
@@ -445,8 +391,7 @@ function Dashboard() {
       await addTransaction({
         type: "Expense",
         amount,
-        category:
-          effectiveExpenseCategory,
+        category: effectiveExpenseCategory,
         date: expenseDate,
         currency: defaultCurrency,
         month,
@@ -455,19 +400,11 @@ function Dashboard() {
       setExpenseInput("");
       setShowExpenseModal(false);
 
-      toast.success(
-        "Expense added successfully!",
-      );
+      toast.success("Expense added successfully!");
     } catch (error) {
-      console.error(
-        "Add expense error:",
-        error,
-      );
+      console.error("Add expense error:", error);
 
-      toast.error(
-        error?.message ||
-          "Failed to add expense. Please try again.",
-      );
+      toast.error(error?.message || "Failed to add expense. Please try again.");
     }
   };
 
@@ -475,14 +412,10 @@ function Dashboard() {
   // EDIT TRANSACTION
   // -------------------------------------
 
-  const handleEditTransaction = (
-    transaction,
-  ) => {
+  const handleEditTransaction = (transaction) => {
     setEditingTransaction({
       ...transaction,
-      amount: String(
-        transaction.amount,
-      ),
+      amount: String(transaction.amount),
     });
   };
 
@@ -490,281 +423,193 @@ function Dashboard() {
   // UPDATE TRANSACTION
   // -------------------------------------
 
-  const handleUpdateTransaction =
-    async () => {
-      if (!editingTransaction) {
+  const handleUpdateTransaction = async () => {
+    if (!editingTransaction) {
+      return;
+    }
+
+    const amount = Number(editingTransaction.amount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount.");
+      return;
+    }
+
+    const updatedDate = editingTransaction.date || today;
+
+    const updatedMonth = getTransactionMonth(updatedDate);
+
+    const category = editingTransaction.category?.trim();
+
+    if (!category) {
+      toast.error("Please select a category.");
+      return;
+    }
+
+    // -----------------------------------
+    // EXPENSE BUDGET CHECK
+    // -----------------------------------
+
+    if (editingTransaction.type === "Expense") {
+      const budget = getBudgetForCategory(category, updatedMonth);
+
+      if (!budget) {
+        toast.error(
+          `You have not created a budget for ${getBudgetCategory(
+            category,
+          )} in ${formatMonthLabel(updatedMonth)}.`,
+        );
         return;
       }
 
-      const amount = Number(
-        editingTransaction.amount,
+      const spentExcludingCurrent = getCategorySpent(
+        category,
+        updatedMonth,
+        editingTransaction.id,
       );
 
-      if (
-        !Number.isFinite(amount) ||
-        amount <= 0
-      ) {
+      const remaining = Number(budget.amount || 0) - spentExcludingCurrent;
+
+      if (amount > remaining) {
         toast.error(
-          "Please enter a valid amount.",
+          `Only ${currencySymbol}${Math.max(
+            remaining,
+            0,
+          ).toLocaleString()} remains in your ${getBudgetCategory(
+            category,
+          )} budget.`,
         );
         return;
       }
+    }
 
-      const updatedDate =
-        editingTransaction.date ||
-        today;
+    // -----------------------------------
+    // UPDATE SUPABASE
+    // -----------------------------------
 
-      const updatedMonth =
-        getTransactionMonth(
-          updatedDate,
-        );
+    try {
+      await updateTransaction(editingTransaction.id, {
+        amount,
+        category,
+        date: updatedDate,
+        month: updatedMonth,
+      });
 
-      const category =
-        editingTransaction.category?.trim();
+      setEditingTransaction(null);
 
-      if (!category) {
-        toast.error(
-          "Please select a category.",
-        );
-        return;
-      }
+      toast.success("Transaction updated successfully!");
+    } catch (error) {
+      console.error("Update transaction error:", error);
 
-      // -----------------------------------
-      // EXPENSE BUDGET CHECK
-      // -----------------------------------
-
-      if (
-        editingTransaction.type ===
-        "Expense"
-      ) {
-        const budget =
-          getBudgetForCategory(
-            category,
-            updatedMonth,
-          );
-
-        if (!budget) {
-          toast.error(
-            `You have not created a budget for ${category} in ${formatMonthLabel(
-              updatedMonth,
-            )}.`,
-          );
-          return;
-        }
-
-        const spentExcludingCurrent =
-          getCategorySpent(
-            category,
-            updatedMonth,
-            editingTransaction.id,
-          );
-
-        const remaining =
-          Number(budget.amount || 0) -
-          spentExcludingCurrent;
-
-        if (amount > remaining) {
-          toast.error(
-            `Only ${currencySymbol}${Math.max(
-              remaining,
-              0,
-            ).toLocaleString()} remains in your ${category} budget.`,
-          );
-          return;
-        }
-      }
-
-      // -----------------------------------
-      // UPDATE SUPABASE
-      // -----------------------------------
-
-      try {
-        await updateTransaction(
-          editingTransaction.id,
-          {
-            amount,
-            category,
-            date: updatedDate,
-            month: updatedMonth,
-          },
-        );
-
-        setEditingTransaction(null);
-
-        toast.success(
-          "Transaction updated successfully!",
-        );
-      } catch (error) {
-        console.error(
-          "Update transaction error:",
-          error,
-        );
-
-        toast.error(
-          error?.message ||
-            "Failed to update transaction. Please try again.",
-        );
-      }
-    };
+      toast.error(
+        error?.message || "Failed to update transaction. Please try again.",
+      );
+    }
+  };
 
   // -------------------------------------
   // DELETE TRANSACTION
   // -------------------------------------
 
-  const handleDeleteTransaction =
-    async (id) => {
-      const confirmed = window.confirm(
-        "Are you sure you want to delete this transaction?",
+  const handleDeleteTransaction = async (id) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this transaction?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteTransaction(id);
+
+      toast.success("Transaction deleted successfully!");
+    } catch (error) {
+      console.error("Delete transaction error:", error);
+
+      toast.error(
+        error?.message || "Failed to delete transaction. Please try again.",
       );
-
-      if (!confirmed) {
-        return;
-      }
-
-      try {
-        await deleteTransaction(id);
-
-        toast.success(
-          "Transaction deleted successfully!",
-        );
-      } catch (error) {
-        console.error(
-          "Delete transaction error:",
-          error,
-        );
-
-        toast.error(
-          error?.message ||
-            "Failed to delete transaction. Please try again.",
-        );
-      }
-    };
+    }
+  };
 
   // -------------------------------------
   // FILTER TRANSACTIONS
   // -------------------------------------
 
-  const filteredTransactions =
-    currencyTransactions.filter(
-      (transaction) => {
-        const matchesFilter =
-          filter === "All" ||
-          transaction.type === filter;
+  const filteredTransactions = currencyTransactions.filter((transaction) => {
+    const matchesFilter = filter === "All" || transaction.type === filter;
 
-        const matchesSearch =
-          transaction.category
-            ?.toLowerCase()
-            .includes(
-              search.toLowerCase(),
-            );
+    const matchesSearch = transaction.category
+      ?.toLowerCase()
+      .includes(search.toLowerCase());
 
-        return (
-          matchesFilter &&
-          matchesSearch
-        );
-      },
-    );
+    return matchesFilter && matchesSearch;
+  });
 
   // -------------------------------------
   // EXPENSE PIE CHART
   // -------------------------------------
 
-  const expenseChartData =
-    Object.values(
-      currencyTransactions
-        .filter(
-          (transaction) =>
-            transaction.type ===
-            "Expense",
-        )
-        .reduce(
-          (acc, transaction) => {
-            const category =
-              transaction.category;
+  const expenseChartData = Object.values(
+    currencyTransactions
+      .filter((transaction) => transaction.type === "Expense")
+      .reduce((acc, transaction) => {
+        const category = transaction.category;
 
-            if (!acc[category]) {
-              acc[category] = {
-                name: category,
-                value: 0,
-              };
-            }
+        if (!acc[category]) {
+          acc[category] = {
+            name: category,
+            value: 0,
+          };
+        }
 
-            acc[category].value +=
-              Number(
-                transaction.amount || 0,
-              );
+        acc[category].value += Number(transaction.amount || 0);
 
-            return acc;
-          },
-          {},
-        ),
-    );
+        return acc;
+      }, {}),
+  );
 
   // -------------------------------------
   // INCOME VS EXPENSE CHART
   // -------------------------------------
 
-  const incomeExpenseChartData =
-    (() => {
-      const monthlyData = {};
+  const incomeExpenseChartData = (() => {
+    const monthlyData = {};
 
-      currencyTransactions.forEach(
-        (transaction) => {
-          if (!transaction.date) {
-            return;
-          }
+    currencyTransactions.forEach((transaction) => {
+      if (!transaction.date) {
+        return;
+      }
 
-          const month =
-            transaction.date.slice(0, 7);
+      const month = transaction.date.slice(0, 7);
 
-          if (!monthlyData[month]) {
-            monthlyData[month] = {
-              month,
-              Income: 0,
-              Expenses: 0,
-            };
-          }
+      if (!monthlyData[month]) {
+        monthlyData[month] = {
+          month,
+          Income: 0,
+          Expenses: 0,
+        };
+      }
 
-          const amount =
-            Number(
-              transaction.amount || 0,
-            );
+      const amount = Number(transaction.amount || 0);
 
-          if (
-            transaction.type ===
-            "Income"
-          ) {
-            monthlyData[
-              month
-            ].Income += amount;
-          }
+      if (transaction.type === "Income") {
+        monthlyData[month].Income += amount;
+      }
 
-          if (
-            transaction.type ===
-            "Expense"
-          ) {
-            monthlyData[
-              month
-            ].Expenses += amount;
-          }
-        },
-      );
+      if (transaction.type === "Expense") {
+        monthlyData[month].Expenses += amount;
+      }
+    });
 
-      return Object.values(
-        monthlyData,
-      )
-        .sort((a, b) =>
-          a.month.localeCompare(
-            b.month,
-          ),
-        )
-        .map((item) => ({
-          ...item,
-          month: formatMonthLabel(
-            item.month,
-          ),
-        }));
-    })();
+    return Object.values(monthlyData)
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map((item) => ({
+        ...item,
+        month: formatMonthLabel(item.month),
+      }));
+  })();
 
   // -------------------------------------
   // SUMMARY CARDS
@@ -810,13 +655,9 @@ function Dashboard() {
       {/* HEADER */}
 
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">
-          Welcome Back 👋
-        </h1>
+        <h1 className="text-3xl font-bold text-slate-900">Welcome Back 👋</h1>
 
-        <p className="text-gray-500">
-          Here's your financial overview.
-        </p>
+        <p className="text-gray-500">Here's your financial overview.</p>
 
         <p className="mt-1 text-sm font-medium text-indigo-600">
           Currency: {defaultCurrency}
@@ -851,34 +692,26 @@ function Dashboard() {
       <div className="mx-auto grid grid-cols-2 justify-center gap-4 md:w-2/3">
         <button
           type="button"
-          onClick={() =>
-            setShowIncomeModal(true)
-          }
+          onClick={() => setShowIncomeModal(true)}
           className="flex flex-col items-center justify-center gap-2 rounded-xl bg-green-600 p-5 text-white shadow-md transition hover:bg-green-700 active:scale-95"
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
             <TrendingUp size={26} />
           </div>
 
-          <span className="text-sm font-semibold">
-            Add Income
-          </span>
+          <span className="text-sm font-semibold">Add Income</span>
         </button>
 
         <button
           type="button"
-          onClick={() =>
-            setShowExpenseModal(true)
-          }
+          onClick={() => setShowExpenseModal(true)}
           className="flex flex-col items-center justify-center gap-2 rounded-xl bg-red-600 p-5 text-white shadow-md transition hover:bg-red-700 active:scale-95"
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
             <Receipt size={26} />
           </div>
 
-          <span className="text-sm font-semibold">
-            Add Expense
-          </span>
+          <span className="text-sm font-semibold">Add Expense</span>
         </button>
       </div>
 
@@ -892,31 +725,22 @@ function Dashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Showing goals in your current
-              currency.
+              Showing goals in your current currency.
             </p>
           </div>
 
-          <div className="text-3xl">
-            🎯
-          </div>
+          <div className="text-3xl">🎯</div>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-lg bg-slate-50 p-4">
-            <p className="text-sm text-slate-500">
-              Total Goals
-            </p>
+            <p className="text-sm text-slate-500">Total Goals</p>
 
-            <p className="mt-2 text-2xl font-bold">
-              {totalGoals}
-            </p>
+            <p className="mt-2 text-2xl font-bold">{totalGoals}</p>
           </div>
 
           <div className="rounded-lg bg-slate-50 p-4">
-            <p className="text-sm text-slate-500">
-              Total Target
-            </p>
+            <p className="text-sm text-slate-500">Total Target</p>
 
             <p className="mt-2 text-2xl font-bold">
               {currencySymbol}
@@ -925,9 +749,7 @@ function Dashboard() {
           </div>
 
           <div className="rounded-lg bg-slate-50 p-4">
-            <p className="text-sm text-slate-500">
-              Total Saved
-            </p>
+            <p className="text-sm text-slate-500">Total Saved</p>
 
             <p className="mt-2 text-2xl font-bold text-green-600">
               {currencySymbol}
@@ -964,16 +786,12 @@ function Dashboard() {
 
       <div className="rounded-xl bg-white p-6 shadow-md">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">
-            Your Goals
-          </h2>
+          <h2 className="text-xl font-semibold">Your Goals</h2>
 
           {currencyGoals.length > 0 && (
             <button
               type="button"
-              onClick={() =>
-                navigate("/goals")
-              }
+              onClick={() => navigate("/goals")}
               className="text-sm font-semibold text-indigo-600"
             >
               View All Goals →
@@ -983,87 +801,59 @@ function Dashboard() {
 
         {currencyGoals.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">
-            You haven't created any goals
-            yet.
+            You haven't created any goals yet.
           </p>
         ) : (
           <div className="mt-5 space-y-4">
-            {currencyGoals.map(
-              (goal) => {
-                const target =
-                  Number(
-                    goal.targetAmount ||
-                      0,
-                  );
+            {currencyGoals.map((goal) => {
+              const target = Number(goal.targetAmount || 0);
 
-                const saved =
-                  Number(
-                    goal.currentAmount ||
-                      0,
-                  );
+              const saved = Number(goal.currentAmount || 0);
 
-                const progress =
-                  target > 0
-                    ? Math.min(
-                        (saved / target) *
-                          100,
-                        100,
-                      )
-                    : 0;
+              const progress =
+                target > 0 ? Math.min((saved / target) * 100, 100) : 0;
 
-                return (
-                  <div
-                    key={goal.id}
-                    onClick={() =>
-                      navigate("/goals")
-                    }
-                    className="cursor-pointer rounded-lg border p-4 hover:bg-slate-50"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">
-                          {goal.name}
-                        </h3>
+              return (
+                <div
+                  key={goal.id}
+                  onClick={() => navigate("/goals")}
+                  className="cursor-pointer rounded-lg border p-4 hover:bg-slate-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold">{goal.name}</h3>
 
-                        <p className="text-sm text-slate-500">
-                          {goal.type}
-                        </p>
-                      </div>
-
-                      <span className="font-semibold">
-                        {progress.toFixed(
-                          0,
-                        )}
-                        %
-                      </span>
+                      <p className="text-sm text-slate-500">{goal.type}</p>
                     </div>
 
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-indigo-600"
-                        style={{
-                          width: `${progress}%`,
-                        }}
-                      />
-                    </div>
-
-                    <div className="mt-2 flex justify-between text-sm">
-                      <span className="text-slate-500">
-                        Saved:{" "}
-                        {currencySymbol}
-                        {saved.toLocaleString()}
-                      </span>
-
-                      <span className="text-slate-500">
-                        Target:{" "}
-                        {currencySymbol}
-                        {target.toLocaleString()}
-                      </span>
-                    </div>
+                    <span className="font-semibold">
+                      {progress.toFixed(0)}%
+                    </span>
                   </div>
-                );
-              },
-            )}
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-indigo-600"
+                      style={{
+                        width: `${progress}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-2 flex justify-between text-sm">
+                    <span className="text-slate-500">
+                      Saved: {currencySymbol}
+                      {saved.toLocaleString()}
+                    </span>
+
+                    <span className="text-slate-500">
+                      Target: {currencySymbol}
+                      {target.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1075,9 +865,7 @@ function Dashboard() {
           <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <button
               type="button"
-              onClick={() =>
-                setShowIncomeModal(false)
-              }
+              onClick={() => setShowIncomeModal(false)}
               className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
             >
               <X size={20} />
@@ -1088,9 +876,7 @@ function Dashboard() {
                 <TrendingUp size={24} />
               </div>
 
-              <h2 className="text-xl font-bold text-slate-900">
-                Add Income
-              </h2>
+              <h2 className="text-xl font-bold text-slate-900">Add Income</h2>
 
               <p className="mt-1 text-sm text-slate-500">
                 Record money you've received.
@@ -1130,9 +916,7 @@ function Dashboard() {
           <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <button
               type="button"
-              onClick={() =>
-                setShowExpenseModal(false)
-              }
+              onClick={() => setShowExpenseModal(false)}
               className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
             >
               <X size={20} />
@@ -1143,48 +927,29 @@ function Dashboard() {
                 <Receipt size={24} />
               </div>
 
-              <h2 className="text-xl font-bold text-slate-900">
-                Add Expense
-              </h2>
+              <h2 className="text-xl font-bold text-slate-900">Add Expense</h2>
 
               <p className="mt-1 text-sm text-slate-500">
                 Record money you've spent.
               </p>
 
               <p className="mt-2 text-xs font-medium text-indigo-600">
-                Budget period:{" "}
-                {formatMonthLabel(
-                  expenseFormMonth,
-                )}
+                Budget period: {formatMonthLabel(expenseFormMonth)}
               </p>
             </div>
 
             <ExpenseForm
-              setExpenseCategory={
-                setExpenseCategory
-              }
-              setExpenseDate={
-                setExpenseDate
-              }
-              setExpenseInput={
-                setExpenseInput
-              }
-              expenseCategory={
-                effectiveExpenseCategory
-              }
+              setExpenseCategory={setExpenseCategory}
+              setExpenseDate={setExpenseDate}
+              setExpenseInput={setExpenseInput}
+              expenseCategory={effectiveExpenseCategory}
               expenseDate={expenseDate}
               expenseInput={expenseInput}
               onSubmit={handleAddExpense}
               buttonText="Add Expense"
-              categoryOptions={
-                budgetedCategories
-              }
-              currencySymbol={
-                currencySymbol
-              }
-              selectedCategoryRemaining={
-                selectedCategoryRemaining
-              }
+              categoryOptions={budgetedCategories}
+              currencySymbol={currencySymbol}
+              selectedCategoryRemaining={selectedCategoryRemaining}
               noBudgetMessage={`No budget found for ${formatMonthLabel(
                 expenseFormMonth,
               )}. Create a budget first.`}
@@ -1196,35 +961,27 @@ function Dashboard() {
       {/* CHARTS */}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ExpensePieChart
-          data={expenseChartData}
-        />
+        <ExpensePieChart data={expenseChartData} />
 
-        <IncomeExpenseChart
-          data={
-            incomeExpenseChartData
-          }
-        />
+        <IncomeExpenseChart data={incomeExpenseChartData} />
       </div>
 
       {/* RECENT TRANSACTIONS */}
 
       <div className="rounded-xl bg-white p-6 shadow">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <h2 className="text-xl font-semibold">
-            Recent Transactions
-          </h2>
+          <h2 className="text-xl font-semibold">Recent Transactions</h2>
 
           <div className="flex gap-3">
             <select
               value={filter}
-              onChange={(e) =>
-                setFilter(e.target.value)
-              }
+              onChange={(e) => setFilter(e.target.value)}
               className="rounded-lg border p-2"
             >
               <option>All</option>
+
               <option>Income</option>
+
               <option>Expense</option>
             </select>
 
@@ -1232,42 +989,29 @@ function Dashboard() {
               type="text"
               placeholder="Search category..."
               value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
+              onChange={(e) => setSearch(e.target.value)}
               className="rounded-lg border p-2"
             />
           </div>
         </div>
 
         <div className="max-h-125 space-y-3 overflow-y-auto pr-2">
-          {currencyTransactions.length ===
-          0 ? (
+          {currencyTransactions.length === 0 ? (
             <p className="text-center text-gray-500">
-              No {defaultCurrency}{" "}
-              transactions yet.
+              No {defaultCurrency} transactions yet.
             </p>
-          ) : filteredTransactions.length ===
-            0 ? (
-            <p className="text-center text-gray-500">
-              No matching results.
-            </p>
+          ) : filteredTransactions.length === 0 ? (
+            <p className="text-center text-gray-500">No matching results.</p>
           ) : (
             filteredTransactions
               .slice(0, 5)
               .map((transaction) => (
                 <TransactionItem
                   key={transaction.id}
-                  transaction={
-                    transaction
-                  }
+                  transaction={transaction}
                   showActions={true}
-                  onEdit={
-                    handleEditTransaction
-                  }
-                  onDelete={
-                    handleDeleteTransaction
-                  }
+                  onEdit={handleEditTransaction}
+                  onDelete={handleDeleteTransaction}
                 />
               ))
           )}
@@ -1290,24 +1034,18 @@ function Dashboard() {
           <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <button
               type="button"
-              onClick={() =>
-                setEditingTransaction(
-                  null,
-                )
-              }
+              onClick={() => setEditingTransaction(null)}
               className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
             >
               <X size={20} />
             </button>
 
             <h2 className="text-xl font-bold text-slate-900">
-              Edit{" "}
-              {editingTransaction.type}
+              Edit {editingTransaction.type}
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Update your transaction
-              details.
+              Update your transaction details.
             </p>
 
             <div className="mt-6 grid gap-4">
@@ -1319,72 +1057,34 @@ function Dashboard() {
                 </label>
 
                 <select
-                  value={
-                    editingTransaction.category ||
-                    ""
-                  }
+                  value={editingTransaction.category || ""}
                   onChange={(e) =>
-                    setEditingTransaction(
-                      (prev) => ({
-                        ...prev,
-                        category:
-                          e.target
-                            .value,
-                      }),
-                    )
+                    setEditingTransaction((prev) => ({
+                      ...prev,
+                      category: e.target.value,
+                    }))
                   }
                   className="w-full rounded-lg border border-slate-300 p-3"
                 >
-                  {editingTransaction.type ===
-                  "Income" ? (
+                  {editingTransaction.type === "Income" ? (
                     <>
-                      <option>
-                        Salary
-                      </option>
-                      <option>
-                        Business
-                      </option>
-                      <option>
-                        Investment
-                      </option>
-                      <option>
-                        Gift
-                      </option>
-                      <option>
-                        Other
-                      </option>
+                      <option>Salary</option>
+
+                      <option>Business</option>
+
+                      <option>Investment</option>
+
+                      <option>Gift</option>
+
+                      <option>Other</option>
                     </>
                   ) : (
                     <>
-                      {budgetedCategories.map(
-                        (category) => (
-                          <option
-                            key={
-                              category
-                            }
-                            value={
-                              category
-                            }
-                          >
-                            {category}
-                          </option>
-                        ),
-                      )}
-
-                      {!budgetedCategories.includes(
-                        editingTransaction.category,
-                      ) &&
-                        editingTransaction.category && (
-                          <option
-                            value={
-                              editingTransaction.category
-                            }
-                          >
-                            {
-                              editingTransaction.category
-                            }
-                          </option>
-                        )}
+                      {expenseCategories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
                     </>
                   )}
                 </select>
@@ -1399,19 +1099,13 @@ function Dashboard() {
 
                 <input
                   type="date"
-                  value={
-                    editingTransaction.date ||
-                    ""
-                  }
+                  value={editingTransaction.date || ""}
                   max={today}
                   onChange={(e) =>
-                    setEditingTransaction(
-                      (prev) => ({
-                        ...prev,
-                        date: e.target
-                          .value,
-                      }),
-                    )
+                    setEditingTransaction((prev) => ({
+                      ...prev,
+                      date: e.target.value,
+                    }))
                   }
                   className="w-full rounded-lg border border-slate-300 p-3"
                 />
@@ -1427,19 +1121,12 @@ function Dashboard() {
                 <input
                   type="number"
                   min="0"
-                  value={
-                    editingTransaction.amount ||
-                    ""
-                  }
+                  value={editingTransaction.amount || ""}
                   onChange={(e) =>
-                    setEditingTransaction(
-                      (prev) => ({
-                        ...prev,
-                        amount:
-                          e.target
-                            .value,
-                      }),
-                    )
+                    setEditingTransaction((prev) => ({
+                      ...prev,
+                      amount: e.target.value,
+                    }))
                   }
                   className="w-full rounded-lg border border-slate-300 p-3"
                 />
@@ -1449,12 +1136,9 @@ function Dashboard() {
 
               <button
                 type="button"
-                onClick={
-                  handleUpdateTransaction
-                }
+                onClick={handleUpdateTransaction}
                 className={`mt-2 rounded-lg py-3 font-semibold text-white ${
-                  editingTransaction.type ===
-                  "Income"
+                  editingTransaction.type === "Income"
                     ? "bg-green-600 hover:bg-green-700"
                     : "bg-red-600 hover:bg-red-700"
                 }`}
