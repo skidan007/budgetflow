@@ -1,4 +1,5 @@
 import logo from "../assets/budgetflow-logo.png";
+import { Sparkles } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -27,6 +28,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       icon: Calculator,
     },
     { name: "Settings", path: "/settings", icon: Settings },
+    { name: "AI Planner", path: "/ai-planner", icon: Sparkles },
   ];
 
   const handleLogout = async () => {
