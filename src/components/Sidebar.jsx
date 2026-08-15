@@ -18,6 +18,7 @@ import { supabase } from "../lib/supabaseClient";
 const Sidebar = ({ isOpen, onClose }) => {
   const menuItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
+     { name: "AI Planner", path: "/ai-planner", icon: Sparkles },
     { name: "Budgets", path: "/budgets", icon: Wallet },
     { name: "Expenses", path: "/expenses", icon: Receipt },
     { name: "Goals", path: "/goals", icon: Target },
@@ -27,7 +28,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       path: "/compound-interest",
       icon: Calculator,
     },
-    { name: "AI Planner", path: "/ai-planner", icon: Sparkles },
+   
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
