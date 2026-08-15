@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { Eye, EyeOff } from "lucide-react";
 import budgetflowLogo from "../assets/budgetflow-logo.png";
 
-import { supabase } from "../lib/supabaseClient";
+import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 
 function Auth() {
@@ -144,6 +144,14 @@ function Auth() {
               : "Create an account and start managing your money."}
           </p>
         </div>
+
+        {!isSupabaseConfigured && (
+          <div className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+            Supabase is not configured. Set VITE_SUPABASE_URL and
+            VITE_SUPABASE_PUBLISHABLE_KEY in your environment variables and
+            redeploy.
+          </div>
+        )}
 
         {/* FORM */}
         <form onSubmit={handleSubmit} className="mt-7 space-y-5">
