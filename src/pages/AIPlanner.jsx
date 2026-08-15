@@ -14,7 +14,8 @@ import toast from "react-hot-toast";
 import { useFinance } from "../context/FinanceContext";
 
 function AIPlanner() {
-  const { defaultCurrency, currencySymbol } = useFinance();
+  const { defaultCurrency, currencySymbol, setBudgets, setGoals } =
+    useFinance();
 
   const [income, setIncome] = useState("");
   const [goal, setGoal] = useState("");
@@ -22,6 +23,8 @@ function AIPlanner() {
 
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const [isEditingPlan, setIsEditingPlan] = useState(false);
 
   // -------------------------------------
   // FORMAT MONEY
@@ -42,24 +45,15 @@ function AIPlanner() {
       return PiggyBank;
     }
 
-    if (
-      name.includes("invest") ||
-      name.includes("wealth")
-    ) {
+    if (name.includes("invest") || name.includes("wealth")) {
       return TrendingUp;
     }
 
-    if (
-      name.includes("emergency") ||
-      name.includes("buffer")
-    ) {
+    if (name.includes("emergency") || name.includes("buffer")) {
       return ShieldCheck;
     }
 
-    if (
-      name.includes("personal") ||
-      name.includes("flexible")
-    ) {
+    if (name.includes("personal") || name.includes("flexible")) {
       return Target;
     }
 
@@ -81,10 +75,7 @@ function AIPlanner() {
       };
     }
 
-    if (
-      name.includes("invest") ||
-      name.includes("wealth")
-    ) {
+    if (name.includes("invest") || name.includes("wealth")) {
       return {
         iconBg: "bg-purple-100",
         iconColor: "text-purple-600",
@@ -92,10 +83,7 @@ function AIPlanner() {
       };
     }
 
-    if (
-      name.includes("emergency") ||
-      name.includes("buffer")
-    ) {
+    if (name.includes("emergency") || name.includes("buffer")) {
       return {
         iconBg: "bg-red-100",
         iconColor: "text-red-600",
@@ -103,10 +91,7 @@ function AIPlanner() {
       };
     }
 
-    if (
-      name.includes("personal") ||
-      name.includes("flexible")
-    ) {
+    if (name.includes("personal") || name.includes("flexible")) {
       return {
         iconBg: "bg-orange-100",
         iconColor: "text-orange-600",
@@ -119,6 +104,22 @@ function AIPlanner() {
       iconColor: "text-blue-600",
       progress: "bg-blue-600",
     };
+  };
+
+  const getActionLabel = (type) => {
+    switch (type) {
+      case "budget":
+        return "Budget";
+
+      case "goal":
+        return "Create Goal";
+
+      case "investment":
+        return "Investment";
+
+      default:
+        return "Apply";
+    }
   };
 
   // -------------------------------------
@@ -136,9 +137,7 @@ function AIPlanner() {
     }
 
     if (!goal.trim()) {
-      toast.error(
-        "Tell BudgetFlow what you want to achieve.",
-      );
+      toast.error("Tell BudgetFlow what you want to achieve.");
       return;
     }
 
@@ -153,9 +152,7 @@ function AIPlanner() {
        * connect this function to /api/ai-planner.
        */
 
-      await new Promise((resolve) =>
-        setTimeout(resolve, 700),
-      );
+      await new Promise((resolve) => setTimeout(resolve, 700));
 
       const essentials = amount * 0.4;
       const savings = amount * 0.2;
@@ -173,6 +170,7 @@ function AIPlanner() {
             name: "Essentials",
             amount: essentials,
             percentage: 40,
+            type: "budget",
             description:
               "Food, transportation, bills and other necessary expenses.",
           },
@@ -181,32 +179,32 @@ function AIPlanner() {
             name: "Savings",
             amount: savings,
             percentage: 20,
-            description:
-              "Money set aside for your savings goals.",
+            type: "goal",
+            description: "Money set aside for your savings goals.",
           },
           {
             id: 3,
             name: "Investment",
             amount: investment,
             percentage: 15,
-            description:
-              "Money allocated toward long-term wealth building.",
+            type: "investment",
+            description: "Money allocated toward long-term wealth building.",
           },
           {
             id: 4,
             name: "Personal",
             amount: personal,
             percentage: 10,
-            description:
-              "Personal, entertainment and flexible spending.",
+            type: "budget",
+            description: "Personal, entertainment and flexible spending.",
           },
           {
             id: 5,
             name: "Emergency Fund",
             amount: emergency,
             percentage: 15,
-            description:
-              "A buffer for unexpected expenses.",
+            type: "goal",
+            description: "A buffer for unexpected expenses.",
           },
         ],
       });
@@ -215,9 +213,7 @@ function AIPlanner() {
     } catch (error) {
       console.error("Generate plan error:", error);
 
-      toast.error(
-        "Unable to generate your financial plan.",
-      );
+      toast.error("Unable to generate your financial plan.");
     } finally {
       setLoading(false);
     }
@@ -235,13 +231,123 @@ function AIPlanner() {
   };
 
   // -------------------------------------
+  // EDIT PLAN
+  // -------------------------------------
+
+  const handleEditPlan = () => {
+    setIsEditingPlan(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingPlan(false);
+  };
+
+  const handlePlanAmountChange = (id, value) => {
+    const amount = Number(value);
+
+    setPlan((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        categories: prev.categories.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                amount: Number.isNaN(amount) ? 0 : amount,
+              }
+            : item,
+        ),
+      };
+    });
+  };
+
+  // -------------------------------------
   // USE PLAN
   // -------------------------------------
 
   const handleUsePlan = () => {
-    toast.success(
-      "We'll connect this plan to your budgets and goals next.",
+    const planTotal = plan.categories.reduce(
+      (total, item) => total + Number(item.amount || 0),
+      0,
     );
+
+    if (planTotal !== Number(plan.income)) {
+      toast.error(`Your plan must total ${formatMoney(plan.income)}.`);
+      return;
+    }
+    if (!plan?.categories?.length) {
+      toast.error("There is no financial plan to apply.");
+      return;
+    }
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    // ---------------------------------
+    // SEPARATE PLAN TYPES
+    // ---------------------------------
+
+    const budgetCategories = plan.categories.filter(
+      (item) => item.type === "budget",
+    );
+
+    const goalCategories = plan.categories.filter(
+      (item) => item.type === "goal",
+    );
+
+    const investmentCategories = plan.categories.filter(
+      (item) => item.type === "investment",
+    );
+
+    // ---------------------------------
+    // CREATE BUDGETS
+    // ---------------------------------
+
+    const newBudgets = budgetCategories.map((item) => ({
+      id: `ai-budget-${Date.now()}-${item.id}`,
+      category: item.name,
+      amount: Number(item.amount),
+      currency: defaultCurrency,
+      month: currentMonth,
+    }));
+
+    setBudgets((prev) => {
+      const existingBudgets = Array.isArray(prev) ? prev : [];
+
+      return [...existingBudgets, ...newBudgets];
+    });
+
+    // ---------------------------------
+    // CREATE GOALS
+    // ---------------------------------
+
+    const newGoals = goalCategories.map((item) => ({
+      id: `ai-goal-${Date.now()}-${item.id}`,
+      name: item.name,
+      type:
+        item.name === "Emergency Fund"
+          ? "🛡️ Emergency Fund"
+          : "💰 Savings Goal",
+      targetAmount: Number(item.amount),
+      currentAmount: 0,
+      targetDate: "",
+      currency: defaultCurrency,
+      savingsHistory: [],
+    }));
+
+    setGoals((prev) => {
+      const existingGoals = Array.isArray(prev) ? prev : [];
+
+      return [...existingGoals, ...newGoals];
+    });
+
+    // ---------------------------------
+    // INVESTMENTS
+    // ---------------------------------
+
+    console.log("Investment recommendations:", investmentCategories);
+
+    toast.success("Your financial plan has been added to BudgetFlow!");
   };
 
   // -------------------------------------
@@ -265,9 +371,8 @@ function AIPlanner() {
           </h1>
 
           <p className="mx-auto mt-2 max-w-2xl text-slate-500">
-            Tell BudgetFlow how much money you have and what
-            you want to achieve. We'll help you create a
-            practical financial plan.
+            Tell BudgetFlow how much money you have and what you want to
+            achieve. We'll help you create a practical financial plan.
           </p>
         </div>
       )}
@@ -278,10 +383,7 @@ function AIPlanner() {
 
       {!plan && (
         <div className="rounded-2xl bg-white p-6 shadow-md sm:p-8">
-          <form
-            onSubmit={handleGeneratePlan}
-            className="space-y-6"
-          >
+          <form onSubmit={handleGeneratePlan} className="space-y-6">
             {/* INCOME */}
 
             <div>
@@ -297,9 +399,7 @@ function AIPlanner() {
                 <input
                   type="number"
                   value={income}
-                  onChange={(e) =>
-                    setIncome(e.target.value)
-                  }
+                  onChange={(e) => setIncome(e.target.value)}
                   placeholder="500000"
                   min="0"
                   className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
@@ -320,22 +420,14 @@ function AIPlanner() {
 
               <select
                 value={planningFor}
-                onChange={(e) =>
-                  setPlanningFor(e.target.value)
-                }
+                onChange={(e) => setPlanningFor(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               >
-                <option value="Monthly">
-                  This month
-                </option>
+                <option value="Monthly">This month</option>
 
-                <option value="Weekly">
-                  This week
-                </option>
+                <option value="Weekly">This week</option>
 
-                <option value="Custom">
-                  A specific financial goal
-                </option>
+                <option value="Custom">A specific financial goal</option>
               </select>
             </div>
 
@@ -348,9 +440,7 @@ function AIPlanner() {
 
               <textarea
                 value={goal}
-                onChange={(e) =>
-                  setGoal(e.target.value)
-                }
+                onChange={(e) => setGoal(e.target.value)}
                 placeholder="Example: I want to pay my bills, save ₦100,000, invest some money and still have enough for myself."
                 rows={5}
                 className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
@@ -366,9 +456,7 @@ function AIPlanner() {
             >
               <Sparkles size={20} />
 
-              {loading
-                ? "Creating your plan..."
-                : "Generate My Financial Plan"}
+              {loading ? "Creating your plan..." : "Generate My Financial Plan"}
 
               {!loading && <ArrowRight size={20} />}
             </button>
@@ -390,9 +478,7 @@ function AIPlanner() {
                 <div className="flex items-center gap-2 text-indigo-300">
                   <Sparkles size={20} />
 
-                  <span className="text-sm font-semibold">
-                    BudgetFlow AI
-                  </span>
+                  <span className="text-sm font-semibold">BudgetFlow AI</span>
                 </div>
 
                 <h1 className="mt-3 text-2xl font-bold sm:text-3xl">
@@ -400,8 +486,7 @@ function AIPlanner() {
                 </h1>
 
                 <p className="mt-2 text-sm text-slate-300">
-                  Based on {formatMoney(plan.income)} and
-                  your financial goal.
+                  Based on {formatMoney(plan.income)} and your financial goal.
                 </p>
               </div>
 
@@ -415,13 +500,9 @@ function AIPlanner() {
             </div>
 
             <div className="mt-6 rounded-xl bg-white/10 p-4">
-              <p className="text-sm text-slate-300">
-                Your goal
-              </p>
+              <p className="text-sm text-slate-300">Your goal</p>
 
-              <p className="mt-1 text-sm font-medium text-white">
-                {goal}
-              </p>
+              <p className="mt-1 text-sm font-medium text-white">{goal}</p>
             </div>
 
             {plan.summary && (
@@ -434,9 +515,7 @@ function AIPlanner() {
           {/* TOTAL */}
 
           <div className="rounded-2xl bg-white p-6 shadow-md">
-            <p className="text-sm text-slate-500">
-              Available to plan
-            </p>
+            <p className="text-sm text-slate-500">Available to plan</p>
 
             <p className="mt-1 text-3xl font-bold text-slate-900">
               {formatMoney(plan.income)}
@@ -452,12 +531,13 @@ function AIPlanner() {
 
             <div className="grid gap-4 md:grid-cols-2">
               {plan.categories.map((item) => {
-                const Icon = getCategoryIcon(
-                  item.name,
+                const planTotal = plan.categories.reduce(
+                  (total, category) => total + Number(category.amount || 0),
+                  0,
                 );
+                const Icon = getCategoryIcon(item.name);
 
-                const style =
-                  getCategoryStyle(item.name);
+                const style = getCategoryStyle(item.name);
 
                 return (
                   <div
@@ -478,21 +558,48 @@ function AIPlanner() {
                           </h3>
 
                           <p className="text-sm text-slate-500">
-                            {item.percentage}%
+                            {planTotal > 0
+                              ? Math.round(
+                                  (Number(item.amount) / planTotal) * 100,
+                                )
+                              : 0}
+                            %
                           </p>
                         </div>
                       </div>
 
-                      <p className="text-lg font-bold text-slate-900">
-                        {formatMoney(item.amount)}
-                      </p>
+                      {isEditingPlan ? (
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">
+                            {currencySymbol}
+                          </span>
+
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.amount}
+                            onChange={(e) =>
+                              handlePlanAmountChange(item.id, e.target.value)
+                            }
+                            className="w-36 rounded-lg border border-slate-300 py-2 pl-8 pr-2 text-right text-sm font-bold text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-lg font-bold text-slate-900">
+                          {formatMoney(item.amount)}
+                        </p>
+                      )}
                     </div>
 
                     <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                       <div
                         className={`h-full rounded-full ${style.progress}`}
                         style={{
-                          width: `${item.percentage}%`,
+                          width: `${
+                            planTotal > 0
+                              ? (Number(item.amount) / planTotal) * 100
+                              : 0
+                          }%`,
                         }}
                       />
                     </div>
@@ -500,6 +607,16 @@ function AIPlanner() {
                     <p className="mt-3 text-sm leading-5 text-slate-500">
                       {item.description}
                     </p>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                        Recommended action
+                      </span>
+
+                      <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+                        {getActionLabel(item.type)}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
@@ -518,23 +635,59 @@ function AIPlanner() {
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={handleUsePlan}
-                className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700"
-              >
-                <Target size={19} />
-                Use This Plan
-              </button>
+              {!isEditingPlan ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleEditPlan}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <Target size={19} />
+                    Edit Plan
+                  </button>
 
-              <button
-                type="button"
-                onClick={handleReset}
-                className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                <RotateCcw size={19} />
-                Create Another Plan
-              </button>
+                  <button
+                    type="button"
+                    onClick={handleUsePlan}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700"
+                  >
+                    <Target size={19} />
+                    Use This Plan
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="rounded-xl border border-slate-300 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingPlan(false);
+                      toast.success("Plan updated!");
+                    }}
+                    className="rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700"
+                  >
+                    Save Changes
+                  </button>
+                </>
+              )}
+
+              {!isEditingPlan && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="sm:col-span-2 flex items-center justify-center gap-2 rounded-xl border border-slate-300 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <RotateCcw size={19} />
+                  Create Another Plan
+                </button>
+              )}
             </div>
           </div>
         </div>
