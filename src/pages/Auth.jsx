@@ -2,141 +2,297 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Eye, EyeOff } from "lucide-react";
+
 import budgetflowLogo from "../assets/budgetflow-logo.png";
 
-import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import {
+  supabase,
+  isSupabaseConfigured,
+} from "../lib/supabaseClient";
+
 import { useAuth } from "../context/AuthContext";
 
 function Auth() {
   const { user, loading: authLoading } = useAuth();
-  
+
+  // -------------------------------------
+  // FORM MODE
+  // -------------------------------------
 
   const [isLogin, setIsLogin] = useState(true);
+
+  // -------------------------------------
+  // FORM STATE
+  // -------------------------------------
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
+
+  // -------------------------------------
+  // LOADING
+  // -------------------------------------
+
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // -------------------------------------
+  // AUTH LOADING
+  // -------------------------------------
 
   if (authLoading) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100">
-      <p className="text-sm font-medium text-slate-500">
-        Loading BudgetFlow...
-      </p>
-    </div>
-  );
-}
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100">
+        <p className="text-sm font-medium text-slate-500">
+          Loading BudgetFlow...
+        </p>
+      </div>
+    );
+  }
 
-  // If already logged in, don't show the auth page
-  if (!authLoading && user) {
+  // -------------------------------------
+  // ALREADY AUTHENTICATED
+  // -------------------------------------
+
+  if (user) {
     return <Navigate to="/" replace />;
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // -------------------------------------
+  // VALIDATION
+  // -------------------------------------
 
-    if (!email.trim()) {
+  const validateForm = () => {
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
       toast.error("Please enter your email.");
-      return;
+      return false;
+    }
+
+    if (!trimmedEmail.includes("@")) {
+      toast.error("Please enter a valid email address.");
+      return false;
     }
 
     if (!password) {
       toast.error("Please enter your password.");
-      return;
+      return false;
     }
 
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters.");
+      return false;
+    }
+
+    return true;
+  };
+
+  // -------------------------------------
+  // LOGIN / SIGNUP
+  // -------------------------------------
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (loading || googleLoading) return;
+
+    if (!isSupabaseConfigured) {
+      toast.error(
+        "Supabase is not configured. Please check your environment variables.",
+      );
       return;
     }
+
+    if (!validateForm()) return;
 
     setLoading(true);
 
     try {
+      const trimmedEmail = email.trim();
+
+      // ---------------------------------
+      // LOGIN
+      // ---------------------------------
+
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
+        const { error } =
+          await supabase.auth.signInWithPassword({
+            email: trimmedEmail,
+            password,
+          });
 
         if (error) {
-          toast.error(error.message);
+          console.error("Login error:", error);
+
+          if (
+            error.message
+              .toLowerCase()
+              .includes("invalid login credentials")
+          ) {
+            toast.error(
+              "Invalid email or password.",
+            );
+          } else {
+            toast.error(error.message);
+          }
+
           return;
         }
 
         toast.success("Welcome back!");
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
+        return;
+      }
+
+      // ---------------------------------
+      // SIGN UP
+      // ---------------------------------
+
+      const { data, error } =
+        await supabase.auth.signUp({
+          email: trimmedEmail,
           password,
         });
 
-        if (error) {
-          toast.error(error.message);
-          return;
-        }
+      if (error) {
+        console.error("Signup error:", error);
 
-        if (data.user && !data.session) {
-          toast.success(
-            "Account created! Check your email to confirm your account.",
+        if (
+          error.message
+            .toLowerCase()
+            .includes("already registered")
+        ) {
+          toast.error(
+            "An account with this email already exists. Please sign in.",
           );
         } else {
-          toast.success("Account created successfully!");
+          toast.error(error.message);
         }
+
+        return;
       }
+
+      // ---------------------------------
+      // EMAIL CONFIRMATION ENABLED
+      // ---------------------------------
+
+      if (data.user && !data.session) {
+        toast.success(
+          "Account created! Check your email to confirm your account.",
+        );
+
+        setPassword("");
+        return;
+      }
+
+      // ---------------------------------
+      // EMAIL CONFIRMATION DISABLED
+      // ---------------------------------
+
+      toast.success(
+        "Account created successfully!",
+      );
+
+      setPassword("");
     } catch (error) {
-      console.error("Authentication error:", error);
-      toast.error("Something went wrong. Please try again.");
+      console.error(
+        "Authentication error:",
+        error,
+      );
+
+      toast.error(
+        "Something went wrong. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
-    });
+  // -------------------------------------
+  // GOOGLE LOGIN
+  // -------------------------------------
 
-    if (error) {
-      toast.error(error.message);
+  const handleGoogleLogin = async () => {
+    if (loading || googleLoading) return;
+
+    if (!isSupabaseConfigured) {
+      toast.error(
+        "Supabase is not configured. Please check your environment variables.",
+      );
+      return;
+    }
+
+    setGoogleLoading(true);
+
+    try {
+      const { error } =
+        await supabase.auth.signInWithOAuth({
+          provider: "google",
+
+          options: {
+            redirectTo:
+              `${window.location.origin}/`,
+          },
+        });
+
+      if (error) {
+        console.error(
+          "Google login error:",
+          error,
+        );
+
+        toast.error(error.message);
+      }
+    } catch (error) {
+      console.error(
+        "Google authentication error:",
+        error,
+      );
+
+      toast.error(
+        "Unable to continue with Google.",
+      );
+
+      setGoogleLoading(false);
     }
   };
 
-//   const handleAppleLogin = async () => {
-//     const { error } = await supabase.auth.signInWithOAuth({
-//       provider: "apple",
-//       options: {
-//         redirectTo: window.location.origin,
-//       },
-//     });
+  // -------------------------------------
+  // SWITCH LOGIN / SIGNUP
+  // -------------------------------------
 
-//     if (error) {
-//       toast.error(error.message);
-//     }
-//   };
+  const handleModeSwitch = () => {
+    setIsLogin((previous) => !previous);
+
+    setPassword("");
+    setShowPassword(false);
+  };
+
+  // -------------------------------------
+  // RENDER
+  // -------------------------------------
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+
         {/* LOGO */}
+
         <div className="flex justify-center">
-          <div className="flex h-18 w-18 items-center justify-center  shadow-lg">
-            <img
-              src={budgetflowLogo}
-              alt="BudgetFlow Logo"
-              className="h-18 w-18 rounded-lg"
-            />
-            {/* <Wallet size={28} /> */}
-          </div>
+          <img
+            src={budgetflowLogo}
+            alt="BudgetFlow Logo"
+            className="h-20 w-20 rounded-xl object-contain shadow-lg"
+          />
         </div>
 
         {/* TITLE */}
+
         <div className="mt-5 text-center">
-          <h1 className="text-3xl font-bold text-slate-900">BudgetFlow</h1>
+          <h1 className="text-3xl font-bold text-slate-900">
+            BudgetFlow
+          </h1>
 
           <p className="mt-2 text-sm text-slate-500">
             {isLogin
@@ -145,65 +301,118 @@ function Auth() {
           </p>
         </div>
 
+        {/* SUPABASE WARNING */}
+
         {!isSupabaseConfigured && (
           <div className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-            Supabase is not configured. Set VITE_SUPABASE_URL and
-            VITE_SUPABASE_PUBLISHABLE_KEY in your environment variables and
-            redeploy.
+            <p className="font-semibold">
+              Supabase is not configured.
+            </p>
+
+            <p className="mt-1">
+              Set your Supabase environment variables
+              before using authentication.
+            </p>
           </div>
         )}
 
         {/* FORM */}
-        <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+
+        <form
+          onSubmit={handleSubmit}
+          className="mt-7 space-y-5"
+        >
           {/* EMAIL */}
+
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="email"
+              className="mb-2 block text-sm font-medium text-slate-700"
+            >
               Email
             </label>
 
             <input
+              id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) =>
+                setEmail(event.target.value)
+              }
               placeholder="Enter your email"
               autoComplete="email"
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              disabled={loading || googleLoading}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-400"
             />
-
-            
           </div>
 
           {/* PASSWORD */}
+
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="password"
+              className="mb-2 block text-sm font-medium text-slate-700"
+            >
               Password
             </label>
 
             <div className="relative">
               <input
-                type={showPassword ? "text" : "password"}
+                id="password"
+                type={
+                  showPassword
+                    ? "text"
+                    : "password"
+                }
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) =>
+                  setPassword(event.target.value)
+                }
                 placeholder="Enter your password"
-                autoComplete={isLogin ? "current-password" : "new-password"}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 pr-12 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                autoComplete={
+                  isLogin
+                    ? "current-password"
+                    : "new-password"
+                }
+                disabled={loading || googleLoading}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 pr-12 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-400"
               />
 
               <button
                 type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() =>
+                  setShowPassword(
+                    (previous) => !previous,
+                  )
+                }
+                disabled={
+                  loading || googleLoading
+                }
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? (
+                  <EyeOff size={20} />
+                ) : (
+                  <Eye size={20} />
+                )}
               </button>
             </div>
           </div>
 
           {/* SUBMIT */}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading ||
+              googleLoading ||
+              !isSupabaseConfigured
+            }
             className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading
@@ -215,37 +424,62 @@ function Auth() {
         </form>
 
         {/* SWITCH */}
+
         <div className="mt-6 text-center text-sm text-slate-500">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}
+          {isLogin
+            ? "Don't have an account?"
+            : "Already have an account?"}
 
           <button
             type="button"
-            onClick={() => {
-              setIsLogin((prev) => !prev);
-              setPassword("");
-            }}
-            className="ml-1 font-semibold text-indigo-600 hover:text-indigo-700"
+            onClick={handleModeSwitch}
+            disabled={
+              loading || googleLoading
+            }
+            className="ml-1 font-semibold text-indigo-600 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isLogin ? "Create one" : "Sign in"}
-          </button>
-
-          <div className="my-5 flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-700" />
-
-            <span className="text-xs text-slate-400">OR</span>
-
-            <div className="h-px flex-1 bg-slate-700" />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            <span className="text-lg font-bold">G</span>
-            Continue with Google
+            {isLogin
+              ? "Create one"
+              : "Sign in"}
           </button>
         </div>
+
+        {/* DIVIDER */}
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+
+          <span className="text-xs font-medium text-slate-400">
+            OR
+          </span>
+
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        {/* GOOGLE */}
+
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={
+            loading ||
+            googleLoading ||
+            !isSupabaseConfigured
+          }
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {googleLoading ? (
+            "Connecting..."
+          ) : (
+            <>
+              <span className="text-lg font-bold">
+                G
+              </span>
+
+              Continue with Google
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
