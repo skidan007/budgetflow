@@ -1,9 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import { supabase } from "../lib/supabaseClient";
 
@@ -28,9 +23,10 @@ const currencyMap = {
 function getCurrentMonth() {
   const date = new Date();
 
-  return `${date.getFullYear()}-${String(
-    date.getMonth() + 1,
-  ).padStart(2, "0")}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+    2,
+    "0",
+  )}`;
 }
 
 function getMonthLabel(month) {
@@ -38,11 +34,7 @@ function getMonthLabel(month) {
 
   const [year, monthNumber] = month.split("-");
 
-  const date = new Date(
-    Number(year),
-    Number(monthNumber) - 1,
-    1,
-  );
+  const date = new Date(Number(year), Number(monthNumber) - 1, 1);
 
   return date.toLocaleDateString("en-US", {
     month: "long",
@@ -114,8 +106,7 @@ function normalizeTransactions(items) {
         : new Date().toISOString().split("T")[0];
 
     const currency =
-      typeof transaction.currency === "string" &&
-      transaction.currency
+      typeof transaction.currency === "string" && transaction.currency
         ? transaction.currency
         : "NGN";
 
@@ -132,8 +123,7 @@ function normalizeTransactions(items) {
       currency,
 
       month:
-        typeof transaction.month === "string" &&
-        transaction.month
+        typeof transaction.month === "string" && transaction.month
           ? transaction.month
           : date.slice(0, 7) || getCurrentMonth(),
     });
@@ -152,96 +142,58 @@ function normalizeGoals(items) {
       return acc;
     }
 
-    const name =
-      typeof goal.name === "string"
-        ? goal.name.trim()
-        : "";
+    const name = typeof goal.name === "string" ? goal.name.trim() : "";
 
     const targetAmount = Number(goal.targetAmount);
 
-    const currentAmount = Number(
-      goal.currentAmount ?? 0,
-    );
+    const currentAmount = Number(goal.currentAmount ?? 0);
 
-    if (
-      !name ||
-      Number.isNaN(targetAmount) ||
-      targetAmount <= 0
-    ) {
+    if (!name || Number.isNaN(targetAmount) || targetAmount <= 0) {
       return acc;
     }
 
-    const savingsHistory = Array.isArray(
-      goal.savingsHistory,
-    )
-      ? goal.savingsHistory.reduce(
-          (historyAcc, saving, savingIndex) => {
-            if (
-              !saving ||
-              typeof saving !== "object"
-            ) {
-              return historyAcc;
-            }
-
-            const amount = Number(saving.amount);
-
-            if (
-              Number.isNaN(amount) ||
-              amount <= 0
-            ) {
-              return historyAcc;
-            }
-
-            historyAcc.push({
-              id:
-                saving.id ??
-                `saving-${index}-${savingIndex}`,
-
-              amount,
-
-              date:
-                typeof saving.date === "string" &&
-                saving.date
-                  ? saving.date
-                  : new Date()
-                      .toISOString()
-                      .split("T")[0],
-            });
-
+    const savingsHistory = Array.isArray(goal.savingsHistory)
+      ? goal.savingsHistory.reduce((historyAcc, saving, savingIndex) => {
+          if (!saving || typeof saving !== "object") {
             return historyAcc;
-          },
-          [],
-        )
+          }
+
+          const amount = Number(saving.amount);
+
+          if (Number.isNaN(amount) || amount <= 0) {
+            return historyAcc;
+          }
+
+          historyAcc.push({
+            id: saving.id ?? `saving-${index}-${savingIndex}`,
+
+            amount,
+
+            date:
+              typeof saving.date === "string" && saving.date
+                ? saving.date
+                : new Date().toISOString().split("T")[0],
+          });
+
+          return historyAcc;
+        }, [])
       : [];
 
     acc.push({
-      id:
-        goal.id ??
-        `goal-${index}`,
+      id: goal.id ?? `goal-${index}`,
 
       name,
 
-      type:
-        typeof goal.type === "string" &&
-        goal.type
-          ? goal.type
-          : "🎯 Goal",
+      type: typeof goal.type === "string" && goal.type ? goal.type : "🎯 Goal",
 
       targetAmount,
 
-      currentAmount:
-        Number.isNaN(currentAmount)
-          ? 0
-          : currentAmount,
+      currentAmount: Number.isNaN(currentAmount) ? 0 : currentAmount,
 
-      targetDate:
-        typeof goal.targetDate === "string"
-          ? goal.targetDate
-          : "",
+      targetDate: typeof goal.targetDate === "string" ? goal.targetDate : "",
 
       currency:
-        typeof goal.currency === "string" &&
-        goal.currency
+        typeof goal.currency === "string" && goal.currency
           ? goal.currency
           : "NGN",
 
@@ -261,44 +213,29 @@ function normalizeBudgets(items) {
 
   return Object.values(
     items.reduce((acc, budget) => {
-      const amount = Number(
-        budget?.amount ??
-          budget?.budget ??
-          0,
-      );
+      const amount = Number(budget?.amount ?? budget?.budget ?? 0);
 
       const category =
-        typeof budget?.category === "string"
-          ? budget.category.trim()
-          : "";
+        typeof budget?.category === "string" ? budget.category.trim() : "";
 
       const currency =
-        typeof budget?.currency === "string" &&
-        budget.currency
+        typeof budget?.currency === "string" && budget.currency
           ? budget.currency
           : "NGN";
 
       const month =
-        typeof budget?.month === "string" &&
-        budget.month
+        typeof budget?.month === "string" && budget.month
           ? budget.month
           : currentMonth;
 
-      if (
-        !category ||
-        amount <= 0 ||
-        Number.isNaN(amount)
-      ) {
+      if (!category || amount <= 0 || Number.isNaN(amount)) {
         return acc;
       }
 
-      const budgetKey =
-        `${category}::${currency}::${month}`;
+      const budgetKey = `${category}::${currency}::${month}`;
 
       acc[budgetKey] = {
-        id:
-          budget.id ??
-          `budget-${budgetKey}`,
+        id: budget.id ?? `budget-${budgetKey}`,
 
         category,
         amount,
@@ -322,15 +259,13 @@ export function FinanceProvider({ children }) {
 
   const [user, setUser] = useState(null);
 
-  const [authLoading, setAuthLoading] =
-    useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // -----------------------------------
   // CURRENT MONTH
   // -----------------------------------
 
-  const [currentMonth, setCurrentMonth] =
-    useState(getCurrentMonth());
+  const [currentMonth, setCurrentMonth] = useState(getCurrentMonth());
 
   useEffect(() => {
     const checkMonth = () => {
@@ -343,96 +278,63 @@ export function FinanceProvider({ children }) {
 
     checkMonth();
 
-    const interval = setInterval(
-      checkMonth,
-      60 * 60 * 1000,
-    );
+    const interval = setInterval(checkMonth, 60 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [currentMonth]);
 
-  const currentMonthLabel =
-    getMonthLabel(currentMonth);
+  const currentMonthLabel = getMonthLabel(currentMonth);
 
   // -----------------------------------
   // CURRENCY
   // -----------------------------------
 
-  const [
-    defaultCurrency,
-    setDefaultCurrency,
-  ] = useState(
-    () =>
-      localStorage.getItem(
-        "defaultCurrency",
-      ) || "NGN",
+  const [defaultCurrency, setDefaultCurrency] = useState(
+    () => localStorage.getItem("defaultCurrency") || "NGN",
   );
 
-  const currencySymbol =
-    currencyMap[defaultCurrency] || "₦";
+  const currencySymbol = currencyMap[defaultCurrency] || "₦";
 
   // -----------------------------------
   // THEME
   // -----------------------------------
 
-  const [theme, setTheme] =
-    useState(
-      () =>
-        localStorage.getItem("theme") ||
-        "system",
-    );
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("theme") || "system",
+  );
 
   // -----------------------------------
   // TRANSACTIONS
   // -----------------------------------
 
-  const [
-    transactions,
-    setTransactions,
-  ] = useState(() => {
-    return normalizeTransactions(
-      parseStoredArray("transactions"),
-    );
+  const [transactions, setTransactions] = useState(() => {
+    return normalizeTransactions(parseStoredArray("transactions"));
   });
 
-  const [
-    transactionsLoading,
-    setTransactionsLoading,
-  ] = useState(false);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
 
   // -----------------------------------
   // GOALS
   // -----------------------------------
 
-  const [goals, setGoals] =
-    useState(() => {
-      return normalizeGoals(
-        parseStoredArray("goals"),
-      );
-    });
+  const [goals, setGoals] = useState(() => {
+    return normalizeGoals(parseStoredArray("goals"));
+  });
 
   // -----------------------------------
   // BUDGETS
   // -----------------------------------
 
-  const [budgets, setBudgets] =
-    useState(() => {
-      return normalizeBudgets(
-        parseStoredArray("budgets"),
-      );
-    });
+  const [budgets, setBudgets] = useState(() => {
+    return normalizeBudgets(parseStoredArray("budgets"));
+  });
 
   // -----------------------------------
   // INVESTMENTS
   // -----------------------------------
 
-  const [
-    investmentScenarios,
-    setInvestmentScenarios,
-  ] = useState(() => {
-    return parseStoredArray(
-      "investmentScenarios",
-    );
+  const [investmentScenarios, setInvestmentScenarios] = useState(() => {
+    return parseStoredArray("investmentScenarios");
   });
 
   // -----------------------------------
@@ -449,10 +351,7 @@ export function FinanceProvider({ children }) {
       } = await supabase.auth.getUser();
 
       if (error) {
-        console.error(
-          "FinanceContext user error:",
-          error,
-        );
+        console.error("FinanceContext user error:", error);
       }
 
       if (!mounted) return;
@@ -465,16 +364,11 @@ export function FinanceProvider({ children }) {
 
     const {
       data: { subscription },
-    } =
-      supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          if (!mounted) return;
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
 
-          setUser(
-            session?.user ?? null,
-          );
-        },
-      );
+      setUser(session?.user ?? null);
+    });
 
     return () => {
       mounted = false;
@@ -495,39 +389,28 @@ export function FinanceProvider({ children }) {
       return;
     }
 
-    const loadTransactions =
-      async () => {
-        setTransactionsLoading(true);
+    const loadTransactions = async () => {
+      setTransactionsLoading(true);
 
-        const {
-          data,
-          error,
-        } = await supabase
-          .from("transactions")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("date", {
-            ascending: false,
-          });
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("date", {
+          ascending: false,
+        });
 
-        if (error) {
-          console.error(
-            "Load transactions error:",
-            error,
-          );
-
-          setTransactionsLoading(false);
-          return;
-        }
-
-        setTransactions(
-          normalizeTransactions(
-            data ?? [],
-          ),
-        );
+      if (error) {
+        console.error("Load transactions error:", error);
 
         setTransactionsLoading(false);
-      };
+        return;
+      }
+
+      setTransactions(normalizeTransactions(data ?? []));
+
+      setTransactionsLoading(false);
+    };
 
     loadTransactions();
   }, [user, authLoading]);
@@ -536,235 +419,285 @@ export function FinanceProvider({ children }) {
   // ADD TRANSACTION
   // -----------------------------------
 
-  const addTransaction =
-    async (transaction) => {
-      if (!user) {
-        throw new Error(
-          "You must be logged in to add a transaction.",
-        );
-      }
+  const addTransaction = async (transaction) => {
+    if (!user) {
+      throw new Error("You must be logged in to add a transaction.");
+    }
 
-      const date =
-        transaction.date ||
-        new Date()
-          .toISOString()
-          .split("T")[0];
+    const date = transaction.date || new Date().toISOString().split("T")[0];
 
-      const month =
-        transaction.month ||
-        date.slice(0, 7);
+    const month = transaction.month || date.slice(0, 7);
 
-      const newTransaction = {
-        type: transaction.type,
-        category:
-          transaction.category.trim(),
-        amount: Number(
-          transaction.amount,
-        ),
-        date,
-        currency:
-          transaction.currency ||
-          defaultCurrency,
-        month,
-        user_id: user.id,
-      };
-
-      let { data, error } = await supabase
-        .from("transactions")
-        .insert(newTransaction)
-        .select()
-        .single();
-
-      // Older tables may not have a "month" column yet; it can
-      // always be derived from "date", so retry without it.
-      if (isMissingColumnError(error, "month")) {
-        const withoutMonth = { ...newTransaction };
-        delete withoutMonth.month;
-
-        ({ data, error } = await supabase
-          .from("transactions")
-          .insert(withoutMonth)
-          .select()
-          .single());
-      }
-
-      if (error) {
-        console.error(
-          "Add transaction error:",
-          error,
-        );
-
-        throw error;
-      }
-
-      const normalized =
-        normalizeTransactions([
-          data,
-        ])[0];
-
-      setTransactions((prev) => [
-        normalized,
-        ...prev,
-      ]);
-
-      return normalized;
+    const newTransaction = {
+      type: transaction.type,
+      category: transaction.category.trim(),
+      amount: Number(transaction.amount),
+      date,
+      currency: transaction.currency || defaultCurrency,
+      month,
+      user_id: user.id,
     };
+
+    let { data, error } = await supabase
+      .from("transactions")
+      .insert(newTransaction)
+      .select()
+      .single();
+
+    // Older tables may not have a "month" column yet; it can
+    // always be derived from "date", so retry without it.
+    if (isMissingColumnError(error, "month")) {
+      const withoutMonth = { ...newTransaction };
+      delete withoutMonth.month;
+
+      ({ data, error } = await supabase
+        .from("transactions")
+        .insert(withoutMonth)
+        .select()
+        .single());
+    }
+
+    if (error) {
+      console.error("Add transaction error:", error);
+
+      throw error;
+    }
+
+    const normalized = normalizeTransactions([data])[0];
+
+    setTransactions((prev) => [normalized, ...prev]);
+
+    return normalized;
+  };
 
   // -----------------------------------
   // UPDATE TRANSACTION
   // -----------------------------------
 
-  const updateTransaction =
-    async (id, updates) => {
-      if (!user) {
-        throw new Error(
-          "You must be logged in.",
-        );
-      }
+  const updateTransaction = async (id, updates) => {
+    if (!user) {
+      throw new Error("You must be logged in.");
+    }
 
-      const cleanUpdates = {
-        ...updates,
-      };
+    const cleanUpdates = {
+      ...updates,
+    };
 
-      if (cleanUpdates.amount !== undefined) {
-        cleanUpdates.amount =
-          Number(cleanUpdates.amount);
-      }
+    if (cleanUpdates.amount !== undefined) {
+      cleanUpdates.amount = Number(cleanUpdates.amount);
+    }
 
-      if (
-        cleanUpdates.category !==
-        undefined
-      ) {
-        cleanUpdates.category =
-          cleanUpdates.category.trim();
-      }
+    if (cleanUpdates.category !== undefined) {
+      cleanUpdates.category = cleanUpdates.category.trim();
+    }
 
-      let { data, error } = await supabase
+    let { data, error } = await supabase
+      .from("transactions")
+      .update(cleanUpdates)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    // Older tables may not have a "month" column yet; it can
+    // always be derived from "date", so retry without it.
+    if (isMissingColumnError(error, "month")) {
+      const withoutMonth = { ...cleanUpdates };
+      delete withoutMonth.month;
+
+      ({ data, error } = await supabase
         .from("transactions")
-        .update(cleanUpdates)
+        .update(withoutMonth)
         .eq("id", id)
         .eq("user_id", user.id)
         .select()
-        .single();
+        .single());
+    }
 
-      // Older tables may not have a "month" column yet; it can
-      // always be derived from "date", so retry without it.
-      if (isMissingColumnError(error, "month")) {
-        const withoutMonth = { ...cleanUpdates };
-        delete withoutMonth.month;
+    if (error) {
+      console.error("Update transaction error:", error);
 
-        ({ data, error } = await supabase
-          .from("transactions")
-          .update(withoutMonth)
-          .eq("id", id)
-          .eq("user_id", user.id)
-          .select()
-          .single());
-      }
+      throw error;
+    }
 
-      if (error) {
-        console.error(
-          "Update transaction error:",
-          error,
-        );
+    const normalized = normalizeTransactions([data])[0];
 
-        throw error;
-      }
+    setTransactions((prev) =>
+      prev.map((transaction) =>
+        transaction.id === id ? normalized : transaction,
+      ),
+    );
 
-      const normalized =
-        normalizeTransactions([
-          data,
-        ])[0];
-
-      setTransactions((prev) =>
-        prev.map((transaction) =>
-          transaction.id === id
-            ? normalized
-            : transaction,
-        ),
-      );
-
-      return normalized;
-    };
+    return normalized;
+  };
 
   // -----------------------------------
   // DELETE TRANSACTION
   // -----------------------------------
 
-  const deleteTransaction =
-    async (id) => {
-      if (!user) {
-        throw new Error(
-          "You must be logged in.",
-        );
-      }
+  const deleteTransaction = async (id) => {
+    if (!user) {
+      throw new Error("You must be logged in.");
+    }
 
-      const {
-        error,
-      } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", user.id);
+    const { error } = await supabase
+      .from("transactions")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
 
-      if (error) {
-        console.error(
-          "Delete transaction error:",
-          error,
-        );
+    if (error) {
+      console.error("Delete transaction error:", error);
 
-        throw error;
-      }
+      throw error;
+    }
 
-      setTransactions((prev) =>
-        prev.filter(
-          (transaction) =>
-            transaction.id !== id,
-        ),
-      );
+    setTransactions((prev) =>
+      prev.filter((transaction) => transaction.id !== id),
+    );
+  };
+
+  // -------------------------------------
+  // ADD BUDGET
+  // -------------------------------------
+
+  const addBudget = async (budget) => {
+    if (!user) {
+      throw new Error("You must be logged in to add a budget.");
+    }
+
+    const category =
+      typeof budget.category === "string" ? budget.category.trim() : "";
+
+    const amount = Number(budget.amount);
+
+    if (!category || Number.isNaN(amount) || amount <= 0) {
+      throw new Error("Invalid budget information.");
+    }
+
+    const newBudget = {
+      category,
+      amount,
+      currency: budget.currency || defaultCurrency,
+      month: budget.month || currentMonth,
+      user_id: user.id,
     };
+
+    let { data, error } = await supabase
+      .from("budgets")
+      .insert(newBudget)
+      .select()
+      .single();
+
+    // Support older tables that may not have month yet.
+    if (isMissingColumnError(error, "month")) {
+      const withoutMonth = {
+        ...newBudget,
+      };
+
+      delete withoutMonth.month;
+
+      ({ data, error } = await supabase
+        .from("budgets")
+        .insert(withoutMonth)
+        .select()
+        .single());
+    }
+
+    if (error) {
+      console.error("Add budget error:", error);
+      throw error;
+    }
+
+    const normalized = normalizeBudgets([data])[0];
+
+    setBudgets((prev) => [...prev, normalized]);
+
+    return normalized;
+  };
+
+  // -------------------------------------
+  // ADD GOAL
+  // -------------------------------------
+
+  const addGoal = async (goal) => {
+    if (!user) {
+      throw new Error("You must be logged in to add a goal.");
+    }
+
+    const name = typeof goal.name === "string" ? goal.name.trim() : "";
+
+    const targetAmount = Number(goal.targetAmount);
+
+    if (!name || Number.isNaN(targetAmount) || targetAmount <= 0) {
+      throw new Error("Invalid goal information.");
+    }
+
+    const newGoal = {
+      name,
+      type: goal.type || "🎯 Goal",
+
+      target_amount: targetAmount,
+
+      current_amount: Number(goal.currentAmount || 0),
+
+      target_date: goal.targetDate || null,
+
+      currency: goal.currency || defaultCurrency,
+
+      user_id: user.id,
+    };
+
+    const { data, error } = await supabase
+      .from("goals")
+      .insert(newGoal)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Add goal error:", error);
+      throw error;
+    }
+
+    const normalized = normalizeGoals([
+      {
+        ...data,
+        targetAmount: data.target_amount,
+        currentAmount: data.current_amount,
+        targetDate: data.target_date,
+      },
+    ])[0];
+
+    setGoals((prev) => [...prev, normalized]);
+
+    return normalized;
+  };
 
   // -----------------------------------
   // LOCAL STORAGE
   // -----------------------------------
 
   useEffect(() => {
-    localStorage.setItem(
-      "transactions",
-      JSON.stringify(
-        transactions,
-      ),
-    );
+    localStorage.setItem("transactions", JSON.stringify(transactions));
   }, [transactions]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "goals",
-      JSON.stringify(goals),
-    );
+    localStorage.setItem("goals", JSON.stringify(goals));
   }, [goals]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "budgets",
-      JSON.stringify(budgets),
-    );
+    localStorage.setItem("budgets", JSON.stringify(budgets));
   }, [budgets]);
 
   useEffect(() => {
     localStorage.setItem(
       "investmentScenarios",
-      JSON.stringify(
-        investmentScenarios,
-      ),
+      JSON.stringify(investmentScenarios),
     );
   }, [investmentScenarios]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "defaultCurrency",
-      defaultCurrency,
-    );
+    localStorage.setItem("defaultCurrency", defaultCurrency);
   }, [defaultCurrency]);
 
   // -----------------------------------
@@ -772,27 +705,16 @@ export function FinanceProvider({ children }) {
   // -----------------------------------
 
   useEffect(() => {
-    localStorage.setItem(
-      "theme",
-      theme,
-    );
+    localStorage.setItem("theme", theme);
 
-    const root =
-      document.documentElement;
+    const root = document.documentElement;
 
-    const body =
-      document.body;
+    const body = document.body;
 
     const applyTheme = (isDark) => {
-      root.classList.toggle(
-        "dark",
-        isDark,
-      );
+      root.classList.toggle("dark", isDark);
 
-      body.classList.toggle(
-        "dark",
-        isDark,
-      );
+      body.classList.toggle("dark", isDark);
     };
 
     if (theme === "dark") {
@@ -805,33 +727,18 @@ export function FinanceProvider({ children }) {
       return;
     }
 
-    const mediaQuery =
-      window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      );
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-    applyTheme(
-      mediaQuery.matches,
-    );
+    applyTheme(mediaQuery.matches);
 
-    const handleChange = (
-      event,
-    ) => {
-      applyTheme(
-        event.matches,
-      );
+    const handleChange = (event) => {
+      applyTheme(event.matches);
     };
 
-    mediaQuery.addEventListener(
-      "change",
-      handleChange,
-    );
+    mediaQuery.addEventListener("change", handleChange);
 
     return () => {
-      mediaQuery.removeEventListener(
-        "change",
-        handleChange,
-      );
+      mediaQuery.removeEventListener("change", handleChange);
     };
   }, [theme]);
 
@@ -853,10 +760,12 @@ export function FinanceProvider({ children }) {
         // Goals
         goals,
         setGoals,
+        addGoal,
 
         // Budgets
         budgets,
         setBudgets,
+        addBudget,
 
         // Investments
         investmentScenarios,
@@ -886,7 +795,5 @@ export function FinanceProvider({ children }) {
 }
 
 export function useFinance() {
-  return useContext(
-    FinanceContext,
-  );
+  return useContext(FinanceContext);
 }

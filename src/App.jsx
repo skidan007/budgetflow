@@ -6,6 +6,8 @@ import {
   Route,
 } from "react-router-dom";
 
+import AIPlanner from "./pages/AIPlanner";
+
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
@@ -48,6 +50,7 @@ function App() {
                 element={<CompoundInterest />}
               />
               <Route path="settings" element={<Settings />} />
+              <Route path="ai-planner" element={<AIPlanner />} />
             </Route>
           </Route>
 

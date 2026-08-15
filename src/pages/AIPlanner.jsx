@@ -14,37 +14,6 @@ import toast from "react-hot-toast";
 import { useFinance } from "../context/FinanceContext";
 
 function AIPlanner() {
-const getCategoryIcon = (category) => {
-  const name = category.toLowerCase();
-
-  if (name.includes("saving")) {
-    return PiggyBank;
-  }
-
-  if (
-    name.includes("invest") ||
-    name.includes("wealth")
-  ) {
-    return TrendingUp;
-  }
-
-  if (
-    name.includes("emergency") ||
-    name.includes("buffer")
-  ) {
-    return ShieldCheck;
-  }
-
-  if (
-    name.includes("personal") ||
-    name.includes("flexible")
-  ) {
-    return Target;
-  }
-
-  return Wallet;
-};
-
   const { defaultCurrency, currencySymbol } = useFinance();
 
   const [income, setIncome] = useState("");
@@ -59,7 +28,97 @@ const getCategoryIcon = (category) => {
   // -------------------------------------
 
   const formatMoney = (amount) => {
-    return `${currencySymbol}${Number(amount).toLocaleString()}`;
+    return `${currencySymbol}${Number(amount || 0).toLocaleString()}`;
+  };
+
+  // -------------------------------------
+  // CATEGORY ICON
+  // -------------------------------------
+
+  const getCategoryIcon = (category) => {
+    const name = String(category || "").toLowerCase();
+
+    if (name.includes("saving")) {
+      return PiggyBank;
+    }
+
+    if (
+      name.includes("invest") ||
+      name.includes("wealth")
+    ) {
+      return TrendingUp;
+    }
+
+    if (
+      name.includes("emergency") ||
+      name.includes("buffer")
+    ) {
+      return ShieldCheck;
+    }
+
+    if (
+      name.includes("personal") ||
+      name.includes("flexible")
+    ) {
+      return Target;
+    }
+
+    return Wallet;
+  };
+
+  // -------------------------------------
+  // CATEGORY STYLE
+  // -------------------------------------
+
+  const getCategoryStyle = (category) => {
+    const name = String(category || "").toLowerCase();
+
+    if (name.includes("saving")) {
+      return {
+        iconBg: "bg-green-100",
+        iconColor: "text-green-600",
+        progress: "bg-green-600",
+      };
+    }
+
+    if (
+      name.includes("invest") ||
+      name.includes("wealth")
+    ) {
+      return {
+        iconBg: "bg-purple-100",
+        iconColor: "text-purple-600",
+        progress: "bg-purple-600",
+      };
+    }
+
+    if (
+      name.includes("emergency") ||
+      name.includes("buffer")
+    ) {
+      return {
+        iconBg: "bg-red-100",
+        iconColor: "text-red-600",
+        progress: "bg-red-600",
+      };
+    }
+
+    if (
+      name.includes("personal") ||
+      name.includes("flexible")
+    ) {
+      return {
+        iconBg: "bg-orange-100",
+        iconColor: "text-orange-600",
+        progress: "bg-orange-600",
+      };
+    }
+
+    return {
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      progress: "bg-blue-600",
+    };
   };
 
   // -------------------------------------
@@ -67,88 +126,102 @@ const getCategoryIcon = (category) => {
   // -------------------------------------
 
   const handleGeneratePlan = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const amount = Number(income);
+    const amount = Number(income);
 
-  if (!amount || amount <= 0) {
-    toast.error("Please enter a valid amount.");
-    return;
-  }
+    if (!amount || amount <= 0) {
+      toast.error("Please enter a valid amount.");
+      return;
+    }
 
-  if (!goal.trim()) {
-    toast.error(
-      "Tell BudgetFlow what you want to achieve.",
-    );
-    return;
-  }
+    if (!goal.trim()) {
+      toast.error(
+        "Tell BudgetFlow what you want to achieve.",
+      );
+      return;
+    }
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const response = await fetch("/api/ai-planner", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    try {
+      /*
+       * TEMPORARY PLAN
+       *
+       * We are intentionally keeping this local for now.
+       * Once the page renders correctly, we will
+       * connect this function to /api/ai-planner.
+       */
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 700),
+      );
+
+      const essentials = amount * 0.4;
+      const savings = amount * 0.2;
+      const investment = amount * 0.15;
+      const personal = amount * 0.1;
+      const emergency = amount * 0.15;
+
+      setPlan({
         income: amount,
-        goal: goal.trim(),
-        planningFor,
-        currency: defaultCurrency,
-      }),
-    });
+        summary:
+          "This is a starting financial plan based on your available money and stated goal.",
+        categories: [
+          {
+            id: 1,
+            name: "Essentials",
+            amount: essentials,
+            percentage: 40,
+            description:
+              "Food, transportation, bills and other necessary expenses.",
+          },
+          {
+            id: 2,
+            name: "Savings",
+            amount: savings,
+            percentage: 20,
+            description:
+              "Money set aside for your savings goals.",
+          },
+          {
+            id: 3,
+            name: "Investment",
+            amount: investment,
+            percentage: 15,
+            description:
+              "Money allocated toward long-term wealth building.",
+          },
+          {
+            id: 4,
+            name: "Personal",
+            amount: personal,
+            percentage: 10,
+            description:
+              "Personal, entertainment and flexible spending.",
+          },
+          {
+            id: 5,
+            name: "Emergency Fund",
+            amount: emergency,
+            percentage: 15,
+            description:
+              "A buffer for unexpected expenses.",
+          },
+        ],
+      });
 
-    const data = await response.json();
+      toast.success("Your financial plan is ready!");
+    } catch (error) {
+      console.error("Generate plan error:", error);
 
-    if (!response.ok) {
-      throw new Error(
-        data.error ||
-          "Failed to generate financial plan.",
-      );
-    }
-
-    if (!data.plan) {
-      throw new Error(
-        "No financial plan was returned.",
-      );
-    }
-
-    const normalizedPlan = {
-      income: amount,
-      summary: data.plan.summary || "",
-      categories: data.plan.categories.map(
-        (category, index) => ({
-          id: index + 1,
-          name: category.name,
-          amount: Number(category.amount) || 0,
-          percentage:
-            Number(category.percentage) || 0,
-          description:
-            category.description || "",
-        }),
-      ),
-    };
-
-    setPlan(normalizedPlan);
-
-    toast.success(
-      "Your personalized financial plan is ready!",
-    );
-  } catch (error) {
-    console.error(
-      "Generate AI plan error:",
-      error,
-    );
-
-    toast.error(
-      error.message ||
+      toast.error(
         "Unable to generate your financial plan.",
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // -------------------------------------
   // RESET
@@ -166,24 +239,19 @@ const getCategoryIcon = (category) => {
   // -------------------------------------
 
   const handleUsePlan = () => {
-    /*
-     * We will connect this to FinanceContext later.
-     *
-     * Eventually this button will:
-     *
-     * 1. Create budgets
-     * 2. Create savings goals
-     * 3. Create investment allocation
-     * 4. Save the AI plan
-     */
-
-    toast.success("Your plan is ready to be added to BudgetFlow.");
+    toast.success(
+      "We'll connect this plan to your budgets and goals next.",
+    );
   };
+
+  // -------------------------------------
+  // PAGE
+  // -------------------------------------
 
   return (
     <section className="mx-auto max-w-5xl space-y-8">
       {/* ================================= */}
-      {/* HEADER */}
+      {/* INTRO */}
       {/* ================================= */}
 
       {!plan && (
@@ -197,8 +265,9 @@ const getCategoryIcon = (category) => {
           </h1>
 
           <p className="mx-auto mt-2 max-w-2xl text-slate-500">
-            Tell BudgetFlow about your money and what you want to achieve. We'll
-            create a practical financial plan for you.
+            Tell BudgetFlow how much money you have and what
+            you want to achieve. We'll help you create a
+            practical financial plan.
           </p>
         </div>
       )}
@@ -209,8 +278,12 @@ const getCategoryIcon = (category) => {
 
       {!plan && (
         <div className="rounded-2xl bg-white p-6 shadow-md sm:p-8">
-          <form onSubmit={handleGeneratePlan} className="space-y-6">
-            {/* MONEY */}
+          <form
+            onSubmit={handleGeneratePlan}
+            className="space-y-6"
+          >
+            {/* INCOME */}
+
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 How much money do you have?
@@ -224,7 +297,9 @@ const getCategoryIcon = (category) => {
                 <input
                   type="number"
                   value={income}
-                  onChange={(e) => setIncome(e.target.value)}
+                  onChange={(e) =>
+                    setIncome(e.target.value)
+                  }
                   placeholder="500000"
                   min="0"
                   className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
@@ -237,6 +312,7 @@ const getCategoryIcon = (category) => {
             </div>
 
             {/* PERIOD */}
+
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 What are you planning for?
@@ -244,18 +320,27 @@ const getCategoryIcon = (category) => {
 
               <select
                 value={planningFor}
-                onChange={(e) => setPlanningFor(e.target.value)}
+                onChange={(e) =>
+                  setPlanningFor(e.target.value)
+                }
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               >
-                <option value="Monthly">This month</option>
+                <option value="Monthly">
+                  This month
+                </option>
 
-                <option value="Weekly">This week</option>
+                <option value="Weekly">
+                  This week
+                </option>
 
-                <option value="Custom">A specific financial goal</option>
+                <option value="Custom">
+                  A specific financial goal
+                </option>
               </select>
             </div>
 
             {/* GOAL */}
+
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 What do you want to achieve?
@@ -263,14 +348,17 @@ const getCategoryIcon = (category) => {
 
               <textarea
                 value={goal}
-                onChange={(e) => setGoal(e.target.value)}
+                onChange={(e) =>
+                  setGoal(e.target.value)
+                }
                 placeholder="Example: I want to pay my bills, save ₦100,000, invest some money and still have enough for myself."
                 rows={5}
                 className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               />
             </div>
 
-            {/* GENERATE */}
+            {/* SUBMIT */}
+
             <button
               type="submit"
               disabled={loading}
@@ -278,7 +366,9 @@ const getCategoryIcon = (category) => {
             >
               <Sparkles size={20} />
 
-              {loading ? "Creating your plan..." : "Generate My Financial Plan"}
+              {loading
+                ? "Creating your plan..."
+                : "Generate My Financial Plan"}
 
               {!loading && <ArrowRight size={20} />}
             </button>
@@ -287,12 +377,12 @@ const getCategoryIcon = (category) => {
       )}
 
       {/* ================================= */}
-      {/* AI PLAN */}
+      {/* PLAN */}
       {/* ================================= */}
 
       {plan && (
         <div className="space-y-6">
-          {/* PLAN HEADER */}
+          {/* HEADER */}
 
           <div className="rounded-2xl bg-slate-900 p-6 text-white shadow-lg sm:p-8">
             <div className="flex items-start justify-between gap-4">
@@ -300,7 +390,9 @@ const getCategoryIcon = (category) => {
                 <div className="flex items-center gap-2 text-indigo-300">
                   <Sparkles size={20} />
 
-                  <span className="text-sm font-semibold">BudgetFlow AI</span>
+                  <span className="text-sm font-semibold">
+                    BudgetFlow AI
+                  </span>
                 </div>
 
                 <h1 className="mt-3 text-2xl font-bold sm:text-3xl">
@@ -308,43 +400,47 @@ const getCategoryIcon = (category) => {
                 </h1>
 
                 <p className="mt-2 text-sm text-slate-300">
-                  Based on {formatMoney(plan.income)} and your financial goals.
+                  Based on {formatMoney(plan.income)} and
+                  your financial goal.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={handleReset}
-                className="rounded-lg p-2 text-slate-300 transition hover:bg-white/10 hover:text-white"
-                title="Create another plan"
+                className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white"
               >
                 <RotateCcw size={20} />
               </button>
             </div>
 
             <div className="mt-6 rounded-xl bg-white/10 p-4">
-              <p className="text-sm text-slate-300">Your goal</p>
+              <p className="text-sm text-slate-300">
+                Your goal
+              </p>
 
-              <p className="mt-1 text-sm font-medium text-white">{goal}</p>
+              <p className="mt-1 text-sm font-medium text-white">
+                {goal}
+              </p>
             </div>
+
+            {plan.summary && (
+              <p className="mt-5 text-sm leading-6 text-slate-300">
+                {plan.summary}
+              </p>
+            )}
           </div>
 
           {/* TOTAL */}
 
           <div className="rounded-2xl bg-white p-6 shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">Available to plan</p>
+            <p className="text-sm text-slate-500">
+              Available to plan
+            </p>
 
-                <p className="mt-1 text-3xl font-bold text-slate-900">
-                  {formatMoney(plan.income)}
-                </p>
-              </div>
-
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-                <Wallet size={24} />
-              </div>
-            </div>
+            <p className="mt-1 text-3xl font-bold text-slate-900">
+              {formatMoney(plan.income)}
+            </p>
           </div>
 
           {/* BREAKDOWN */}
@@ -356,7 +452,12 @@ const getCategoryIcon = (category) => {
 
             <div className="grid gap-4 md:grid-cols-2">
               {plan.categories.map((item) => {
-                const Icon = getCategoryIcon(item.name);
+                const Icon = getCategoryIcon(
+                  item.name,
+                );
+
+                const style =
+                  getCategoryStyle(item.name);
 
                 return (
                   <div
@@ -366,7 +467,7 @@ const getCategoryIcon = (category) => {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.iconBg} ${item.iconColor}`}
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${style.iconBg} ${style.iconColor}`}
                         >
                           <Icon size={22} />
                         </div>
@@ -387,11 +488,9 @@ const getCategoryIcon = (category) => {
                       </p>
                     </div>
 
-                    {/* PROGRESS */}
-
                     <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className="h-full rounded-full bg-indigo-600"
+                        className={`h-full rounded-full ${style.progress}`}
                         style={{
                           width: `${item.percentage}%`,
                         }}
@@ -415,7 +514,7 @@ const getCategoryIcon = (category) => {
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              You can apply this plan to your BudgetFlow account.
+              Apply this plan to your BudgetFlow account.
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">

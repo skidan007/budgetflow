@@ -27,8 +27,8 @@ const Sidebar = ({ isOpen, onClose }) => {
       path: "/compound-interest",
       icon: Calculator,
     },
-    { name: "Settings", path: "/settings", icon: Settings },
     { name: "AI Planner", path: "/ai-planner", icon: Sparkles },
+    { name: "Settings", path: "/settings", icon: Settings },
   ];
 
   const handleLogout = async () => {
@@ -69,9 +69,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               className="h-12 w-auto rounded-full object-contain"
             />
 
-            <span className="text-xl font-bold text-white">
-              BudgetFlow
-            </span>
+            <span className="text-xl font-bold text-white">BudgetFlow</span>
           </div>
 
           {/* Mobile close button */}
@@ -117,9 +115,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           >
             <LogOut size={20} />
 
-            <span className="ml-3 font-medium">
-              Logout
-            </span>
+            <span className="ml-3 font-medium">Logout</span>
           </button>
         </div>
       </aside>
