@@ -54,16 +54,15 @@ function Goals() {
         </p>
 
         <div className="mt-8 flex items-center justify-between border-b border-slate-200 pb-4 dark:border-slate-700">
-          {/* <h2 className="text-xl font-bold">Add Goal</h2> */}
+
           <button
             type="button"
             onClick={() => setIsFormOpen(true)}
             aria-label="Add goal"
             className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 font-semibold text-white transition hover:bg-indigo-700"
-            // className="grid size-11 place-items-center rounded-lg bg-indigo-600 text-white transition hover:bg-indigo-700"
           >
             Add Goal <ArrowRight size={18} aria-hidden="true" />
-            {/* <Plus size={22} aria-hidden="true" /> */}
+            
           </button>
         </div>
       </section>
