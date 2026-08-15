@@ -1,7 +1,12 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 function AddSavingsModal({ goal, onClose, onSave }) {
   const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(
+    () => new Date().toISOString().split("T")[0],
+  );
+  const [note, setNote] = useState("");
 
   if (!goal) {
     return null;
@@ -13,11 +18,13 @@ function AddSavingsModal({ goal, onClose, onSave }) {
     const savingsAmount = Number(amount);
 
     if (!savingsAmount || savingsAmount <= 0) {
+      toast.error("Enter a valid saving amount.");
       return;
     }
 
-    onSave(savingsAmount);
+    onSave({ amount: savingsAmount, date, note: note.trim() });
     setAmount("");
+    setNote("");
   };
 
   return (
@@ -77,6 +84,30 @@ function AddSavingsModal({ goal, onClose, onSave }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="e.g. 50000"
+            className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+          />
+
+          <label className="mb-2 mt-4 block text-sm font-medium text-slate-700">
+            Date
+          </label>
+
+          <input
+            type="date"
+            value={date}
+            max={new Date().toISOString().split("T")[0]}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+          />
+
+          <label className="mb-2 mt-4 block text-sm font-medium text-slate-700">
+            Note (optional)
+          </label>
+
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Monthly contribution"
             className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
           />
 

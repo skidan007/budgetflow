@@ -1,6 +1,8 @@
 function SavingsHistory({ goal, onDeleteSaving }) {
   const savingsHistory = Array.isArray(goal?.savingsHistory)
-    ? goal.savingsHistory
+    ? [...goal.savingsHistory].sort(
+        (a, b) => new Date(b?.date || 0) - new Date(a?.date || 0),
+      )
     : [];
 
   return (
@@ -11,7 +13,7 @@ function SavingsHistory({ goal, onDeleteSaving }) {
 
       {savingsHistory.length === 0 ? (
         <p className="mt-2 text-sm text-slate-500">
-          No savings added yet.
+          No savings recorded yet.
         </p>
       ) : (
         <div className="mt-3 space-y-3">
@@ -29,17 +31,25 @@ function SavingsHistory({ goal, onDeleteSaving }) {
                 <p className="text-xs text-slate-500">
                   {saving?.date || "No date"}
                 </p>
+
+                {saving?.note && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {saving.note}
+                  </p>
+                )}
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  onDeleteSaving(goal.id, saving.id)
-                }
-                className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-              >
-                Delete
-              </button>
+              {onDeleteSaving && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onDeleteSaving(goal.id, saving.id)
+                  }
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              )}
             </div>
           ))}
         </div>

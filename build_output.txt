@@ -1,0 +1,52 @@
+
+> budget-flow@0.0.0 build
+> vite build
+
+[36mvite v8.1.5 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 2646 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                            0.40 kB
+dist/index.html                                      0.69 kB │ gzip:   0.37 kB
+dist/assets/budgetflow-logo-Cr1N-Bu0.png           991.08 kB
+dist/assets/index-DifcTX_P.css                      43.76 kB │ gzip:   8.23 kB
+dist/assets/plus-BDrDuVUS.js                         0.14 kB │ gzip:   0.14 kB
+dist/assets/typeof-B5XbjTb1.js                       0.27 kB │ gzip:   0.16 kB
+dist/assets/Modal-C-nuQ1m3.js                        0.55 kB │ gzip:   0.32 kB
+dist/assets/rolldown-runtime-QTnfLwEv.js             0.69 kB │ gzip:   0.42 kB
+dist/assets/YearlyBreakdownTable-CfJdMC0Y.js         0.98 kB │ gzip:   0.45 kB
+dist/assets/RateComparisonChart-FxUqfO8s.js          1.61 kB │ gzip:   0.86 kB
+dist/assets/RateComparisonControls-CyWbQUvX.js       1.67 kB │ gzip:   0.87 kB
+dist/assets/CompoundInterestChart-rYJcIVOn.js        1.79 kB │ gzip:   0.90 kB
+dist/assets/ExpenseForm-DsWGjYGE.js                  3.16 kB │ gzip:   1.18 kB
+dist/assets/Settings-SMyVvk3o.js                     3.50 kB │ gzip:   1.22 kB
+dist/assets/GoalFormModal-jNVnPjl8.js                3.70 kB │ gzip:   1.30 kB
+dist/assets/FinancialInsights-CXOMy_1b.js            4.17 kB │ gzip:   1.20 kB
+dist/assets/Goals-DC6eW8VF.js                        4.35 kB │ gzip:   1.50 kB
+dist/assets/workbox-window.prod.es5-Bd17z0YL.js      5.65 kB │ gzip:   2.20 kB
+dist/assets/Expenses-BRxYE-E0.js                     5.83 kB │ gzip:   2.18 kB
+dist/assets/react-CZI7_Jkm.js                        7.53 kB │ gzip:   2.88 kB
+dist/assets/GoalDetails-Cos1j2zs.js                  8.84 kB │ gzip:   2.56 kB
+dist/assets/Budgets-CdyCoAMs.js                     11.26 kB │ gzip:   3.32 kB
+dist/assets/Legend-Bcfk0tj5.js                      14.28 kB │ gzip:   4.79 kB
+dist/assets/CompoundInterest-CsTqSaec.js            16.36 kB │ gzip:   4.07 kB
+dist/assets/LineChart-Vb1YYnhc.js                   16.86 kB │ gzip:   5.38 kB
+dist/assets/SummaryCard-ZKDVKySb.js                 18.78 kB │ gzip:   6.15 kB
+dist/assets/Dashboard-BNAOZ_tE.js                   20.98 kB │ gzip:   5.26 kB
+dist/assets/purify.es-Bwt4ulIK.js                   27.13 kB │ gzip:  10.54 kB
+dist/assets/CartesianChart-DsUCpBO7.js              35.65 kB │ gzip:   9.95 kB
+dist/assets/Reports-cn6Ynbuk.js                     38.31 kB │ gzip:  11.21 kB
+dist/assets/index.es-Q_nM81TE.js                   151.48 kB │ gzip:  48.93 kB
+dist/assets/html2canvas-BswC5BpG.js                199.56 kB │ gzip:  46.78 kB
+dist/assets/CategoricalChart-BKTZbivW.js           304.97 kB │ gzip:  91.11 kB
+dist/assets/exportCompoundInterestPDF-B5Pt92H7.js  401.99 kB │ gzip: 130.64 kB
+dist/assets/index-Dm1oM0xA.js                      489.62 kB │ gzip: 142.83 kB
+
+[32m✓ built in 3.21s[39m
+
+PWA v1.3.0
+mode      generateSW
+precache  44 entries (5688.62 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-9c191d2f.js

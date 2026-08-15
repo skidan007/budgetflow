@@ -16,6 +16,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Budgets = lazy(() => import("./pages/Budgets"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const Goals = lazy(() => import("./pages/Goals"));
+const GoalDetails = lazy(() => import("./pages/GoalDetails"));
 const Reports = lazy(() => import("./pages/Reports"));
 const CompoundInterest = lazy(
   () => import("./pages/CompoundInterest"),
@@ -44,6 +45,7 @@ function App() {
               <Route path="budgets" element={<Budgets />} />
               <Route path="expenses" element={<Expenses />} />
               <Route path="goals" element={<Goals />} />
+              <Route path="goals/:goalId" element={<GoalDetails />} />
               <Route path="reports" element={<Reports />} />
               <Route
                 path="compound-interest"

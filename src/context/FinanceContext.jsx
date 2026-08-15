@@ -173,6 +173,8 @@ function normalizeGoals(items) {
               typeof saving.date === "string" && saving.date
                 ? saving.date
                 : new Date().toISOString().split("T")[0],
+
+            note: typeof saving.note === "string" ? saving.note : "",
           });
 
           return historyAcc;
@@ -673,6 +675,117 @@ export function FinanceProvider({ children }) {
     return normalized;
   };
 
+  // -------------------------------------
+  // UPDATE GOAL
+  // -------------------------------------
+  // Goals are managed as local state (mirrors the existing Goals page and
+  // AI Planner, which only ever call setGoals). These helpers centralize
+  // that logic so every screen updates goals the same way.
+
+  const updateGoal = (id, updates) => {
+    setGoals((prevGoals) =>
+      prevGoals.map((goal) =>
+        String(goal.id) === String(id) ? { ...goal, ...updates } : goal,
+      ),
+    );
+  };
+
+  // -------------------------------------
+  // DELETE GOAL
+  // -------------------------------------
+
+  const deleteGoal = (id) => {
+    setGoals((prevGoals) =>
+      prevGoals.filter((goal) => String(goal.id) !== String(id)),
+    );
+  };
+
+  // -------------------------------------
+  // ADD SAVING TO GOAL
+  // -------------------------------------
+
+  const addSavingToGoal = (id, saving) => {
+    const amount = Number(saving?.amount);
+
+    if (!amount || amount <= 0 || Number.isNaN(amount)) {
+      throw new Error("Enter a valid saving amount.");
+    }
+
+    const goal = goals.find((item) => String(item.id) === String(id));
+
+    if (!goal) {
+      throw new Error("Goal not found.");
+    }
+
+    const remaining = Number(goal.targetAmount || 0) - Number(goal.currentAmount || 0);
+
+    if (amount > remaining) {
+      throw new Error("This saving is larger than the remaining goal amount.");
+    }
+
+    setGoals((prevGoals) =>
+      prevGoals.map((goal) => {
+        if (String(goal.id) !== String(id)) {
+          return goal;
+        }
+
+        const savingsHistory = Array.isArray(goal.savingsHistory)
+          ? goal.savingsHistory
+          : [];
+
+        const newSaving = {
+          id: `saving-${Date.now()}`,
+          amount,
+          date: saving.date || new Date().toISOString().split("T")[0],
+          note: saving.note || "",
+        };
+
+        return {
+          ...goal,
+          currentAmount: Number(goal.currentAmount || 0) + amount,
+          savingsHistory: [...savingsHistory, newSaving],
+        };
+      }),
+    );
+  };
+
+  // -------------------------------------
+  // DELETE SAVING FROM GOAL
+  // -------------------------------------
+
+  const deleteSavingFromGoal = (goalId, savingId) => {
+    setGoals((prevGoals) =>
+      prevGoals.map((goal) => {
+        if (String(goal.id) !== String(goalId)) {
+          return goal;
+        }
+
+        const savingsHistory = Array.isArray(goal.savingsHistory)
+          ? goal.savingsHistory
+          : [];
+
+        const savingToDelete = savingsHistory.find(
+          (saving) => String(saving.id) === String(savingId),
+        );
+
+        if (!savingToDelete) {
+          return goal;
+        }
+
+        return {
+          ...goal,
+          currentAmount: Math.max(
+            Number(goal.currentAmount || 0) - Number(savingToDelete.amount || 0),
+            0,
+          ),
+          savingsHistory: savingsHistory.filter(
+            (saving) => String(saving.id) !== String(savingId),
+          ),
+        };
+      }),
+    );
+  };
+
   // -----------------------------------
   // LOCAL STORAGE
   // -----------------------------------
@@ -761,6 +874,10 @@ export function FinanceProvider({ children }) {
         goals,
         setGoals,
         addGoal,
+        updateGoal,
+        deleteGoal,
+        addSavingToGoal,
+        deleteSavingFromGoal,
 
         // Budgets
         budgets,
