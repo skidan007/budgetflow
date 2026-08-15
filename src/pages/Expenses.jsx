@@ -16,6 +16,19 @@ const currencyMap = {
   CHF: "CHF",
 };
 
+const getMonthFromDate = (date) => {
+  if (!date) {
+    const today = new Date();
+
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
+      2,
+      "0",
+    )}`;
+  }
+
+  return date.slice(0, 7);
+};
+
 const Expenses = () => {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -23,20 +36,72 @@ const Expenses = () => {
   const [editingExpense, setEditingExpense] = useState(null);
 
   const {
-    transactions,
-    setTransactions,
-    defaultCurrency,
-  } = useFinance();
+  transactions,
+  defaultCurrency,
+  currentMonth,
+  currentMonthLabel,
+  budgets,
+  deleteTransaction,
+  updateTransaction,
+  getMonthLabel,
+} = useFinance();
 
-  // Only expenses belonging to the current/default currency
+  // -------------------------------------
+  // CURRENT MONTH EXPENSES
+  // -------------------------------------
+
   const expenses = transactions.filter(
     (transaction) =>
       transaction.type === "Expense" &&
-      (transaction.currency || "NGN") === defaultCurrency,
+      (transaction.currency || "NGN") === defaultCurrency &&
+      (transaction.month || getMonthFromDate(transaction.date)) ===
+        currentMonth,
   );
 
-  const currencySymbol =
-    currencyMap[defaultCurrency] || "₦";
+  const currencySymbol = currencyMap[defaultCurrency] || "₦";
+
+  // -------------------------------------
+// BUDGETED CATEGORIES
+// -------------------------------------
+
+const currentMonthBudgets = budgets.filter(
+  (budget) =>
+    budget.currency === defaultCurrency &&
+    budget.month === currentMonth,
+);
+
+const budgetedCategories =
+  currentMonthBudgets.map(
+    (budget) => budget.category,
+  );
+
+  const getCategoryRemaining = (category) => {
+  const budget = currentMonthBudgets.find(
+    (item) => item.category === category,
+  );
+
+  if (!budget) return 0;
+
+  const spent = expenses
+    .filter(
+      (expense) =>
+        expense.category === category,
+    )
+    .reduce(
+      (total, expense) =>
+        total + Number(expense.amount || 0),
+      0,
+    );
+
+  return Math.max(
+    Number(budget.amount) - spent,
+    0,
+  );
+};
+
+  // -------------------------------------
+  // SEARCH & CATEGORY FILTER
+  // -------------------------------------
 
   const filteredExpenses = expenses.filter((expense) => {
     const matchesSearch = expense.category
@@ -44,11 +109,14 @@ const Expenses = () => {
       .includes(search.toLowerCase());
 
     const matchesCategory =
-      selectedCategory === "All" ||
-      expense.category === selectedCategory;
+      selectedCategory === "All" || expense.category === selectedCategory;
 
     return matchesSearch && matchesCategory;
   });
+
+  // -------------------------------------
+  // SORT
+  // -------------------------------------
 
   const sortedExpenses = [...filteredExpenses].sort((a, b) => {
     switch (sortBy) {
@@ -69,28 +137,38 @@ const Expenses = () => {
     }
   });
 
-  // Total only for the selected/default currency
+  // -------------------------------------
+  // TOTAL CURRENT MONTH EXPENSES
+  // -------------------------------------
+
   const totalExpenses = expenses.reduce(
-    (total, expense) =>
-      total + (Number(expense.amount) || 0),
+    (total, expense) => total + (Number(expense.amount) || 0),
     0,
   );
 
-  const handleDeleteExpense = (id) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this expense?",
-      )
-    ) {
+  // -------------------------------------
+  // DELETE EXPENSE
+  // -------------------------------------
+
+  const handleDeleteExpense = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this expense?")) {
       return;
     }
 
-    setTransactions((prev) =>
-      prev.filter((transaction) => transaction.id !== id),
-    );
+    try {
+      await deleteTransaction(id);
 
-    toast.success("Expense deleted successfully!");
+      toast.success("Expense deleted successfully!");
+    } catch (error) {
+      console.error("Delete expense error:", error);
+
+      toast.error("Failed to delete expense. Please try again.");
+    }
   };
+
+  // -------------------------------------
+  // EDIT EXPENSE
+  // -------------------------------------
 
   const handleEditChange = (field, value) => {
     setEditingExpense((prev) => ({
@@ -99,7 +177,11 @@ const Expenses = () => {
     }));
   };
 
-  const handleUpdateExpense = () => {
+  // -------------------------------------
+  // UPDATE EXPENSE
+  // -------------------------------------
+
+  const handleUpdateExpense = async () => {
     if (!editingExpense) return;
 
     const amount = Number(editingExpense.amount);
@@ -109,36 +191,119 @@ const Expenses = () => {
       return;
     }
 
-    setTransactions((prev) =>
-      prev.map((transaction) =>
-        transaction.id === editingExpense.id
-          ? {
-              ...editingExpense,
-              amount,
-            }
-          : transaction,
-      ),
+    const updatedDate =
+      editingExpense.date || new Date().toISOString().split("T")[0];
+
+    const updatedMonth = getMonthFromDate(updatedDate);
+
+    const category = editingExpense.category?.trim();
+
+    if (!category) {
+      toast.error("Please select a category.");
+      return;
+    }
+
+    // -------------------------------------
+    // CHECK THAT CATEGORY IS BUDGETED
+    // -------------------------------------
+
+    const categoryBudget = budgets.find(
+      (budget) =>
+        budget.category === category &&
+        budget.currency === defaultCurrency &&
+        budget.month === updatedMonth,
     );
 
-    toast.success("Expense updated successfully!");
+    if (!categoryBudget) {
+      toast.error(
+        `${category} is not included in your budget for ${getMonthLabel(
+          updatedMonth,
+        )}.`,
+      );
 
-    setEditingExpense(null);
+      return;
+    }
+
+    // -------------------------------------
+    // CALCULATE CURRENT SPENDING
+    // EXCLUDING THE EXPENSE BEING EDITED
+    // -------------------------------------
+
+    const spentBeforeThisExpense = transactions
+      .filter(
+        (transaction) =>
+          transaction.type === "Expense" &&
+          transaction.id !== editingExpense.id &&
+          transaction.category === category &&
+          transaction.currency === defaultCurrency &&
+          (transaction.month || getMonthFromDate(transaction.date)) ===
+            updatedMonth,
+      )
+      .reduce(
+        (total, transaction) => total + Number(transaction.amount || 0),
+        0,
+      );
+
+    // -------------------------------------
+    // CHECK BUDGET LIMIT
+    // -------------------------------------
+
+    const remainingBudget =
+      Number(categoryBudget.amount) - spentBeforeThisExpense;
+
+    if (amount > remainingBudget) {
+      toast.error(
+        `This expense exceeds your ${category} budget. You have ${currencySymbol}${remainingBudget.toLocaleString()} remaining.`,
+      );
+
+      return;
+    }
+
+    // -------------------------------------
+    // UPDATE SUPABASE
+    // -------------------------------------
+
+    try {
+      await updateTransaction(editingExpense.id, {
+        amount,
+        category,
+        date: updatedDate,
+        month: updatedMonth,
+      });
+
+      toast.success("Expense updated successfully!");
+
+      setEditingExpense(null);
+    } catch (error) {
+      console.error("Update expense error:", error);
+
+      toast.error("Failed to update expense. Please try again.");
+    }
   };
 
   return (
     <section>
-      <h1 className="text-3xl font-bold text-slate-900">
-        Expenses
-      </h1>
+      {/* HEADER */}
 
-      <p className="text-gray-500">
-        Track and categorize your spending.
-      </p>
+      <h1 className="text-3xl font-bold text-slate-900">Expenses</h1>
+
+      <p className="text-gray-500">Track and categorize your spending.</p>
+
+      {/* CURRENT MONTH */}
+
+      <div className="mt-4 rounded-lg bg-indigo-50 p-4">
+        <p className="text-sm text-indigo-600">Current Budget Period</p>
+
+        <p className="mt-1 text-lg font-semibold text-indigo-900">
+          {currentMonthLabel}
+        </p>
+      </div>
 
       {/* TOTAL EXPENSES */}
+
       <div className="mt-6 mb-6 rounded-xl bg-white p-6 shadow-md">
         <p className="text-sm text-slate-500">
-          Total Expenses
+          Total Expenses for {currentMonthLabel}
         </p>
 
         <h2 className="mt-2 text-3xl font-bold text-red-600">
@@ -148,6 +313,7 @@ const Expenses = () => {
       </div>
 
       {/* FILTERS */}
+
       <div className="mb-6 flex flex-col gap-4 md:flex-row">
         <input
           type="text"
@@ -159,9 +325,7 @@ const Expenses = () => {
 
         <select
           value={selectedCategory}
-          onChange={(e) =>
-            setSelectedCategory(e.target.value)
-          }
+          onChange={(e) => setSelectedCategory(e.target.value)}
           className="rounded-lg border p-3"
         >
           <option>All</option>
@@ -186,15 +350,15 @@ const Expenses = () => {
       </div>
 
       {/* EXPENSE LIST */}
+
       <div className="space-y-4">
         {sortedExpenses.length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-center text-slate-500">
-            No expenses yet.
+            No expenses for {currentMonthLabel}.
           </p>
         ) : (
           sortedExpenses.map((expense) => {
-            const expenseCurrency =
-              currencyMap[expense.currency] || "₦";
+            const expenseCurrency = currencyMap[expense.currency] || "₦";
 
             return (
               <div
@@ -202,21 +366,15 @@ const Expenses = () => {
                 className="flex items-center justify-between rounded-xl border p-4 shadow-sm"
               >
                 <div>
-                  <h3 className="font-semibold">
-                    {expense.category}
-                  </h3>
+                  <h3 className="font-semibold">{expense.category}</h3>
 
-                  <p className="text-sm text-slate-500">
-                    {expense.date}
-                  </p>
+                  <p className="text-sm text-slate-500">{expense.date}</p>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-red-600">
                     {expenseCurrency}
-                    {Number(
-                      expense.amount || 0,
-                    ).toLocaleString()}
+                    {Number(expense.amount || 0).toLocaleString()}
                   </span>
 
                   <button
@@ -233,9 +391,7 @@ const Expenses = () => {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      handleDeleteExpense(expense.id)
-                    }
+                    onClick={() => handleDeleteExpense(expense.id)}
                     className="rounded bg-red-500 px-3 py-1 text-sm text-white transition hover:bg-red-600"
                   >
                     Delete
@@ -248,29 +404,52 @@ const Expenses = () => {
       </div>
 
       {/* EDIT MODAL */}
+
       <Modal
         isOpen={editingExpense !== null}
         onClose={() => setEditingExpense(null)}
         title="Edit Expense"
       >
         <ExpenseForm
-          expenseInput={editingExpense?.amount || ""}
-          setExpenseInput={(value) =>
-            handleEditChange("amount", value)
-          }
-          expenseCategory={
-            editingExpense?.category || "Food"
-          }
-          setExpenseCategory={(value) =>
-            handleEditChange("category", value)
-          }
-          expenseDate={editingExpense?.date || ""}
-          setExpenseDate={(value) =>
-            handleEditChange("date", value)
-          }
-          onSubmit={handleUpdateExpense}
-          buttonText="Update Expense"
-        />
+  expenseInput={
+    editingExpense?.amount || ""
+  }
+  setExpenseInput={(value) =>
+    handleEditChange("amount", value)
+  }
+
+  expenseCategory={
+    editingExpense?.category || ""
+  }
+  setExpenseCategory={(value) =>
+    handleEditChange("category", value)
+  }
+
+  expenseDate={
+    editingExpense?.date || ""
+  }
+  setExpenseDate={(value) =>
+    handleEditChange("date", value)
+  }
+
+  categoryOptions={budgetedCategories}
+
+  currencySymbol={currencySymbol}
+
+  selectedCategoryRemaining={
+    editingExpense
+      ? getCategoryRemaining(
+          editingExpense.category,
+        ) + Number(editingExpense.amount || 0)
+      : 0
+  }
+
+  noBudgetMessage={`You don't have any budgeted categories for ${currentMonthLabel}. Create a budget first before adding an expense.`}
+
+  onSubmit={handleUpdateExpense}
+
+  buttonText="Update Expense"
+/>
       </Modal>
     </section>
   );

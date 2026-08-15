@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import { registerSW } from "virtual:pwa-register";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import { FinanceProvider } from "./context/FinanceContext";
+import { AuthProvider } from "./context/AuthContext";
 import "./index.css";
 import App from "./App.jsx";
 
@@ -22,8 +23,10 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AppErrorBoundary>
       <FinanceProvider>
-        <App />
-        <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+        <AuthProvider>
+          <App />
+          <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+        </AuthProvider>
       </FinanceProvider>
     </AppErrorBoundary>
   </StrictMode>,

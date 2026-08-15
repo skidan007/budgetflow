@@ -8,8 +8,11 @@ import {
   ChartBar,
   Calculator,
   Settings,
+  LogOut,
   X,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { supabase } from "../lib/supabaseClient";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const menuItems = [
@@ -25,6 +28,19 @@ const Sidebar = ({ isOpen, onClose }) => {
     },
     { name: "Settings", path: "/settings", icon: Settings },
   ];
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Logout error:", error);
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Logged out successfully.");
+    onClose?.();
+  };
 
   return (
     <>
@@ -42,6 +58,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0`}
       >
+        {/* Header */}
         <div className="flex h-20 shrink-0 items-center border-b border-slate-800 px-5">
           <div className="flex items-center gap-2">
             <img
@@ -50,7 +67,9 @@ const Sidebar = ({ isOpen, onClose }) => {
               className="h-12 w-auto rounded-full object-contain"
             />
 
-            <span className="text-xl font-bold text-white">BudgetFlow</span>
+            <span className="text-xl font-bold text-white">
+              BudgetFlow
+            </span>
           </div>
 
           {/* Mobile close button */}
@@ -86,6 +105,21 @@ const Sidebar = ({ isOpen, onClose }) => {
             );
           })}
         </nav>
+
+        {/* Logout */}
+        <div className="shrink-0 border-t border-slate-800 p-4">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full items-center rounded-lg p-3 text-slate-300 transition hover:bg-red-600 hover:text-white"
+          >
+            <LogOut size={20} />
+
+            <span className="ml-3 font-medium">
+              Logout
+            </span>
+          </button>
+        </div>
       </aside>
     </>
   );

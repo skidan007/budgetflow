@@ -37,9 +37,9 @@ function TransactionForm({
       : ["Food", "Transport", "Bills", "Entertainment", "Shopping", "Health"];
 
   const categories =
-    Array.isArray(categoryOptions) && categoryOptions.length > 0
-      ? categoryOptions
-      : fallbackCategories;
+  Array.isArray(categoryOptions)
+    ? categoryOptions
+    : fallbackCategories;
 
   const isBudgetMode = Array.isArray(categoryOptions);
   const disableSubmit = isBudgetMode && categoryOptions.length === 0;
