@@ -730,7 +730,7 @@ function AIPlanner() {
           </div>
 
           <h1 className="mt-5 text-3xl font-bold text-slate-900">
-            AI Financial Planner
+            BudgetFlow Financial Planner
           </h1>
 
           <p className="mx-auto mt-2 max-w-2xl text-slate-500">

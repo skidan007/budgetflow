@@ -11,7 +11,14 @@ import { useFinance } from "../context/FinanceContext";
 function GoalDetails() {
   const { goalId } = useParams();
   const navigate = useNavigate();
-  const { goals, defaultCurrency, updateGoal, deleteGoal, addSavingToGoal, deleteSavingFromGoal } = useFinance();
+  const {
+    goals,
+    defaultCurrency,
+    updateGoal,
+    deleteGoal,
+    addSavingToGoal,
+    deleteSavingFromGoal,
+  } = useFinance();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSavingOpen, setIsSavingOpen] = useState(false);
   const goal = goals.find((item) => String(item.id) === String(goalId));
@@ -26,7 +33,9 @@ function GoalDetails() {
 
   const handleEdit = (values) => {
     if (Number(values.targetAmount) < saved) {
-      toast.error("Target amount cannot be lower than the amount already saved.");
+      toast.error(
+        "Target amount cannot be lower than the amount already saved.",
+      );
       return;
     }
     updateGoal(goal.id, values);
@@ -45,7 +54,8 @@ function GoalDetails() {
   };
 
   const handleDelete = () => {
-    if (!window.confirm("Delete this goal? This action cannot be undone.")) return;
+    if (!window.confirm("Delete this goal? This action cannot be undone."))
+      return;
     deleteGoal(goal.id);
     toast.success("Goal deleted successfully!");
     navigate("/goals");
@@ -58,7 +68,10 @@ function GoalDetails() {
 
   return (
     <section className="mx-auto max-w-5xl pb-16">
-      <Link to="/goals" className="inline-flex min-h-11 items-center gap-2 font-semibold text-indigo-600 hover:text-indigo-700">
+      <Link
+        to="/goals"
+        className="inline-flex min-h-11 items-center gap-2 font-semibold text-indigo-600 hover:text-indigo-700"
+      >
         <ArrowLeft size={18} aria-hidden="true" /> Back to Goals
       </Link>
 
@@ -68,42 +81,89 @@ function GoalDetails() {
             <h1 className="text-3xl font-bold">{goal.name}</h1>
             <p className="mt-2 text-sm text-slate-500">{goal.type}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setIsSavingOpen(true)} disabled={remaining <= 0} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-indigo-600 px-4 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">
-              <Plus size={18} aria-hidden="true" /> Add Saving
-            </button>
-            <button type="button" onClick={() => setIsEditOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-4 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
-              <Pencil size={17} aria-hidden="true" /> Edit Goal
-            </button>
-            <button type="button" onClick={handleDelete} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-red-600 px-4 font-semibold text-white transition hover:bg-red-700">
-              <Trash2 size={17} aria-hidden="true" /> Delete Goal
-            </button>
-          </div>
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Target", target], ["Saved", saved], ["Remaining", remaining], ["Progress", `${progress.toFixed(0)}%`],
+            ["Target", target],
+            ["Saved", saved],
+            ["Remaining", remaining],
+            ["Progress", `${progress.toFixed(0)}%`],
           ].map(([label, value]) => (
-            <div key={label} className="rounded-lg bg-slate-50 p-4 dark:bg-slate-800">
+            <div
+              key={label}
+              className="rounded-lg bg-slate-50 p-4 dark:bg-slate-800"
+            >
               <p className="text-sm text-slate-500">{label}</p>
-              <p className="mt-1 text-xl font-bold">{typeof value === "number" ? `${currency}${value.toLocaleString()}` : value}</p>
+              <p className="mt-1 text-xl font-bold">
+                {typeof value === "number"
+                  ? `${currency}${value.toLocaleString()}`
+                  : value}
+              </p>
             </div>
           ))}
         </div>
 
         <div className="mt-7">
-          <div className="flex justify-between text-sm"><span className="text-slate-500">Progress</span><span className="font-semibold">{progress.toFixed(0)}%</span></div>
-          <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${progress >= 100 ? "bg-green-500" : "bg-indigo-600"}`} style={{ width: `${progress}%` }} /></div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Progress</span>
+            <span className="font-semibold">{progress.toFixed(0)}%</span>
+          </div>
+          <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className={`h-full rounded-full ${progress >= 100 ? "bg-green-500" : "bg-indigo-600"}`}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+          <button
+            type="button"
+            onClick={() => setIsSavingOpen(true)}
+            disabled={remaining <= 0}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus size={18} aria-hidden="true" /> Add Saving
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsEditOpen(true)}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <Pencil size={17} aria-hidden="true" /> Edit Goal
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="inline-flex col-span-2 lg:col-span-1 min-h-11 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 font-semibold text-white transition hover:bg-red-700"
+          >
+            <Trash2 size={17} aria-hidden="true" /> Delete Goal
+          </button>
         </div>
       </div>
 
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <SavingsHistory goal={goal} onDeleteSaving={(_goalId, savingId) => handleDeleteSaving(savingId)} />
+        <SavingsHistory
+          goal={goal}
+          onDeleteSaving={(_goalId, savingId) => handleDeleteSaving(savingId)}
+        />
       </div>
 
-      <GoalFormModal isOpen={isEditOpen} goal={goal} defaultCurrency={defaultCurrency} onClose={() => setIsEditOpen(false)} onSubmit={handleEdit} />
-      {isSavingOpen && <AddSavingsModal goal={goal} onClose={() => setIsSavingOpen(false)} onSave={handleAddSaving} />}
+      <GoalFormModal
+        isOpen={isEditOpen}
+        goal={goal}
+        defaultCurrency={defaultCurrency}
+        onClose={() => setIsEditOpen(false)}
+        onSubmit={handleEdit}
+      />
+      {isSavingOpen && (
+        <AddSavingsModal
+          goal={goal}
+          onClose={() => setIsSavingOpen(false)}
+          onSave={handleAddSaving}
+        />
+      )}
     </section>
   );
 }
