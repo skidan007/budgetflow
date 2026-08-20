@@ -389,13 +389,13 @@ function AIPlanner() {
       if (savingsCategory && Number(savingsCategory.amount) > 0) {
         setGoals((previousGoals) => {
           const existingGoal = previousGoals.find(
-            (item) => item.name === "AI Savings Plan",
+            (item) => item.name === "BudgetFlow Savings Plan",
           );
 
           const newGoal = {
             id: existingGoal?.id ?? `ai-savings-${Date.now()}`,
 
-            name: "AI Savings Plan",
+            name: "BudgetFlow Savings Plan",
 
             type: "🤖 AI Plan",
 
@@ -427,13 +427,13 @@ function AIPlanner() {
       if (emergencyCategory && Number(emergencyCategory.amount) > 0) {
         setGoals((previousGoals) => {
           const existingGoal = previousGoals.find(
-            (item) => item.name === "AI Emergency Fund",
+            (item) => item.name === "BudgetFlow Emergency Fund",
           );
 
           const newGoal = {
             id: existingGoal?.id ?? `ai-emergency-${Date.now()}`,
 
-            name: "AI Emergency Fund",
+            name: "BudgetFlow Emergency Fund",
 
             type: "🛡️ Emergency Fund",
 
