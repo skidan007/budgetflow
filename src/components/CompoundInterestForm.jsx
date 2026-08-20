@@ -49,13 +49,6 @@ function CompoundInterestForm({
     { symbol: "A$", name: "Australian Dollar" },
   ];
 
-  // const errors = {
-  //   principal: Number(principal) < 0,
-  //   contribution: Number(monthlyContribution) < 0,
-  //   interestRate: Number(interestRate) < 0,
-  //   inflationRate: Number(inflationRate) < 0,
-  //   years: Number(years) <= 0,
-  // };
 
   return (
     <div className="rounded-xl bg-white p-6 shadow-md">
@@ -122,16 +115,6 @@ function CompoundInterestForm({
           )}
         </div>
 
-        {/* <div className="flex items-center justify-between rounded-lg border p-3">
-          
-
-          <input
-            type="number"
-            className="w-32 text-left outline-none"
-            placeholder="0"
-          />
-          <span className="text-slate-500">Income</span>
-        </div> */}
 
         {/* Investment Duration */}
         <div>
@@ -207,7 +190,7 @@ function CompoundInterestForm({
         {/* Compound Frequency */}
         <div>
           <label className="mb-2 block text-sm font-medium">
-            Compound Frequency
+            Compound Freq
           </label>
 
           <select
