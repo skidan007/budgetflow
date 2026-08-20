@@ -10,6 +10,34 @@ import SummaryCard from "../components/SummaryCard";
 import ExpenseForm, { TransactionForm } from "../components/ExpenseForm";
 
 import { useFinance } from "../context/FinanceContext";
+import { useAuth } from "../context/AuthContext";
+
+// -------------------------------------
+// GREETING HELPER
+// -------------------------------------
+
+const getTimeOfDayGreeting = () => {
+  const hour = new Date().getHours();
+
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+};
+
+const getDisplayName = (user) => {
+  const fullName =
+    user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+
+  if (fullName.trim()) {
+    return fullName.trim().split(" ")[0];
+  }
+
+  if (user?.email) {
+    return user.email.split("@")[0];
+  }
+
+  return "";
+};
 
 // -------------------------------------
 // MONTH LABEL HELPER
@@ -67,6 +95,8 @@ const expenseCategories = [
 function Dashboard() {
   const navigate = useNavigate();
 
+  const { user } = useAuth();
+
   const {
     transactions,
     addTransaction,
@@ -79,6 +109,12 @@ function Dashboard() {
     currentMonth,
     currentMonthLabel,
   } = useFinance();
+
+  const displayName = getDisplayName(user);
+
+  const greeting = displayName
+    ? `${getTimeOfDayGreeting()}, ${displayName}`
+    : getTimeOfDayGreeting();
 
   // -------------------------------------
   // FORM STATE
@@ -655,7 +691,9 @@ function Dashboard() {
       {/* HEADER */}
 
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Welcome Back 👋</h1>
+        <h1 className="text-3xl font-bold text-slate-900">
+          {greeting} 👋, welcome back
+        </h1>
 
         <p className="text-gray-500">Here's your financial overview.</p>
 
