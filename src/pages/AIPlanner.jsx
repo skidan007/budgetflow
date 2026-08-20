@@ -127,6 +127,57 @@ function AIPlanner() {
   };
 
   // -------------------------------------
+  // EXPLICIT SAVINGS TARGET DETECTION
+  // -------------------------------------
+
+  const parseAmountToken = (token) => {
+    if (!token) return null;
+
+    const cleaned = token.replace(/,/g, "").trim();
+
+    const kMatch = cleaned.match(/^(\d+(?:\.\d+)?)\s*[kK]$/);
+
+    if (kMatch) {
+      return parseFloat(kMatch[1]) * 1000;
+    }
+
+    const value = parseFloat(cleaned);
+
+    return Number.isNaN(value) ? null : value;
+  };
+
+  const detectExplicitSavingsAmount = (text) => {
+    if (!text) return null;
+
+    const amountPattern = "[^\\d]{0,3}(\\d[\\d,]*(?:\\.\\d+)?\\s*[kK]?)";
+
+    const patterns = [
+      new RegExp(`\\bsave[s]?\\b\\s*${amountPattern}`, "i"),
+      new RegExp(
+        `\\bsaving[s]?\\b\\s*(?:goal|target)?\\s*(?:is|of)?\\s*${amountPattern}`,
+        "i",
+      ),
+      new RegExp(`\\bput\\b\\s*${amountPattern}\\s*aside`, "i"),
+      new RegExp(`\\bset\\s*aside\\b\\s*${amountPattern}`, "i"),
+      new RegExp(`\\bkeep\\b\\s*${amountPattern}`, "i"),
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+
+      if (match && match[1]) {
+        const parsedAmount = parseAmountToken(match[1]);
+
+        if (parsedAmount && parsedAmount > 0) {
+          return parsedAmount;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  // -------------------------------------
   // GENERATE PLAN
   // -------------------------------------
 
@@ -145,6 +196,15 @@ function AIPlanner() {
       return;
     }
 
+    const explicitSavings = detectExplicitSavingsAmount(goal);
+
+    if (explicitSavings !== null && explicitSavings > amount) {
+      toast.error(
+        "Savings target cannot be greater than the amount available.",
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -157,97 +217,139 @@ function AIPlanner() {
 
       await new Promise((resolve) => setTimeout(resolve, 700));
 
-      const food = amount * 0.15;
-      const transport = amount * 0.1;
-      const bills = amount * 0.15;
-      const entertainment = amount * 0.05;
-      const shopping = amount * 0.05;
-      const health = amount * 0.05;
+      // Non-savings category weights (out of 100, savings normally takes 20).
+      const categoryWeights = [
+        {
+          id: 1,
+          name: "Food",
+          weight: 15,
+          description: "Food, groceries and daily meals.",
+        },
+        {
+          id: 2,
+          name: "Transport",
+          weight: 10,
+          description: "Transportation and commuting expenses.",
+        },
+        {
+          id: 3,
+          name: "Bills",
+          weight: 15,
+          description:
+            "Electricity, internet, phone and other regular bills.",
+        },
+        {
+          id: 4,
+          name: "Entertainment",
+          weight: 5,
+          description: "Entertainment and leisure activities.",
+        },
+        {
+          id: 5,
+          name: "Shopping",
+          weight: 5,
+          description: "Clothing, personal purchases and other shopping.",
+        },
+        {
+          id: 6,
+          name: "Health",
+          weight: 5,
+          description:
+            "Healthcare, medication and other health-related expenses.",
+        },
+        {
+          id: 8,
+          name: "Investment",
+          weight: 15,
+          description: "Money allocated toward long-term wealth building.",
+        },
+        {
+          id: 9,
+          name: "Emergency Fund",
+          weight: 10,
+          description: "A financial buffer for unexpected expenses.",
+        },
+      ];
 
-      const savings = amount * 0.2;
-      const investment = amount * 0.15;
-      const emergency = amount * 0.1;
+      const savingsTarget = explicitSavings;
+
+      // Amount left for spending categories once the explicit savings target is set aside.
+      const budgetableAmount =
+        savingsTarget !== null ? amount - savingsTarget : amount * 0.8;
+
+      const totalWeight = categoryWeights.reduce(
+        (sum, def) => sum + def.weight,
+        0,
+      );
+
+      let allocatedSoFar = 0;
+
+      const spendingCategories = categoryWeights.map((def, index) => {
+        let categoryAmount = Math.round(
+          (def.weight / totalWeight) * budgetableAmount,
+        );
+
+        if (index === categoryWeights.length - 1) {
+          // Assign the remainder to the last category to avoid rounding drift.
+          categoryAmount = Math.round(budgetableAmount - allocatedSoFar);
+        }
+
+        allocatedSoFar += categoryAmount;
+
+        return {
+          id: def.id,
+          name: def.name,
+          amount: categoryAmount,
+          percentage:
+            amount > 0
+              ? Math.round((categoryAmount / amount) * 100 * 100) / 100
+              : 0,
+          description: def.description,
+        };
+      });
+
+      const savingsAmount = savingsTarget !== null ? savingsTarget : amount * 0.2;
+
+      const savingsCategory = {
+        id: 7,
+        name: "Savings",
+        amount: savingsAmount,
+        percentage:
+          amount > 0
+            ? Math.round((savingsAmount / amount) * 100 * 100) / 100
+            : 0,
+        description: "Money set aside for your savings goals.",
+      };
+
+      const [food, transport, bills, entertainment, shopping, health] =
+        spendingCategories;
+
+      const investment = spendingCategories.find(
+        (item) => item.name === "Investment",
+      );
+
+      const emergency = spendingCategories.find(
+        (item) => item.name === "Emergency Fund",
+      );
 
       setPlan({
         income: amount,
 
         summary:
-          "This is a starting financial plan based on your available money and stated goal.",
+          savingsTarget !== null
+            ? `You asked to save ${formatMoney(savingsTarget)}. The remaining ${formatMoney(budgetableAmount)} has been divided across your spending categories.`
+            : "This is a starting financial plan based on your available money and stated goal.",
 
         categories: [
-          {
-            id: 1,
-            name: "Food",
-            amount: food,
-            percentage: 15,
-            description: "Food, groceries and daily meals.",
-          },
-
-          {
-            id: 2,
-            name: "Transport",
-            amount: transport,
-            percentage: 10,
-            description: "Transportation and commuting expenses.",
-          },
-
-          {
-            id: 3,
-            name: "Bills",
-            amount: bills,
-            percentage: 15,
-            description:
-              "Electricity, internet, phone and other regular bills.",
-          },
-
-          {
-            id: 4,
-            name: "Entertainment",
-            amount: entertainment,
-            percentage: 5,
-            description: "Entertainment and leisure activities.",
-          },
-
-          {
-            id: 5,
-            name: "Shopping",
-            amount: shopping,
-            percentage: 5,
-            description: "Clothing, personal purchases and other shopping.",
-          },
-
-          {
-            id: 6,
-            name: "Health",
-            amount: health,
-            percentage: 5,
-            description:
-              "Healthcare, medication and other health-related expenses.",
-          },
-
-          {
-            id: 7,
-            name: "Savings",
-            amount: savings,
-            percentage: 20,
-            description: "Money set aside for your savings goals.",
-          },
-
-          {
-            id: 8,
-            name: "Investment",
-            amount: investment,
-            percentage: 15,
-            description: "Money allocated toward long-term wealth building.",
-          },
-
-          {
-            id: 9,
-            name: "Emergency Fund",
-            amount: emergency,
-            percentage: 10,
-            description: "A financial buffer for unexpected expenses.",
-          },
+          food,
+          transport,
+          bills,
+          entertainment,
+          shopping,
+          health,
+          savingsCategory,
+          investment,
+          emergency,
         ],
       });
 
@@ -519,9 +621,14 @@ function AIPlanner() {
         return updatedBudgets;
       });
 
-      setIsEditing(false);
+      toast.success("Budget Saved");
 
-      toast.success("Your AI plan has been added to BudgetFlow!");
+      // Reset the planner back to its default state only after a successful save.
+      setIncome("");
+      setGoal("");
+      setPlanningFor("Monthly");
+      setPlan(null);
+      setIsEditing(false);
     } catch (error) {
       console.error("Use AI plan error:", error);
 
@@ -699,6 +806,24 @@ function AIPlanner() {
             <p className="mt-1 text-3xl font-bold text-slate-900">
               {formatMoney(plan.income)}
             </p>
+
+            {(() => {
+              const savingsCategory = plan.categories.find((category) =>
+                String(category.name).toLowerCase().includes("saving"),
+              );
+
+              if (!savingsCategory || !(Number(savingsCategory.amount) > 0)) {
+                return null;
+              }
+
+              const remaining = plan.income - Number(savingsCategory.amount);
+
+              return (
+                <p className="mt-1 text-sm text-slate-500">
+                  {formatMoney(remaining)} remaining for your budget
+                </p>
+              );
+            })()}
           </div>
 
           {/* BREAKDOWN */}
