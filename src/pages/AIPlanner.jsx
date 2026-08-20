@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Sparkles,
   ArrowRight,
@@ -17,12 +18,17 @@ import toast from "react-hot-toast";
 import { useFinance } from "../context/FinanceContext";
 
 function AIPlanner() {
+  const navigate = useNavigate();
+
   const {
     defaultCurrency,
     currencySymbol,
     setGoals,
     setBudgets,
     currentMonth,
+    transactions,
+    addTransaction,
+    updateTransaction,
   } = useFinance();
 
   // -------------------------------------
@@ -39,6 +45,7 @@ function AIPlanner() {
 
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isApplyingPlan, setIsApplyingPlan] = useState(false);
 
   // -------------------------------------
   // EDIT STATE
@@ -469,26 +476,105 @@ function AIPlanner() {
   // USE PLAN
   // -------------------------------------
 
-  const handleUsePlan = () => {
+  const handleUsePlan = async () => {
     if (!plan) {
       toast.error("There is no plan to use.");
       return;
     }
 
+    const planIncome = Number(plan.income);
+
+    if (!(planIncome > 0)) {
+      toast.error("Please enter how much money you want to plan.");
+      return;
+    }
+
+    const savingsCategory = plan.categories.find((category) =>
+      String(category.name).toLowerCase().includes("saving"),
+    );
+
+    const emergencyCategory = plan.categories.find((category) =>
+      String(category.name).toLowerCase().includes("emergency"),
+    );
+
+    const savingsAmount = savingsCategory
+      ? Number(savingsCategory.amount || 0)
+      : 0;
+
+    const emergencyAmount = emergencyCategory
+      ? Number(emergencyCategory.amount || 0)
+      : 0;
+
+    if (savingsAmount > planIncome) {
+      toast.error(
+        "Savings amount cannot be greater than your available money.",
+      );
+      return;
+    }
+
+    const allowedBudgetCategories = [
+      "Food",
+      "Transport",
+      "Bills",
+      "Entertainment",
+      "Shopping",
+      "Health",
+      "Investment",
+    ];
+
+    const budgetCategories = plan.categories.filter((category) =>
+      allowedBudgetCategories.includes(category.name),
+    );
+
+    // Savings/emergency are goals, not budgets - the two together with the
+    // spending budgets must add up to exactly the available amount.
+    const totalBudget = budgetCategories.reduce(
+      (sum, category) => sum + Number(category.amount || 0),
+      0,
+    );
+
+    const totalAllocated = savingsAmount + emergencyAmount + totalBudget;
+
+    if (Math.abs(totalAllocated - planIncome) > 0.5) {
+      toast.error("Your plan must allocate exactly the available amount.");
+      return;
+    }
+
+    setIsApplyingPlan(true);
+
     try {
-      const savingsCategory = plan.categories.find((category) =>
-        String(category.name).toLowerCase().includes("saving"),
+      // -----------------------------------
+      // CREATE / UPDATE THE REAL INCOME TRANSACTION
+      // -----------------------------------
+
+      const existingAIIncome = transactions.find(
+        (transaction) =>
+          transaction.type === "Income" &&
+          transaction.category === "AI Planned Income" &&
+          transaction.month === currentMonth &&
+          transaction.currency === defaultCurrency,
       );
 
-      const emergencyCategory = plan.categories.find((category) =>
-        String(category.name).toLowerCase().includes("emergency"),
-      );
+      if (existingAIIncome) {
+        await updateTransaction(existingAIIncome.id, {
+          amount: planIncome,
+        });
+      } else {
+        await addTransaction({
+          type: "Income",
+          category: "AI Planned Income",
+          amount: planIncome,
+          date: new Date().toISOString().split("T")[0],
+          currency: defaultCurrency,
+          month: currentMonth,
+        });
+      }
 
       // -----------------------------------
       // CREATE / UPDATE SAVINGS GOAL
       // -----------------------------------
 
-      if (savingsCategory && Number(savingsCategory.amount) > 0) {
+      if (savingsCategory && savingsAmount > 0) {
         setGoals((previousGoals) => {
           const existingGoal = previousGoals.find(
             (item) => item.name === "BudgetFlow Savings Plan",
@@ -501,7 +587,7 @@ function AIPlanner() {
 
             type: "🤖 AI Plan",
 
-            targetAmount: Number(savingsCategory.amount),
+            targetAmount: savingsAmount,
 
             currentAmount: existingGoal?.currentAmount ?? 0,
 
@@ -526,7 +612,7 @@ function AIPlanner() {
       // CREATE / UPDATE EMERGENCY GOAL
       // -----------------------------------
 
-      if (emergencyCategory && Number(emergencyCategory.amount) > 0) {
+      if (emergencyCategory && emergencyAmount > 0) {
         setGoals((previousGoals) => {
           const existingGoal = previousGoals.find(
             (item) => item.name === "BudgetFlow Emergency Fund",
@@ -539,7 +625,7 @@ function AIPlanner() {
 
             type: "🛡️ Emergency Fund",
 
-            targetAmount: Number(emergencyCategory.amount),
+            targetAmount: emergencyAmount,
 
             currentAmount: existingGoal?.currentAmount ?? 0,
 
@@ -564,26 +650,13 @@ function AIPlanner() {
       // CREATE MONTHLY BUDGETS
       // -----------------------------------
 
-      const allowedBudgetCategories = [
-        "Food",
-        "Transport",
-        "Bills",
-        "Entertainment",
-        "Shopping",
-        "Health",
-      ];
-
-      const budgetCategories = plan.categories.filter((category) =>
-        allowedBudgetCategories.includes(category.name),
-      );
-
       setBudgets((previousBudgets) => {
         const updatedBudgets = [...previousBudgets];
 
         budgetCategories.forEach((category) => {
           const categoryName = category.name;
 
-          const categoryAmount = Number(category.amount);
+          const categoryAmount = Number(category.amount || 0);
 
           if (categoryAmount <= 0) {
             return;
@@ -629,10 +702,14 @@ function AIPlanner() {
       setPlanningFor("Monthly");
       setPlan(null);
       setIsEditing(false);
+
+      navigate("/budgets");
     } catch (error) {
       console.error("Use AI plan error:", error);
 
-      toast.error("Unable to apply the plan.");
+      toast.error(error?.message || "Unable to apply the plan.");
+    } finally {
+      setIsApplyingPlan(false);
     }
   };
 
@@ -986,11 +1063,11 @@ function AIPlanner() {
               <button
                 type="button"
                 onClick={handleUsePlan}
-                disabled={isEditing}
+                disabled={isEditing || isApplyingPlan}
                 className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Target size={19} />
-                Use This Plan
+                {isApplyingPlan ? "Applying..." : "Use This Plan"}
               </button>
 
               <button
