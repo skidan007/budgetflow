@@ -972,7 +972,7 @@ function Dashboard() {
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <h2 className="text-xl font-semibold">Recent Transactions</h2>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 w-full md:w-auto flex-col md:flex-row">
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
