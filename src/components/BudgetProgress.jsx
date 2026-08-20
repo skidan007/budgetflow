@@ -3,6 +3,7 @@ function BudgetProgress({
   budget,
   spent,
   currencySymbol = "₦",
+  items = [],
   onEdit,
   onDelete,
 }) {
@@ -76,6 +77,26 @@ function BudgetProgress({
           {percentage.toFixed(0)}%
         </span>
       </div>
+
+      {items.filter((item) => item.description).length > 0 && (
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          <p className="text-sm font-medium text-slate-500">What you spent it on</p>
+
+          <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+            {items
+              .filter((item) => item.description)
+              .map((item) => (
+                <li key={item.id} className="flex justify-between gap-4">
+                  <span>{item.description}</span>
+                  <span className="font-medium">
+                    {currencySymbol}
+                    {Number(item.amount || 0).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
 
       {(onEdit || onDelete) && (
         <div className="mt-6 flex gap-3">

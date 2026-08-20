@@ -110,6 +110,12 @@ function normalizeTransactions(items) {
         ? transaction.currency
         : "NGN";
 
+    // Older transactions were created before this field existed.
+    const description =
+      typeof transaction.description === "string"
+        ? transaction.description.trim()
+        : "";
+
     if (!type || !category || Number.isNaN(amount)) {
       return acc;
     }
@@ -121,6 +127,7 @@ function normalizeTransactions(items) {
       amount,
       date,
       currency,
+      description,
 
       month:
         typeof transaction.month === "string" && transaction.month
@@ -436,6 +443,10 @@ export function FinanceProvider({ children }) {
       amount: Number(transaction.amount),
       date,
       currency: transaction.currency || defaultCurrency,
+      description:
+        typeof transaction.description === "string"
+          ? transaction.description.trim()
+          : "",
       month,
       user_id: user.id,
     };
@@ -455,6 +466,18 @@ export function FinanceProvider({ children }) {
       ({ data, error } = await supabase
         .from("transactions")
         .insert(withoutMonth)
+        .select()
+        .single());
+    }
+
+    // Older tables may not have a "description" column yet.
+    if (isMissingColumnError(error, "description")) {
+      const withoutDescription = { ...newTransaction };
+      delete withoutDescription.description;
+
+      ({ data, error } = await supabase
+        .from("transactions")
+        .insert(withoutDescription)
         .select()
         .single());
     }
@@ -493,6 +516,10 @@ export function FinanceProvider({ children }) {
       cleanUpdates.category = cleanUpdates.category.trim();
     }
 
+    if (cleanUpdates.description !== undefined) {
+      cleanUpdates.description = String(cleanUpdates.description).trim();
+    }
+
     let { data, error } = await supabase
       .from("transactions")
       .update(cleanUpdates)
@@ -510,6 +537,20 @@ export function FinanceProvider({ children }) {
       ({ data, error } = await supabase
         .from("transactions")
         .update(withoutMonth)
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .select()
+        .single());
+    }
+
+    // Older tables may not have a "description" column yet.
+    if (isMissingColumnError(error, "description")) {
+      const withoutDescription = { ...cleanUpdates };
+      delete withoutDescription.description;
+
+      ({ data, error } = await supabase
+        .from("transactions")
+        .update(withoutDescription)
         .eq("id", id)
         .eq("user_id", user.id)
         .select()

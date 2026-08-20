@@ -18,6 +18,8 @@ const TransactionItem = ({
 }) => {
   const isIncome = transaction.type === "Income";
 
+  const hasDescription = !isIncome && Boolean(transaction.description);
+
   const transactionCurrency =
     currencyMap[transaction.currency] || "₦";
 
@@ -28,7 +30,7 @@ const TransactionItem = ({
         {/* Left Side */}
         <div>
           <h3 className="font-semibold text-slate-900">
-            {transaction.category}
+            {hasDescription ? transaction.description : transaction.category}
           </h3>
 
           <p
@@ -36,7 +38,9 @@ const TransactionItem = ({
               isIncome ? "text-green-600" : "text-red-600"
             }`}
           >
-            {transaction.type} • {transaction.date}
+            {hasDescription
+              ? `${transaction.category} • ${transaction.date}`
+              : `${transaction.type} • ${transaction.date}`}
           </p>
         </div>
 

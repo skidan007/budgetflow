@@ -5,12 +5,16 @@ function TransactionForm({
   setCategory: setIncomingCategory,
   date: incomingDate,
   setDate: setIncomingDate,
+  description: incomingDescription,
+  setDescription: setIncomingDescription,
   expenseInput,
   setExpenseInput,
   expenseCategory,
   setExpenseCategory,
   expenseDate,
   setExpenseDate,
+  expenseDescription,
+  setExpenseDescription,
   onSubmit,
   buttonText,
   categoryOptions,
@@ -30,14 +34,28 @@ function TransactionForm({
   const setCategory = setIncomingCategory ?? setExpenseCategory ?? (() => {});
   const date = incomingDate ?? expenseDate ?? "";
   const setDate = setIncomingDate ?? setExpenseDate ?? (() => {});
+  const description = incomingDescription ?? expenseDescription ?? "";
+  const setDescription =
+    setIncomingDescription ?? setExpenseDescription ?? (() => {});
 
   const fallbackCategories =
-    type === "Income"
-      ? ["Salary", "Business", "Investment", "Gift", "Other"]
-      : ["Food", "Transport", "Bills", "Entertainment", "Shopping", "Health"];
+  type === "Income"
+    ? ["Salary", "Business", "Investment", "Gift", "Other"]
+    : [
+        "Food",
+        "Transport",
+        "Bills",
+        "Data & Airtime",
+        "Rent",
+        "Entertainment",
+        "Shopping",
+        "Health",
+        "Education",
+        "Personal",
+        "Other",
+      ];
 
-  const categories =
-  Array.isArray(categoryOptions)
+  const categories = Array.isArray(categoryOptions)
     ? categoryOptions
     : fallbackCategories;
 
@@ -90,6 +108,20 @@ function TransactionForm({
               {Number(selectedCategoryRemaining || 0).toLocaleString()}
             </p>
           )}
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              What did you spend it on?
+            </label>
+
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g. Rice, trip to work, electricity bill"
+              className={`w-full rounded-lg border border-slate-300 p-3 outline-none transition ${accentClasses.focus}`}
+            />
+          </div>
         </>
       )}
 

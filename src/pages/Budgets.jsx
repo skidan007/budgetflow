@@ -107,6 +107,19 @@ function Budgets() {
       )
       .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
 
+  const getExpenseItems = (budget, monthTransactions) =>
+    monthTransactions
+      .filter(
+        (transaction) =>
+          transaction.type === "Expense" && transaction.category === budget.category,
+      )
+      .map((transaction) => ({
+        id: transaction.id,
+        description: transaction.description || "",
+        amount: Number(transaction.amount || 0),
+        date: transaction.date,
+      }));
+
   const resetForm = () => {
     setBudgetCategory("Food");
     setBudgetAmount("");
@@ -346,6 +359,9 @@ function Budgets() {
                 {historyBudgets.map((budget) => {
                   const spent = getSpent(budget, historyTransactions);
                   const percentage = budget.amount > 0 ? Math.min((spent / budget.amount) * 100, 100) : 0;
+                  const expenseItems = getExpenseItems(budget, historyTransactions).filter(
+                    (item) => item.description,
+                  );
 
                   return (
                     <div key={budget.id} className="p-4">
@@ -354,6 +370,17 @@ function Budgets() {
                         <p className="font-semibold">{currencySymbol}{Number(budget.amount || 0).toLocaleString()}</p>
                       </div>
                       <p className="mt-1 text-sm text-slate-500">Spent {currencySymbol}{spent.toLocaleString()} · {percentage.toFixed(0)}%</p>
+
+                      {expenseItems.length > 0 && (
+                        <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-sm text-slate-600 dark:border-slate-800">
+                          {expenseItems.map((item) => (
+                            <li key={item.id} className="flex justify-between gap-4">
+                              <span>{item.description}</span>
+                              <span>{currencySymbol}{item.amount.toLocaleString()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   );
                 })}
@@ -425,6 +452,7 @@ function Budgets() {
             category={selectedBudget.category}
             budget={selectedBudget.amount}
             spent={getSpent(selectedBudget, currentMonthTransactions)}
+            items={getExpenseItems(selectedBudget, currentMonthTransactions)}
             currencySymbol={currencySymbol}
             onEdit={() => handleEditBudget(selectedBudget)}
             onDelete={() => handleDeleteBudget(selectedBudget.id)}

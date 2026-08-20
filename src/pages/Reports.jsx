@@ -222,6 +222,24 @@ function Reports() {
         return acc;
       }, {});
 
+    // Individual expense items (with descriptions) grouped by category.
+    const expenseItemsByCategory = monthTransactions
+      .filter((t) => t.type === "Expense")
+      .reduce((acc, t) => {
+        if (!acc[t.category]) {
+          acc[t.category] = [];
+        }
+
+        acc[t.category].push({
+          id: t.id,
+          description: t.description || "",
+          amount: Number(t.amount || 0),
+          date: t.date,
+        });
+
+        return acc;
+      }, {});
+
     return {
       month: monthKey,
       label: getMonthLabel(monthKey),
@@ -232,6 +250,7 @@ function Reports() {
       remaining: budgetTotal - expenses,
       incomeByCategory,
       expensesByCategory,
+      expenseItemsByCategory,
       budgets: monthBudgets,
     };
   });
@@ -732,18 +751,35 @@ function Reports() {
                   Actual Expenses
                 </p>
 
-                <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                <ul className="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300">
                   {Object.entries(drilldownData.expensesByCategory).length === 0 ? (
                     <li>No expenses recorded.</li>
                   ) : (
                     Object.entries(drilldownData.expensesByCategory).map(
                       ([category, amount]) => (
-                        <li key={category} className="flex justify-between gap-4">
-                          <span>{category}</span>
-                          <span>
-                            {currencySymbol}
-                            {amount.toLocaleString()}
-                          </span>
+                        <li key={category}>
+                          <div className="flex justify-between gap-4">
+                            <span>{category}</span>
+                            <span>
+                              {currencySymbol}
+                              {amount.toLocaleString()}
+                            </span>
+                          </div>
+
+                          {(drilldownData.expenseItemsByCategory[category] || [])
+                            .filter((item) => item.description)
+                            .map((item) => (
+                              <div
+                                key={item.id}
+                                className="mt-1 flex justify-between gap-4 pl-3 text-xs text-slate-500 dark:text-slate-400"
+                              >
+                                <span>• {item.description}</span>
+                                <span>
+                                  {currencySymbol}
+                                  {item.amount.toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
                         </li>
                       ),
                     )

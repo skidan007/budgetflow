@@ -130,6 +130,8 @@ function Dashboard() {
 
   const [expenseCategory, setExpenseCategory] = useState("");
 
+  const [expenseDescription, setExpenseDescription] = useState("");
+
   const [incomeDate, setIncomeDate] = useState(today);
 
   const [expenseDate, setExpenseDate] = useState(today);
@@ -392,6 +394,13 @@ function Dashboard() {
       return;
     }
 
+    const sanitizedDescription = String(expenseDescription ?? "").trim();
+
+    if (!sanitizedDescription) {
+      toast.error("Please enter what you spent the money on.");
+      return;
+    }
+
     const month = getTransactionMonth(expenseDate);
 
     const budget = getBudgetForCategory(effectiveExpenseCategory, month);
@@ -428,12 +437,14 @@ function Dashboard() {
         type: "Expense",
         amount,
         category: effectiveExpenseCategory,
+        description: sanitizedDescription,
         date: expenseDate,
         currency: defaultCurrency,
         month,
       });
 
       setExpenseInput("");
+      setExpenseDescription("");
       setShowExpenseModal(false);
 
       toast.success("Expense added successfully!");
@@ -452,6 +463,7 @@ function Dashboard() {
     setEditingTransaction({
       ...transaction,
       amount: String(transaction.amount),
+      description: transaction.description || "",
     });
   };
 
@@ -479,6 +491,15 @@ function Dashboard() {
 
     if (!category) {
       toast.error("Please select a category.");
+      return;
+    }
+
+    const sanitizedEditDescription = String(
+      editingTransaction.description ?? "",
+    ).trim();
+
+    if (editingTransaction.type === "Expense" && !sanitizedEditDescription) {
+      toast.error("Please enter what you spent the money on.");
       return;
     }
 
@@ -529,6 +550,9 @@ function Dashboard() {
         category,
         date: updatedDate,
         month: updatedMonth,
+        ...(editingTransaction.type === "Expense"
+          ? { description: sanitizedEditDescription }
+          : {}),
       });
 
       setEditingTransaction(null);
@@ -691,11 +715,11 @@ function Dashboard() {
       {/* HEADER */}
 
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">
-          {greeting} 👋, welcome back
+        <h1 className="text-2xl font-bold text-slate-900">
+          {greeting}. <span className="flex flex-col text-md text-slate-700 font-medium">Welcome back 👋</span>
         </h1>
 
-        <p className="text-gray-500">Here's your financial overview.</p>
+        <p className="text-gray-500 mt-2">Here's your financial overview.</p>
 
         <p className="mt-1 text-sm font-medium text-indigo-600">
           Currency: {defaultCurrency}
@@ -954,7 +978,10 @@ function Dashboard() {
           <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <button
               type="button"
-              onClick={() => setShowExpenseModal(false)}
+              onClick={() => {
+                setShowExpenseModal(false);
+                setExpenseDescription("");
+              }}
               className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-slate-100"
             >
               <X size={20} />
@@ -983,6 +1010,8 @@ function Dashboard() {
               expenseCategory={effectiveExpenseCategory}
               expenseDate={expenseDate}
               expenseInput={expenseInput}
+              expenseDescription={expenseDescription}
+              setExpenseDescription={setExpenseDescription}
               onSubmit={handleAddExpense}
               buttonText="Add Expense"
               categoryOptions={budgetedCategories}
@@ -1127,6 +1156,29 @@ function Dashboard() {
                   )}
                 </select>
               </div>
+
+              {/* DESCRIPTION */}
+
+              {editingTransaction.type === "Expense" && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    What did you spend it on?
+                  </label>
+
+                  <input
+                    type="text"
+                    value={editingTransaction.description || ""}
+                    onChange={(e) =>
+                      setEditingTransaction((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. Rice, trip to work, electricity bill"
+                    className="w-full rounded-lg border border-slate-300 p-3"
+                  />
+                </div>
+              )}
 
               {/* DATE */}
 
