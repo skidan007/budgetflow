@@ -233,8 +233,9 @@ const budgetAmount = Number(budget?.amount || 0);
 
   const handleEditChange = (field, value) => {
     setEditingExpense((prev) => ({
-      ...prev,
+      
       [field]: value,
+      ...prev,
     }));
   };
 
