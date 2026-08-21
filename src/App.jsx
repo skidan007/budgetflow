@@ -22,6 +22,10 @@ const CompoundInterest = lazy(
   () => import("./pages/CompoundInterest"),
 );
 const Settings = lazy(() => import("./pages/Settings"));
+const Profile = lazy(() => import("./pages/Profile"));
+const FinancialProfile = lazy(() => import("./pages/FinancialProfile"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Help = lazy(() => import("./pages/Help"));
 
 function App() {
   return (
@@ -53,6 +57,13 @@ function App() {
               />
               <Route path="settings" element={<Settings />} />
               <Route path="ai-planner" element={<AIPlanner />} />
+              <Route path="profile" element={<Profile />} />
+              <Route
+                path="financial-profile"
+                element={<FinancialProfile />}
+              />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="help" element={<Help />} />
             </Route>
           </Route>
 

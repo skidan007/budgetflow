@@ -339,6 +339,15 @@ export function FinanceProvider({ children }) {
   });
 
   // -----------------------------------
+  // FINANCIAL PROFILE
+  // -----------------------------------
+
+  const [financialProfile, setFinancialProfileState] = useState(null);
+
+  const [financialProfileLoading, setFinancialProfileLoading] =
+    useState(false);
+
+  // -----------------------------------
   // INVESTMENTS
   // -----------------------------------
 
@@ -423,6 +432,78 @@ export function FinanceProvider({ children }) {
 
     loadTransactions();
   }, [user, authLoading]);
+
+  // -----------------------------------
+  // LOAD FINANCIAL PROFILE FROM SUPABASE
+  // -----------------------------------
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      setFinancialProfileState(null);
+      setFinancialProfileLoading(false);
+      return;
+    }
+
+    const loadFinancialProfile = async () => {
+      setFinancialProfileLoading(true);
+
+      const { data, error } = await supabase
+        .from("financial_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Load financial profile error:", error);
+
+        setFinancialProfileLoading(false);
+        return;
+      }
+
+      setFinancialProfileState(data ?? null);
+
+      setFinancialProfileLoading(false);
+    };
+
+    loadFinancialProfile();
+  }, [user, authLoading]);
+
+  // -----------------------------------
+  // SAVE FINANCIAL PROFILE
+  // -----------------------------------
+
+  const saveFinancialProfile = async (updates) => {
+    if (!user) {
+      throw new Error("You must be logged in to save your financial profile.");
+    }
+
+    const newProfile = {
+      user_id: user.id,
+      monthly_income: Number(updates.monthlyIncome) || 0,
+      main_goal: updates.mainGoal || "",
+      monthly_savings_target: Number(updates.monthlySavingsTarget) || 0,
+      emergency_fund_target: Number(updates.emergencyFundTarget) || 0,
+      budget_preference: updates.budgetPreference || "Balanced",
+    };
+
+    const { data, error } = await supabase
+      .from("financial_profiles")
+      .upsert(newProfile, { onConflict: "user_id" })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Save financial profile error:", error);
+
+      throw error;
+    }
+
+    setFinancialProfileState(data);
+
+    return data;
+  };
 
   // -----------------------------------
   // ADD TRANSACTION
@@ -924,6 +1005,11 @@ export function FinanceProvider({ children }) {
         budgets,
         setBudgets,
         addBudget,
+
+        // Financial profile
+        financialProfile,
+        financialProfileLoading,
+        saveFinancialProfile,
 
         // Investments
         investmentScenarios,

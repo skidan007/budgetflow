@@ -9,11 +9,11 @@ import {
   ChartBar,
   Calculator,
   Settings,
-  LogOut,
+  // LogOut,
   X,
 } from "lucide-react";
-import toast from "react-hot-toast";
-import { supabase } from "../lib/supabaseClient";
+// import toast from "react-hot-toast";
+// import { supabase } from "../lib/supabaseClient";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const menuItems = [
@@ -32,18 +32,18 @@ const Sidebar = ({ isOpen, onClose }) => {
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
+  // const handleLogout = async () => {
+  //   const { error } = await supabase.auth.signOut();
 
-    if (error) {
-      console.error("Logout error:", error);
-      toast.error(error.message);
-      return;
-    }
+  //   if (error) {
+  //     console.error("Logout error:", error);
+  //     toast.error(error.message);
+  //     return;
+  //   }
 
-    toast.success("Logged out successfully.");
-    onClose?.();
-  };
+  //   toast.success("Logged out successfully.");
+  //   onClose?.();
+  // };
 
   return (
     <>
@@ -107,7 +107,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           })}
         </nav>
 
-        {/* Logout */}
+        {/* Logout
         <div className="shrink-0 border-t border-slate-800 p-4">
           <button
             type="button"
@@ -118,7 +118,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
             <span className="ml-3 font-medium">Logout</span>
           </button>
-        </div>
+        </div> */}
       </aside>
     </>
   );

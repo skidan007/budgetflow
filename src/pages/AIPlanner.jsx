@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Sparkles,
@@ -29,6 +29,7 @@ function AIPlanner() {
     transactions,
     addTransaction,
     updateTransaction,
+    financialProfile,
   } = useFinance();
 
   // -------------------------------------
@@ -38,6 +39,38 @@ function AIPlanner() {
   const [income, setIncome] = useState("");
   const [goal, setGoal] = useState("");
   const [planningFor, setPlanningFor] = useState("Monthly");
+
+  // Prefill from the user's saved Financial Profile, without overriding
+  // anything they've already typed.
+  useEffect(() => {
+    if (!financialProfile) return;
+
+    if (!income && Number(financialProfile.monthly_income) > 0) {
+      setIncome(String(financialProfile.monthly_income));
+    }
+
+    if (!goal) {
+      const parts = [];
+
+      if (Number(financialProfile.monthly_savings_target) > 0) {
+        parts.push(
+          `I want to save ${currencySymbol}${Number(
+            financialProfile.monthly_savings_target,
+          ).toLocaleString()}.`,
+        );
+      }
+
+      if (financialProfile.main_goal) {
+        parts.push(`My main goal is to ${financialProfile.main_goal.toLowerCase()}.`);
+      }
+
+      if (parts.length > 0) {
+        setGoal(parts.join(" "));
+      }
+    }
+    // Only run once when the saved profile first becomes available.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [financialProfile]);
 
   // -------------------------------------
   // PLAN STATE
