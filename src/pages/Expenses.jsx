@@ -450,7 +450,7 @@ const budgetAmount = Number(budget?.amount || 0);
       <div className="flex flex-col gap-4 md:flex-row">
         <input
           type="text"
-          placeholder="Search by category..."
+          placeholder="Search by description or category..."
           value={search}
           onChange={(e) =>
             setSearch(e.target.value)
@@ -521,6 +521,11 @@ const budgetAmount = Number(budget?.amount || 0);
         ) : (
           sortedExpenses.map(
             (expense) => {
+              const description =
+                typeof expense.description === "string"
+                  ? expense.description.trim()
+                  : "";
+
               const expenseCurrency =
                 currencyMap[
                   expense.currency
@@ -533,13 +538,17 @@ const budgetAmount = Number(budget?.amount || 0);
                 >
                   <div>
                     <h3 className="font-semibold text-slate-900">
-                      {expense.description || expense.category}
+                      {expense.category}
                     </h3>
 
+                    {description && (
+                      <p className="mt-1 text-sm text-slate-700">
+                        {description}
+                      </p>
+                    )}
+
                     <p className="text-sm text-slate-500">
-                      {expense.description
-                        ? `${expense.category} • ${expense.date}`
-                        : expense.date}
+                      {expense.date}
                     </p>
                   </div>
 

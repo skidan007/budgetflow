@@ -82,18 +82,24 @@ function TransactionForm({
     <div className={`space-y-4 ${className}`}>
       {type !== "Income" && (
         <>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            disabled={disableSubmit}
-            className={`w-full rounded-lg border border-slate-300 p-3 outline-none transition ${accentClasses.focus}`}
-          >
-            {categories.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Category
+            </label>
+
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              disabled={disableSubmit}
+              className={`w-full rounded-lg border border-slate-300 p-3 outline-none transition ${accentClasses.focus}`}
+            >
+              {categories.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {isBudgetMode && disableSubmit && (
             <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
