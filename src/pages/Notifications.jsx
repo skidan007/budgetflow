@@ -32,7 +32,7 @@ function Notifications() {
         </p>
         </div>
         {notifications.some((notification) => !notification.read) && (
-          <button type="button" onClick={handleMarkAllAsRead} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50">
+          <button type="button" onClick={handleMarkAllAsRead} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 dark:border-slate-600 dark:text-indigo-300 dark:hover:bg-indigo-950/40">
             Mark all as read
           </button>
         )}
@@ -40,7 +40,7 @@ function Notifications() {
 
       <div className="flex gap-2 border-b border-slate-200">
         {[["all", "All"], ["unread", "Unread"]].map(([value, label]) => (
-          <button key={value} type="button" onClick={() => setFilter(value)} className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${filter === value ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-900"}`}>
+          <button key={value} type="button" onClick={() => setFilter(value)} className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${filter === value ? "border-indigo-600 text-indigo-700 dark:text-indigo-300" : "border-transparent text-slate-500 hover:text-slate-900"}`}>
             {label}{value === "unread" && ` (${notifications.filter((notification) => !notification.read).length})`}
           </button>
         ))}
@@ -68,7 +68,7 @@ function Notifications() {
             <button key={notification.id} type="button" onClick={async () => {
               if (notification.read) return;
               try { await markAsRead(notification.id); } catch { toast.error("Unable to mark notification as read."); }
-            }} className={`flex w-full gap-4 border-b border-slate-100 p-4 text-left last:border-b-0 transition hover:bg-slate-50 sm:p-5 ${!notification.read ? "bg-indigo-50/60" : ""}`}>
+            }} className={`flex w-full gap-4 border-b border-slate-100 p-4 text-left last:border-b-0 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 sm:p-5 ${!notification.read ? "bg-indigo-50 dark:bg-indigo-950/40" : ""}`}>
               <NotificationIcon type={notification.type} size={19} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">

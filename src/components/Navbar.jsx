@@ -143,8 +143,8 @@ const Navbar = ({ onMenuClick }) => {
             </button>
 
             {notificationsOpen && (
-              <div className="absolute right-0 top-14 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-                <div className="flex items-center justify-between border-b border-slate-600 px-4 py-3">
+              <div className="fixed left-4 right-4 top-20 z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:absolute sm:left-auto sm:right-0 sm:top-14 sm:w-80 dark:border-slate-600">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-600">
                   <p className="font-semibold text-slate-900">Notifications</p>
                   {unreadCount > 0 && <span className="text-xs font-medium text-indigo-600">{unreadCount} unread</span>}
                 </div>
@@ -156,7 +156,7 @@ const Navbar = ({ onMenuClick }) => {
                       onClick={async () => {
                         if (!notification.read) await markAsRead(notification.id);
                       }}
-                      className={`flex w-full gap-3 border-b border-slate-600 px-4 py-3 text-left transition hover:bg-slate-700 ${!notification.read ? "bg-slate-800" : ""}`}
+                      className={`flex w-full gap-3 border-b border-slate-200 px-4 py-3 text-left transition hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700 ${!notification.read ? "bg-indigo-50 dark:bg-slate-800" : ""}`}
                     >
                       <NotificationIcon type={notification.type} size={16} />
                       <span className="min-w-0 flex-1">
@@ -164,14 +164,14 @@ const Navbar = ({ onMenuClick }) => {
                           <span className="truncate text-sm font-semibold text-slate-900">{notification.title}</span>
                           {!notification.read && <span className="h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
                         </span>
-                        <span className="mt-0.5 block line-clamp-2 text-xs text-slate-900">{notification.message}</span>
+                        <span className="mt-0.5 block line-clamp-2 text-xs text-slate-600 dark:text-slate-200">{notification.message}</span>
                         <span className="mt-1 block text-xs text-slate-400">{formatNotificationTime(notification.created_at)}</span>
                       </span>
                     </button>
                   ))}
                   {notifications.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">No notifications yet.</p>}
                 </div>
-                <button type="button" onClick={() => goTo("/notifications")} className="w-full px-4 py-3 text-left text-sm font-semibold text-indigo-600 transition hover:bg-slate-700">
+                <button type="button" onClick={() => goTo("/notifications")} className="w-full px-4 py-3 text-left text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-slate-700">
                   View all notifications →
                 </button>
               </div>
