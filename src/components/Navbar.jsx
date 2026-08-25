@@ -13,14 +13,19 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationContext";
+import { formatNotificationTime, NotificationIcon } from "./NotificationIcon";
 
 const Navbar = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { notifications, unreadCount, markAsRead } = useNotifications();
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [avatarLoadError, setAvatarLoadError] = useState(false);
   const menuRef = useRef(null);
+  const notificationsRef = useRef(null);
 
   const displayName =
     user?.user_metadata?.full_name || user?.user_metadata?.name || "";
@@ -29,12 +34,11 @@ const Navbar = ({ onMenuClick }) => {
 
   // Close the dropdown when clicking outside of it.
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen && !notificationsOpen) return;
 
     const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
-      }
+      if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) setNotificationsOpen(false);
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -42,10 +46,11 @@ const Navbar = ({ onMenuClick }) => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [menuOpen]);
+  }, [menuOpen, notificationsOpen]);
 
   const goTo = (path) => {
     setMenuOpen(false);
+    setNotificationsOpen(false);
     navigate(path);
   };
 
@@ -117,13 +122,72 @@ const Navbar = ({ onMenuClick }) => {
           </h2> */}
         </div>
 
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative" ref={notificationsRef}>
+            <button
+              type="button"
+              aria-label="Notifications"
+              aria-expanded={notificationsOpen}
+              onClick={() => {
+                setNotificationsOpen((previous) => !previous);
+                setMenuOpen(false);
+              }}
+              className="relative flex h-11 w-11 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-700 hover:text-indigo-600"
+            >
+              <Bell size={21} aria-hidden="true" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold leading-5 text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notificationsOpen && (
+              <div className="absolute right-0 top-14 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                <div className="flex items-center justify-between border-b border-slate-600 px-4 py-3">
+                  <p className="font-semibold text-slate-900">Notifications</p>
+                  {unreadCount > 0 && <span className="text-xs font-medium text-indigo-600">{unreadCount} unread</span>}
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.slice(0, 5).map((notification) => (
+                    <button
+                      key={notification.id}
+                      type="button"
+                      onClick={async () => {
+                        if (!notification.read) await markAsRead(notification.id);
+                      }}
+                      className={`flex w-full gap-3 border-b border-slate-600 px-4 py-3 text-left transition hover:bg-slate-700 ${!notification.read ? "bg-slate-800" : ""}`}
+                    >
+                      <NotificationIcon type={notification.type} size={16} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="truncate text-sm font-semibold text-slate-900">{notification.title}</span>
+                          {!notification.read && <span className="h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
+                        </span>
+                        <span className="mt-0.5 block line-clamp-2 text-xs text-slate-900">{notification.message}</span>
+                        <span className="mt-1 block text-xs text-slate-400">{formatNotificationTime(notification.created_at)}</span>
+                      </span>
+                    </button>
+                  ))}
+                  {notifications.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">No notifications yet.</p>}
+                </div>
+                <button type="button" onClick={() => goTo("/notifications")} className="w-full px-4 py-3 text-left text-sm font-semibold text-indigo-600 transition hover:bg-slate-700">
+                  View all notifications →
+                </button>
+              </div>
+            )}
+          </div>
+
         {/* USER AVATAR + MENU */}
         <div className="relative" ref={menuRef}>
           <button
             type="button"
             aria-label="User profile"
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((prev) => !prev)}
+            onClick={() => {
+              setMenuOpen((prev) => !prev);
+              setNotificationsOpen(false);
+            }}
             className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-white shadow-sm transition hover:bg-slate-700"
           >
             {avatarUrl && !avatarLoadError ? (
@@ -175,6 +239,7 @@ const Navbar = ({ onMenuClick }) => {
               </div>
             </div>
           )}
+        </div>
         </div>
 
       </div>
