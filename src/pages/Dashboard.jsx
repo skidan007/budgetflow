@@ -56,6 +56,13 @@ const formatMonthLabel = (month) => {
   });
 };
 
+const getPreviousMonth = (month) => {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(year, monthNumber - 2, 1);
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
 // -------------------------------------
 // EXPENSE CATEGORY → BUDGET CATEGORY
 // -------------------------------------
@@ -153,6 +160,8 @@ function Dashboard() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
 
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [isCarryingForward, setIsCarryingForward] = useState(false);
+  const [, setFreshStartVersion] = useState(0);
 
   // -------------------------------------
   // MONTH HELPER
@@ -278,8 +287,34 @@ function Dashboard() {
   // -------------------------------------
 
   const currencyTransactions = transactions.filter(
-    (transaction) => (transaction.currency || "NGN") === defaultCurrency,
+    (transaction) =>
+      (transaction.currency || "NGN") === defaultCurrency &&
+      (transaction.month || transaction.date?.slice(0, 7)) === currentMonth,
   );
+
+  const previousMonth = getPreviousMonth(currentMonth);
+  const previousMonthTransactions = transactions.filter(
+    (transaction) =>
+      (transaction.currency || "NGN") === defaultCurrency &&
+      (transaction.month || transaction.date?.slice(0, 7)) === previousMonth,
+  );
+  const previousMonthIncome = previousMonthTransactions
+    .filter((transaction) => transaction.type === "Income")
+    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+  const previousMonthExpenses = previousMonthTransactions
+    .filter((transaction) => transaction.type === "Expense")
+    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+  const previousMonthBalance = previousMonthIncome - previousMonthExpenses;
+  const carryForwardDescription = `Remaining balance carried forward from ${formatMonthLabel(previousMonth)}`;
+  const hasCarriedForward = currencyTransactions.some(
+    (transaction) =>
+      transaction.type === "Income" &&
+      transaction.category === "Carry Forward" &&
+      transaction.description === carryForwardDescription,
+  );
+
+  const freshStartKey = `budgetflow-fresh-start:${user?.id || "guest"}:${currentMonth}`;
+  const startedFresh = localStorage.getItem(freshStartKey) === "true";
 
   // -------------------------------------
   // FINANCIAL CALCULATIONS
@@ -303,6 +338,45 @@ function Dashboard() {
 
   const balance = income - expenses;
 
+  const canOfferCarryForward =
+    previousMonthIncome > 0 &&
+    previousMonthBalance > 0 &&
+    !hasCarriedForward &&
+    !startedFresh;
+
+  const handleStartFresh = () => {
+    localStorage.setItem(freshStartKey, "true");
+    setFreshStartVersion((version) => version + 1);
+    toast.success("Started a fresh financial cycle.");
+  };
+
+  const handleCarryForward = async () => {
+    if (hasCarriedForward || isCarryingForward) {
+      toast.error("This balance has already been carried forward.");
+      return;
+    }
+
+    setIsCarryingForward(true);
+
+    try {
+      await addTransaction({
+        type: "Income",
+        amount: previousMonthBalance,
+        category: "Carry Forward",
+        description: carryForwardDescription,
+        date: `${currentMonth}-01`,
+        currency: defaultCurrency,
+        month: currentMonth,
+      });
+      toast.success("Balance carried forward successfully.");
+    } catch (error) {
+      console.error("Carry forward error:", error);
+      toast.error(error?.message || "Failed to carry forward the balance.");
+    } finally {
+      setIsCarryingForward(false);
+    }
+  };
+
   // -------------------------------------
   // GOALS
   // -------------------------------------
@@ -320,6 +394,15 @@ function Dashboard() {
 
   const totalSaved = currencyGoals.reduce(
     (total, goal) => total + Number(goal.currentAmount || 0),
+    0,
+  );
+
+  const monthlySavings = currencyGoals.reduce(
+    (total, goal) =>
+      total +
+      (goal.savingsHistory || [])
+        .filter((saving) => saving.date?.slice(0, 7) === currentMonth)
+        .reduce((savingTotal, saving) => savingTotal + Number(saving.amount || 0), 0),
     0,
   );
 
@@ -699,7 +782,7 @@ function Dashboard() {
     },
     {
       title: "Savings",
-      amount: totalSaved,
+      amount: monthlySavings,
       icon: PiggyBank,
       iconBg: "bg-purple-100",
       iconColor: "text-purple-600",
@@ -732,6 +815,33 @@ function Dashboard() {
           </span>
         </p>
       </div>
+
+      {canOfferCarryForward && (
+        <section className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm dark:border-indigo-800/50 dark:bg-indigo-950/30">
+          <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-200">New Financial Month</p>
+          <h2 className="mt-1 text-lg font-bold">Welcome to {currentMonthLabel}.</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            Your {formatMonthLabel(previousMonth)} financial cycle has ended. Remaining balance: {currencySymbol}{previousMonthBalance.toLocaleString()}.
+          </p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={handleStartFresh}
+              className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+            >
+              Start Fresh
+            </button>
+            <button
+              type="button"
+              onClick={handleCarryForward}
+              disabled={isCarryingForward}
+              className="min-h-11 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isCarryingForward ? "Carrying Forward..." : `Carry Forward ${currencySymbol}${previousMonthBalance.toLocaleString()}`}
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* SUMMARY CARDS */}
 
