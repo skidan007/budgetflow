@@ -1,7 +1,10 @@
+import { calculateDailyBudgetStatus } from "../utils/budgetCalculations";
+
 function BudgetProgress({
   category,
   budget,
   spent,
+  month,
   currencySymbol = "₦",
   items = [],
   onEdit,
@@ -11,6 +14,14 @@ function BudgetProgress({
   const safeSpent = Number(spent) || 0;
   const remaining = safeBudget - safeSpent;
   const isOverBudget = remaining < 0;
+  const dailyPlan = calculateDailyBudgetStatus({
+    budgetAmount: safeBudget,
+    spentAmount: safeSpent,
+    month,
+  });
+  const formatAmount = (amount) => Number(amount || 0).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  });
 
   const percentage = Math.min(
     safeBudget > 0 ? (safeSpent / safeBudget) * 100 : safeSpent > 0 ? 100 : 0,
@@ -77,6 +88,60 @@ function BudgetProgress({
           {percentage.toFixed(0)}%
         </span>
       </div>
+
+      {dailyPlan.totalDays > 0 && (
+        <section className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+          <h4 className="font-semibold">Daily Spending Plan</h4>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-slate-500">Monthly Daily Target</p>
+              <p className="mt-1 font-semibold">{currencySymbol}{formatAmount(dailyPlan.originalDailyTarget)} / day</p>
+            </div>
+            <div>
+              <p className="text-slate-500">Days in Budget Month</p>
+              <p className="mt-1 font-semibold">{dailyPlan.totalDays} days</p>
+            </div>
+            {dailyPlan.isCurrentMonth && <>
+              <div>
+                <p className="text-slate-500">Expected Spending So Far</p>
+                <p className="mt-1 font-semibold">{currencySymbol}{formatAmount(dailyPlan.expectedSpent)}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Actual Spending</p>
+                <p className="mt-1 font-semibold">{currencySymbol}{formatAmount(safeSpent)}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Remaining Daily Allowance</p>
+                <p className="mt-1 font-semibold">{currencySymbol}{formatAmount(dailyPlan.recommendedDailySpending)} / day</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Days Remaining</p>
+                <p className="mt-1 font-semibold">{dailyPlan.daysRemaining} {dailyPlan.daysRemaining === 1 ? "day" : "days"}</p>
+              </div>
+            </>}
+          </div>
+
+          {dailyPlan.status === "on_track" && (
+            <p className="mt-4 text-sm font-medium text-green-600">🟢 You&apos;re on track.</p>
+          )}
+          {dailyPlan.status === "slightly_above" && (
+            <p className="mt-4 text-sm font-medium text-yellow-600">🟡 You&apos;re spending slightly above your daily target. You have spent {currencySymbol}{formatAmount(dailyPlan.amountAboveTarget)} above your expected spending so far.</p>
+          )}
+          {dailyPlan.status === "overspending" && (
+            <div className="mt-4 text-sm text-red-600">
+              <p className="font-medium">🔴 Spending Alert</p>
+              <p className="mt-1">You have spent {currencySymbol}{formatAmount(dailyPlan.amountAboveTarget)} above your expected spending so far.</p>
+              <p className="mt-1">To stay on track, spend no more than {currencySymbol}{formatAmount(dailyPlan.recommendedDailySpending)} per day for the remaining days.</p>
+            </div>
+          )}
+          {dailyPlan.status === "budget_reached" && (
+            <p className="mt-4 text-sm font-medium text-red-600">🔴 Budget limit reached.</p>
+          )}
+          {dailyPlan.status === "exceeded" && (
+            <p className="mt-4 text-sm font-medium text-red-600">🔴 You have exceeded this budget by {currencySymbol}{formatAmount(Math.abs(dailyPlan.remaining))}.</p>
+          )}
+        </section>
+      )}
 
       {items.filter((item) => item.description).length > 0 && (
         <div className="mt-5 border-t border-slate-100 pt-4">

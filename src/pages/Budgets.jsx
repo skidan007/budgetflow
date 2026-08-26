@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import BudgetProgress from "../components/BudgetProgress";
 import Modal from "../components/Modal";
 import { useFinance } from "../context/FinanceContext";
+import { calculateDailyBudgetStatus } from "../utils/budgetCalculations";
 
 const budgetCategories = [
   "Food",
@@ -285,6 +286,11 @@ function Budgets() {
               {currentMonthBudgets.map((budget) => {
                 const spent = getSpent(budget, currentMonthTransactions);
                 const remaining = Number(budget.amount || 0) - spent;
+                const dailyPlan = calculateDailyBudgetStatus({
+                  budgetAmount: budget.amount,
+                  spentAmount: spent,
+                  month: budget.month || currentMonth,
+                });
 
                 return (
                   <button
@@ -313,6 +319,12 @@ function Budgets() {
                           {currencySymbol}{Math.abs(remaining).toLocaleString()}
                         </p>
                       </div>
+                    </div>
+                    <div className="mt-3 text-sm">
+                      <p className="text-slate-500">Daily Target</p>
+                      <p className="mt-1 font-semibold text-indigo-600">
+                        {currencySymbol}{dailyPlan.originalDailyTarget.toLocaleString(undefined, { maximumFractionDigits: 2 })}/day
+                      </p>
                     </div>
                     <p className="mt-4 text-sm font-semibold text-indigo-600">View progress</p>
                   </button>
@@ -452,6 +464,7 @@ function Budgets() {
             category={selectedBudget.category}
             budget={selectedBudget.amount}
             spent={getSpent(selectedBudget, currentMonthTransactions)}
+            month={selectedBudget.month || currentMonth}
             items={getExpenseItems(selectedBudget, currentMonthTransactions)}
             currencySymbol={currencySymbol}
             onEdit={() => handleEditBudget(selectedBudget)}
