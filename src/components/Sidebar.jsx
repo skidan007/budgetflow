@@ -18,7 +18,7 @@ import {
 const Sidebar = ({ isOpen, onClose }) => {
   const menuItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
-     { name: "AI Planner", path: "/ai-planner", icon: Sparkles },
+     { name: "Smart Planner", path: "/ai-planner", icon: Sparkles },
     { name: "Budgets", path: "/budgets", icon: Wallet },
     { name: "Expenses", path: "/expenses", icon: Receipt },
     { name: "Goals", path: "/goals", icon: Target },
