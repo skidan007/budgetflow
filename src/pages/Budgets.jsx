@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ArrowRight, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import BudgetProgress from "../components/BudgetProgress";
 import Modal from "../components/Modal";
 import { useFinance } from "../context/FinanceContext";
 import { calculateDailyBudgetStatus } from "../utils/budgetCalculations";
@@ -43,7 +42,6 @@ function Budgets() {
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState("ongoing");
-  const [selectedBudget, setSelectedBudget] = useState(null);
   const [selectedHistoryMonth, setSelectedHistoryMonth] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [budgetCategory, setBudgetCategory] = useState("Food");
@@ -137,14 +135,6 @@ function Budgets() {
     setIsFormOpen(true);
   };
 
-  const handleEditBudget = (budget) => {
-    setEditingBudget(budget);
-    setBudgetCategory(budget.category);
-    setBudgetAmount(String(budget.amount || ""));
-    setSelectedBudget(null);
-    setIsFormOpen(true);
-  };
-
   const handleSaveBudget = () => {
     const amount = Number(budgetAmount);
 
@@ -220,16 +210,6 @@ function Budgets() {
     closeForm();
   };
 
-  const handleDeleteBudget = (budgetId) => {
-    if (!window.confirm("Are you sure you want to delete this budget?")) return;
-
-    setBudgets((previousBudgets) =>
-      previousBudgets.filter((budget) => budget.id !== budgetId),
-    );
-    setSelectedBudget(null);
-    toast.success("Budget deleted successfully!");
-  };
-
   return (
     <section className="relative mx-auto max-w-5xl pb-24">
       <header className="mb-6">
@@ -256,7 +236,7 @@ function Budgets() {
         </button>
       </section>
 
-      <div className="mt-8 border-b border-slate-200 dark:border-slate-700">
+      <div className="mt-8 border-b border-slate-200 dark:border-slate-700 p-5">
         <div className="flex gap-7">
           {["ongoing", "history"].map((tab) => (
             <button
@@ -296,7 +276,7 @@ function Budgets() {
                   <button
                     key={budget.id}
                     type="button"
-                    onClick={() => setSelectedBudget(budget)}
+                    onClick={() => navigate(`/budgets/${budget.id}`)}
                     className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-slate-700"
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -415,7 +395,7 @@ function Budgets() {
         onClick={openCreateForm}
         aria-label="Create a budget"
         title="Create a budget"
-        className="fixed bottom-6 right-6 grid size-14 place-items-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 md:absolute md:right-0 md:top-44"
+        className="fixed bottom-6 right-6 grid size-14 place-items-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 md:hidden"
       >
         <Plus size={26} aria-hidden="true" />
       </button>
@@ -454,24 +434,6 @@ function Budgets() {
         </div>
       </Modal>
 
-      <Modal
-        isOpen={selectedBudget !== null}
-        onClose={() => setSelectedBudget(null)}
-        title={selectedBudget ? `${selectedBudget.category} Budget` : "Budget Details"}
-      >
-        {selectedBudget && (
-          <BudgetProgress
-            category={selectedBudget.category}
-            budget={selectedBudget.amount}
-            spent={getSpent(selectedBudget, currentMonthTransactions)}
-            month={selectedBudget.month || currentMonth}
-            items={getExpenseItems(selectedBudget, currentMonthTransactions)}
-            currencySymbol={currencySymbol}
-            onEdit={() => handleEditBudget(selectedBudget)}
-            onDelete={() => handleDeleteBudget(selectedBudget.id)}
-          />
-        )}
-      </Modal>
     </section>
   );
 }

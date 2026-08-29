@@ -86,7 +86,7 @@ function Goals() {
         type="button"
         onClick={() => setIsFormOpen(true)}
         aria-label="Add goal"
-        className="fixed bottom-6 right-6 grid size-14 place-items-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 md:absolute md:right-0 md:top-44"
+        className="fixed bottom-6 right-6 grid size-14 place-items-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 md:hidden"
       >
         <Plus size={26} aria-hidden="true" />
       </button>
