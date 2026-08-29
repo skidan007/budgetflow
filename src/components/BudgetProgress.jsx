@@ -147,7 +147,7 @@ function BudgetProgress({
         <div className="mt-5 border-t border-slate-100 pt-4">
           <p className="text-sm font-medium text-slate-500">What you spent it on</p>
 
-          <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+          <ul className="mt-2 max-h-64 space-y-1.5 overflow-y-auto pr-1 text-sm text-slate-600">
             {items
               .filter((item) => item.description)
               .map((item) => (
