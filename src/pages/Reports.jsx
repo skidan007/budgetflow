@@ -1,9 +1,10 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
 import SummaryCard from "../components/SummaryCard";
 import { useFinance } from "../context/FinanceContext";
 import ExpensePieChart from "../components/charts/ExpensePieChart";
 import IncomeExpenseChart from "../components/charts/IncomeExpenseChart";
-import { Wallet, TrendingDown, PiggyBank, Landmark, X } from "lucide-react";
+import { Wallet, TrendingDown, PiggyBank, Landmark, Download, X } from "lucide-react";
 
 function getTransactionMonth(transaction) {
   return transaction.month || transaction.date?.slice(0, 7) || "";
@@ -258,6 +259,16 @@ function Reports() {
   const drilldownData = drilldownMonth
     ? budgetHistory.find((entry) => entry.month === drilldownMonth)
     : null;
+
+  const handleExportBudgetHistory = async (entry) => {
+    try {
+      const { exportBudgetHistoryPDF } = await import("../utils/exportBudgetHistoryPDF");
+      await exportBudgetHistoryPDF({ entry, currencySymbol });
+    } catch (error) {
+      console.error("Budget history PDF export failed:", error);
+      toast.error("Unable to download the budget history PDF.");
+    }
+  };
 
   const categoryTotals = filteredTransactions
     .filter((t) => t.type === "Expense")
@@ -678,19 +689,28 @@ function Reports() {
 
         {drilldownData && (
           <div className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50/60 p-6 dark:border-indigo-700/40 dark:bg-indigo-950/30">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 {drilldownData.label}
               </h3>
 
-              <button
-                type="button"
-                onClick={() => setDrilldownMonth(null)}
-                className="rounded-full p-1 text-slate-500 hover:bg-slate-200/60 dark:text-slate-400"
-                aria-label="Close report"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleExportBudgetHistory(drilldownData)}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                >
+                  <Download size={16} /> Download Report
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrilldownMonth(null)}
+                  className="rounded-full p-1 text-slate-500 hover:bg-slate-200/60 dark:text-slate-400"
+                  aria-label="Close report"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             <div className="mt-4 grid gap-6 md:grid-cols-3">
