@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, Download, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Modal from "../components/Modal";
 import { useFinance } from "../context/FinanceContext";
 import { calculateDailyBudgetStatus } from "../utils/budgetCalculations";
+import { exportBudgetHistoryPDF } from "../utils/exportBudgetHistoryPDF";
 
 const budgetCategories = [
   "Food",
@@ -99,6 +100,45 @@ function Budgets() {
   const historyTotalSpent = historyTransactions
     .filter((transaction) => transaction.type === "Expense")
     .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+
+  const handleDownloadHistory = async () => {
+    const expenses = historyTransactions.filter(
+      (transaction) => transaction.type === "Expense",
+    );
+    const entry = {
+      month: historyMonth,
+      label: getMonthLabel(historyMonth),
+      income: historyTransactions
+        .filter((transaction) => transaction.type === "Income")
+        .reduce((total, transaction) => total + Number(transaction.amount || 0), 0),
+      expenses: historyTotalSpent,
+      budgetTotal: historyTotalBudget,
+      remaining: historyTotalBudget - historyTotalSpent,
+      expensesByCategory: expenses.reduce((totals, transaction) => {
+        totals[transaction.category] =
+          (totals[transaction.category] || 0) + Number(transaction.amount || 0);
+        return totals;
+      }, {}),
+      expenseItemsByCategory: expenses.reduce((items, transaction) => {
+        if (!items[transaction.category]) items[transaction.category] = [];
+        items[transaction.category].push({
+          id: transaction.id,
+          description: transaction.description || "",
+          amount: Number(transaction.amount || 0),
+          date: transaction.date,
+        });
+        return items;
+      }, {}),
+      budgets: historyBudgets,
+    };
+
+    try {
+      await exportBudgetHistoryPDF({ entry, currencySymbol });
+    } catch (error) {
+      console.error("Budget history PDF export failed:", error);
+      toast.error("Unable to download the budget history PDF.");
+    }
+  };
 
   const getSpent = (budget, monthTransactions) =>
     monthTransactions
@@ -329,7 +369,17 @@ function Budgets() {
           {historyMonth && (
             <div className="mt-6 space-y-4">
               <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700">
-                <p className="text-sm text-slate-500">{getMonthLabel(historyMonth)}</p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <p className="text-sm text-slate-500">{getMonthLabel(historyMonth)}</p>
+                  <button
+                    type="button"
+                    onClick={handleDownloadHistory}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  >
+                    <Download size={16} aria-hidden="true" />
+                    Download Report
+                  </button>
+                </div>
                 <p className="mt-4 text-sm text-slate-500">Total Budget</p>
                 <p className="mt-1 text-3xl font-bold">{currencySymbol}{historyTotalBudget.toLocaleString()}</p>
                 <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-200 pt-4 text-sm dark:border-slate-700">
