@@ -47,6 +47,7 @@ const Expenses = () => {
   updateTransaction,
   deleteTransaction,
   budgets,
+  budgetsLoading,
   defaultCurrency,
   currentMonth,
   currentMonthLabel,
@@ -280,6 +281,11 @@ const budgetAmount = Number(budget?.amount || 0);
         "Please select a category.",
       );
 
+      return;
+    }
+
+    if (budgetsLoading) {
+      toast.error("Loading your budgets. Please try again in a moment.");
       return;
     }
 
@@ -659,6 +665,7 @@ const budgetAmount = Number(budget?.amount || 0);
                   )
               : 0
           }
+              budgetLoading={budgetsLoading}
           noBudgetMessage={`You don't have any budgeted categories for ${currentMonthLabel}. Create a budget first before adding an expense.`}
           onSubmit={
             handleUpdateExpense

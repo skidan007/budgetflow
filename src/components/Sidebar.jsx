@@ -9,16 +9,14 @@ import {
   ChartBar,
   Calculator,
   Settings,
-  // LogOut,
   X,
 } from "lucide-react";
-// import toast from "react-hot-toast";
-// import { supabase } from "../lib/supabaseClient";
+
 
 const Sidebar = ({ isOpen, onClose }) => {
   const menuItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
-     { name: "Smart Planner", path: "/ai-planner", icon: Sparkles },
+    { name: "Smart Planner", path: "/ai-planner", icon: Sparkles },
     { name: "Budgets", path: "/budgets", icon: Wallet },
     { name: "Expenses", path: "/expenses", icon: Receipt },
     { name: "Goals", path: "/goals", icon: Target },
@@ -28,22 +26,10 @@ const Sidebar = ({ isOpen, onClose }) => {
       path: "/compound-interest",
       icon: Calculator,
     },
-   
+
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
-  // const handleLogout = async () => {
-  //   const { error } = await supabase.auth.signOut();
-
-  //   if (error) {
-  //     console.error("Logout error:", error);
-  //     toast.error(error.message);
-  //     return;
-  //   }
-
-  //   toast.success("Logged out successfully.");
-  //   onClose?.();
-  // };
 
   return (
     <>
@@ -106,19 +92,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             );
           })}
         </nav>
-
-        {/* Logout
-        <div className="shrink-0 border-t border-slate-800 p-4">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex w-full items-center rounded-lg p-3 text-slate-300 transition hover:bg-red-600 hover:text-white"
-          >
-            <LogOut size={20} />
-
-            <span className="ml-3 font-medium">Logout</span>
-          </button>
-        </div> */}
       </aside>
     </>
   );

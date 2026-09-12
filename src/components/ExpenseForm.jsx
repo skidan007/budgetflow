@@ -21,6 +21,7 @@ function TransactionForm({
   currencySymbol,
   selectedCategoryRemaining,
   noBudgetMessage,
+  budgetLoading = false,
   type = "Expense",
   categoryLabel = "Category",
   dateLabel = "Date",
@@ -60,7 +61,7 @@ function TransactionForm({
     : fallbackCategories;
 
   const isBudgetMode = Array.isArray(categoryOptions);
-  const disableSubmit = isBudgetMode && categoryOptions.length === 0;
+  const disableSubmit = isBudgetMode && (budgetLoading || categoryOptions.length === 0);
   const isDateSelected = Boolean(date);
 
   const accentClasses =
@@ -103,7 +104,9 @@ function TransactionForm({
 
           {isBudgetMode && disableSubmit && (
             <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
-              {noBudgetMessage ||
+              {budgetLoading
+                ? "Loading your budgets..."
+                : noBudgetMessage ||
                 "Create at least one budget in this currency before adding expenses."}
             </p>
           )}

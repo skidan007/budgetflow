@@ -76,7 +76,9 @@ function AIPlanner() {
     defaultCurrency,
     currencySymbol,
     setGoals,
-    setBudgets,
+    budgets,
+    addBudget,
+    updateBudget,
     currentMonth,
     transactions,
     addTransaction,
@@ -244,32 +246,28 @@ function AIPlanner() {
           });
         return next;
       });
-      setBudgets((budgets) => {
-        const next = [...budgets];
+      await Promise.all(
         plan.categories
           .filter((item) => !GOAL_IDS.has(item.id) && item.amount > 0)
-          .forEach((item) => {
-            const index = next.findIndex(
+          .map((item) => {
+            const existingBudget = budgets.find(
               (budget) =>
                 budget.category === item.name &&
                 budget.currency === defaultCurrency &&
                 budget.month === currentMonth,
             );
-            const budget = {
-              id:
-                index >= 0
-                  ? next[index].id
-                  : `smart-budget-${Date.now()}-${item.id}`,
+            const values = {
               category: item.name,
               amount: item.amount,
               currency: defaultCurrency,
               month: currentMonth,
             };
-            if (index >= 0) next[index] = budget;
-            else next.push(budget);
-          });
-        return next;
-      });
+
+            return existingBudget
+              ? updateBudget(existingBudget.id, values)
+              : addBudget(values);
+          }),
+      );
       toast.success("Smart Plan saved");
       navigate("/budgets");
     } catch (error) {

@@ -33,7 +33,9 @@ function Budgets() {
   const {
     transactions,
     budgets,
-    setBudgets,
+    budgetsLoading,
+    addBudget,
+    updateBudget,
     defaultCurrency,
     currencySymbol,
     currentMonth,
@@ -135,7 +137,7 @@ function Budgets() {
     setIsFormOpen(true);
   };
 
-  const handleSaveBudget = () => {
+  const handleSaveBudget = async () => {
     const amount = Number(budgetAmount);
 
     if (!amount || amount <= 0 || Number.isNaN(amount)) {
@@ -170,44 +172,29 @@ function Budgets() {
       return;
     }
 
-    setBudgets((previousBudgets) => {
+    try {
       if (editingBudget) {
-        // Keep an existing budget in its original financial month.
-        return previousBudgets.map((budget) =>
-          budget.id === editingBudget.id
-            ? {
-                ...budget,
-                category: budgetCategory,
-                amount,
-                currency: defaultCurrency,
-                month: editingBudget.month,
-              }
-            : budget,
-        );
-      }
-
-      if (existingBudget) {
-        return previousBudgets.map((budget) =>
-          budget.id === existingBudget.id
-            ? { ...budget, amount, currency: defaultCurrency, month: currentMonth }
-            : budget,
-        );
-      }
-
-      return [
-        ...previousBudgets,
-        {
-          id: Date.now(),
+        await updateBudget(editingBudget.id, {
+          category: budgetCategory,
+          amount,
+          currency: defaultCurrency,
+          month: editingBudget.month,
+        });
+      } else {
+        await addBudget({
           category: budgetCategory,
           amount,
           currency: defaultCurrency,
           month: currentMonth,
-        },
-      ];
-    });
+        });
+      }
 
-    toast.success(editingBudget ? "Budget updated successfully!" : "Budget saved successfully!");
-    closeForm();
+      toast.success(editingBudget ? "Budget updated successfully!" : "Budget saved successfully!");
+      closeForm();
+    } catch (error) {
+      console.error("Save budget error:", error);
+      toast.error(error?.message || "Unable to save budget.");
+    }
   };
 
   return (
@@ -236,7 +223,7 @@ function Budgets() {
         </button>
       </section>
 
-      <div className="mt-8 border-b border-slate-200 dark:border-slate-700 p-5">
+      <div className="mt-8 border-b border-slate-200 dark:border-slate-700">
         <div className="flex gap-7">
           {["ongoing", "history"].map((tab) => (
             <button
@@ -257,7 +244,11 @@ function Budgets() {
 
       {activeTab === "ongoing" ? (
         <div className="mt-6">
-          {currentMonthBudgets.length === 0 ? (
+          {budgetsLoading ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+              Loading your budgets...
+            </div>
+          ) : currentMonthBudgets.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
               No budgets for {currentMonthLabel} yet. Create one to start tracking your spending.
             </div>
@@ -395,7 +386,7 @@ function Budgets() {
         onClick={openCreateForm}
         aria-label="Create a budget"
         title="Create a budget"
-        className="fixed bottom-6 right-6 grid size-14 place-items-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 md:hidden"
+        className="fixed bottom-6 right-6 grid size-14 place-items-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 md:absolute md:right-0 md:top-44"
       >
         <Plus size={26} aria-hidden="true" />
       </button>

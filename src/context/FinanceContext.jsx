@@ -42,6 +42,10 @@ function getMonthLabel(month) {
   });
 }
 
+function normalizeBudgetMonth(month, fallback = getCurrentMonth()) {
+  return /^\d{4}-\d{2}$/.test(String(month || "")) ? month : fallback;
+}
+
 // -------------------------------------
 // LOCAL STORAGE HELPERS
 // -------------------------------------
@@ -232,10 +236,7 @@ function normalizeBudgets(items) {
           ? budget.currency
           : "NGN";
 
-      const month =
-        typeof budget?.month === "string" && budget.month
-          ? budget.month
-          : currentMonth;
+      const month = normalizeBudgetMonth(budget?.month, currentMonth);
 
       if (!category || amount <= 0 || Number.isNaN(amount)) {
         return acc;
@@ -334,9 +335,8 @@ export function FinanceProvider({ children }) {
   // BUDGETS
   // -----------------------------------
 
-  const [budgets, setBudgets] = useState(() => {
-    return normalizeBudgets(parseStoredArray("budgets"));
-  });
+  const [budgets, setBudgets] = useState([]);
+  const [budgetsLoading, setBudgetsLoading] = useState(true);
 
   // -----------------------------------
   // FINANCIAL PROFILE
@@ -431,6 +431,91 @@ export function FinanceProvider({ children }) {
     };
 
     loadTransactions();
+  }, [user, authLoading]);
+
+  // -----------------------------------
+  // LOAD BUDGETS FROM SUPABASE
+  // -----------------------------------
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    let cancelled = false;
+
+    if (!user) {
+      setBudgets([]);
+      setBudgetsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const loadBudgets = async () => {
+      setBudgetsLoading(true);
+
+      const { data, error } = await supabase
+        .from("budgets")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("month", { ascending: false });
+
+      if (error) {
+        console.error("Load budgets error:", error);
+        if (cancelled) return;
+        setBudgets([]);
+        setBudgetsLoading(false);
+        return;
+      }
+
+      let remoteBudgets = normalizeBudgets(data ?? []);
+      if (cancelled) return;
+      const legacyOwner = localStorage.getItem("budgetsOwnerUserId");
+      const migrationKey = `budgetsMigrated:${user.id}`;
+      const legacyBudgets = normalizeBudgets(parseStoredArray("budgets"));
+
+      if (
+        remoteBudgets.length === 0 &&
+        legacyBudgets.length > 0 &&
+        (!legacyOwner || legacyOwner === user.id) &&
+        localStorage.getItem(migrationKey) !== "true"
+      ) {
+        const rows = legacyBudgets.map(({ category, amount, currency, month }) => ({
+          category,
+          amount,
+          currency,
+          month: normalizeBudgetMonth(month),
+          user_id: user.id,
+        }));
+        const { error: migrationError } = await supabase
+          .from("budgets")
+          .upsert(rows, { onConflict: "user_id,category,currency,month" });
+
+        if (migrationError) {
+          console.error("Migrate local budgets error:", migrationError);
+        } else {
+          localStorage.setItem(migrationKey, "true");
+          const { data: migratedData, error: reloadError } = await supabase
+            .from("budgets")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("month", { ascending: false });
+
+          if (reloadError) console.error("Reload migrated budgets error:", reloadError);
+          else remoteBudgets = normalizeBudgets(migratedData ?? []);
+        }
+      }
+
+      if (cancelled) return;
+      localStorage.setItem("budgetsOwnerUserId", user.id);
+      setBudgets(remoteBudgets);
+      setBudgetsLoading(false);
+    };
+
+    loadBudgets();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user, authLoading]);
 
   // -----------------------------------
@@ -703,30 +788,15 @@ export function FinanceProvider({ children }) {
       category,
       amount,
       currency: budget.currency || defaultCurrency,
-      month: budget.month || currentMonth,
+      month: normalizeBudgetMonth(budget.month, currentMonth),
       user_id: user.id,
     };
 
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("budgets")
-      .insert(newBudget)
+      .upsert(newBudget, { onConflict: "user_id,category,currency,month" })
       .select()
       .single();
-
-    // Support older tables that may not have month yet.
-    if (isMissingColumnError(error, "month")) {
-      const withoutMonth = {
-        ...newBudget,
-      };
-
-      delete withoutMonth.month;
-
-      ({ data, error } = await supabase
-        .from("budgets")
-        .insert(withoutMonth)
-        .select()
-        .single());
-    }
 
     if (error) {
       console.error("Add budget error:", error);
@@ -735,9 +805,68 @@ export function FinanceProvider({ children }) {
 
     const normalized = normalizeBudgets([data])[0];
 
-    setBudgets((prev) => [...prev, normalized]);
+    setBudgets((prev) => {
+      const key = `${normalized.category}::${normalized.currency}::${normalized.month}`;
+      const next = prev.filter(
+        (item) => `${item.category}::${item.currency}::${item.month}` !== key,
+      );
+      return [...next, normalized];
+    });
 
     return normalized;
+  };
+
+  const updateBudget = async (id, updates) => {
+    if (!user) throw new Error("You must be logged in.");
+
+    const cleanUpdates = {
+      ...updates,
+      ...(updates.category !== undefined && {
+        category: String(updates.category).trim(),
+      }),
+      ...(updates.amount !== undefined && { amount: Number(updates.amount) }),
+      ...(updates.month !== undefined && {
+        month: normalizeBudgetMonth(updates.month, currentMonth),
+      }),
+    };
+    delete cleanUpdates.id;
+    delete cleanUpdates.user_id;
+
+    const { data, error } = await supabase
+      .from("budgets")
+      .update(cleanUpdates)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Update budget error:", error);
+      throw error;
+    }
+
+    const normalized = normalizeBudgets([data])[0];
+    setBudgets((prev) =>
+      prev.map((item) => (String(item.id) === String(id) ? normalized : item)),
+    );
+    return normalized;
+  };
+
+  const deleteBudget = async (id) => {
+    if (!user) throw new Error("You must be logged in.");
+
+    const { error } = await supabase
+      .from("budgets")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Delete budget error:", error);
+      throw error;
+    }
+
+    setBudgets((prev) => prev.filter((item) => String(item.id) !== String(id)));
   };
 
   // -------------------------------------
@@ -921,10 +1050,6 @@ export function FinanceProvider({ children }) {
   }, [goals]);
 
   useEffect(() => {
-    localStorage.setItem("budgets", JSON.stringify(budgets));
-  }, [budgets]);
-
-  useEffect(() => {
     localStorage.setItem(
       "investmentScenarios",
       JSON.stringify(investmentScenarios),
@@ -1003,8 +1128,10 @@ export function FinanceProvider({ children }) {
 
         // Budgets
         budgets,
-        setBudgets,
         addBudget,
+        updateBudget,
+        deleteBudget,
+        budgetsLoading,
 
         // Financial profile
         financialProfile,

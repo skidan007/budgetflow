@@ -111,6 +111,7 @@ function Dashboard() {
     deleteTransaction,
     budgets,
     goals,
+    budgetsLoading,
     defaultCurrency,
     currencySymbol,
     currentMonth,
@@ -454,6 +455,11 @@ function Dashboard() {
   // -------------------------------------
 
   const handleAddExpense = async () => {
+    if (budgetsLoading) {
+      toast.error("Loading your budgets. Please try again in a moment.");
+      return;
+    }
+
     if (budgetedCategories.length === 0) {
       toast.error(
         `Create a budget for ${formatMonthLabel(expenseFormMonth)} first.`,
@@ -1127,6 +1133,7 @@ function Dashboard() {
               categoryOptions={budgetedCategories}
               currencySymbol={currencySymbol}
               selectedCategoryRemaining={selectedCategoryRemaining}
+              budgetLoading={budgetsLoading}
               noBudgetMessage={`No budget found for ${formatMonthLabel(
                 expenseFormMonth,
               )}. Create a budget first.`}
