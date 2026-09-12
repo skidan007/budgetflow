@@ -336,13 +336,13 @@ function Reports() {
 
   return (
     <section>
-      <div className="mb-6 gap-4 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <h1 className="text-3xl font-bold">Financial Reports</h1>
 
         <select
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
-          className="rounded-lg border p-2"
+          className="min-h-11 w-full rounded-lg border bg-white px-3 py-2 sm:w-auto"
         >
           {months.map((month) => (
             <option key={month} value={month}>
