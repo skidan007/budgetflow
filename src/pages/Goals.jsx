@@ -24,9 +24,7 @@ function Goals() {
     };
 
     try {
-      // Existing goals are locally persisted. Use the Supabase helper when a
-      // logged-in session is available, and retain the established local flow
-      // for offline/local goals and AI Planner compatibility.
+    
       await addGoal(goalValues);
     } catch {
       setGoals((previous) => [...previous, newGoal]);

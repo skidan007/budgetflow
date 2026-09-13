@@ -116,6 +116,11 @@ function Dashboard() {
     currencySymbol,
     currentMonth,
     currentMonthLabel,
+    financialCycle,
+    financialCycleLoading,
+    financialCycleError,
+    loadFinancialCycle,
+    completeFinancialCycle,
   } = useFinance();
 
   const displayName = getDisplayName(user);
@@ -162,7 +167,6 @@ function Dashboard() {
 
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [isCarryingForward, setIsCarryingForward] = useState(false);
-  const [, setFreshStartVersion] = useState(0);
 
   // -------------------------------------
   // MONTH HELPER
@@ -307,15 +311,9 @@ function Dashboard() {
     .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
   const previousMonthBalance = previousMonthIncome - previousMonthExpenses;
   const carryForwardDescription = `Remaining balance carried forward from ${formatMonthLabel(previousMonth)}`;
-  const hasCarriedForward = currencyTransactions.some(
-    (transaction) =>
-      transaction.type === "Income" &&
-      transaction.category === "Carry Forward" &&
-      transaction.description === carryForwardDescription,
-  );
-
-  const freshStartKey = `budgetflow-fresh-start:${user?.id || "guest"}:${currentMonth}`;
-  const startedFresh = localStorage.getItem(freshStartKey) === "true";
+  const rolloverCompleted =
+    financialCycle?.cycle_month === previousMonth &&
+    financialCycle?.status === "completed";
 
   // -------------------------------------
   // FINANCIAL CALCULATIONS
@@ -340,19 +338,30 @@ function Dashboard() {
   const balance = income - expenses;
 
   const canOfferCarryForward =
+    !financialCycleLoading &&
+    !financialCycleError &&
     previousMonthIncome > 0 &&
     previousMonthBalance > 0 &&
-    !hasCarriedForward &&
-    !startedFresh;
+    !rolloverCompleted;
 
-  const handleStartFresh = () => {
-    localStorage.setItem(freshStartKey, "true");
-    setFreshStartVersion((version) => version + 1);
-    toast.success("Started a fresh financial cycle.");
+  const handleStartFresh = async () => {
+    try {
+      await completeFinancialCycle({
+        cycleMonth: previousMonth,
+        nextMonth: currentMonth,
+        action: "start_fresh",
+        previousBalance: previousMonthBalance,
+      });
+      toast.success("Started a fresh financial cycle.");
+    } catch (error) {
+      console.error("Start fresh error:", error);
+      toast.error(error?.message || "Unable to complete the financial rollover.");
+      await loadFinancialCycle();
+    }
   };
 
   const handleCarryForward = async () => {
-    if (hasCarriedForward || isCarryingForward) {
+    if (rolloverCompleted || isCarryingForward) {
       toast.error("This balance has already been carried forward.");
       return;
     }
@@ -360,14 +369,14 @@ function Dashboard() {
     setIsCarryingForward(true);
 
     try {
-      await addTransaction({
-        type: "Income",
-        amount: previousMonthBalance,
-        category: "Carry Forward",
-        description: carryForwardDescription,
-        date: `${currentMonth}-01`,
+      await completeFinancialCycle({
+        cycleMonth: previousMonth,
+        nextMonth: currentMonth,
+        action: "carry_forward",
+        previousBalance: previousMonthBalance,
+        carriedForwardAmount: previousMonthBalance,
+        carryForwardDescription,
         currency: defaultCurrency,
-        month: currentMonth,
       });
       toast.success("Balance carried forward successfully.");
     } catch (error) {
@@ -821,6 +830,25 @@ function Dashboard() {
           </span>
         </p>
       </div>
+
+      {financialCycleLoading && (
+        <section className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+          Checking financial cycle status...
+        </section>
+      )}
+
+      {financialCycleError && (
+        <section className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+          <p>We could not verify this financial cycle.</p>
+          <button
+            type="button"
+            onClick={loadFinancialCycle}
+            className="mt-3 font-semibold underline"
+          >
+            Try again
+          </button>
+        </section>
+      )}
 
       {canOfferCarryForward && (
         <section className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm dark:border-indigo-800/50 dark:bg-indigo-950/30">

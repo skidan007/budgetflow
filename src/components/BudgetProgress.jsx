@@ -1,4 +1,4 @@
-import { calculateDailyBudgetStatus } from "../utils/budgetCalculations";
+import { calculateDailyBudgetStatus, getDateKey } from "../utils/budgetCalculations";
 
 function BudgetProgress({
   category,
@@ -14,9 +14,13 @@ function BudgetProgress({
   const safeSpent = Number(spent) || 0;
   const remaining = safeBudget - safeSpent;
   const isOverBudget = remaining < 0;
+  const spentToday = items
+    .filter((item) => item.date?.slice(0, 10) === getDateKey())
+    .reduce((total, item) => total + Number(item.amount || 0), 0);
   const dailyPlan = calculateDailyBudgetStatus({
     budgetAmount: safeBudget,
     spentAmount: safeSpent,
+    spentToday,
     month,
   });
   const formatAmount = (amount) => Number(amount || 0).toLocaleString(undefined, {
@@ -92,54 +96,38 @@ function BudgetProgress({
       {dailyPlan.totalDays > 0 && (
         <section className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
           <h4 className="font-semibold">Daily Spending Plan</h4>
-          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+          <div className="mt-3 space-y-5 text-sm">
             <div>
-              <p className="text-slate-500">Monthly Daily Target</p>
+              <p className="text-slate-500">Daily target</p>
               <p className="mt-1 font-semibold">{currencySymbol}{formatAmount(dailyPlan.originalDailyTarget)} / day</p>
             </div>
-            <div>
-              <p className="text-slate-500">Days in Budget Month</p>
-              <p className="mt-1 font-semibold">{dailyPlan.totalDays} days</p>
-            </div>
             {dailyPlan.isCurrentMonth && <>
-              <div>
-                <p className="text-slate-500">Expected Spending So Far</p>
-                <p className="mt-1 font-semibold">{currencySymbol}{formatAmount(dailyPlan.expectedSpent)}</p>
+              <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Today</p>
+                <p className="mt-3 text-2xl font-bold">{currencySymbol}{formatAmount(dailyPlan.spentToday)}</p>
+                <p className="mt-1 text-slate-500">Spent today</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <p><span className="block text-slate-500">Today&apos;s target</span><span className="font-semibold">{currencySymbol}{formatAmount(dailyPlan.originalDailyTarget)}</span></p>
+                  <p><span className="block text-slate-500">{dailyPlan.todayOverspent > 0 ? "Overspent today" : "Remaining today"}</span><span className={`font-semibold ${dailyPlan.todayOverspent > 0 ? "text-red-600" : "text-green-600"}`}>{currencySymbol}{formatAmount(dailyPlan.todayOverspent > 0 ? dailyPlan.todayOverspent : dailyPlan.todayRemaining)}</span></p>
+                </div>
+                <p className={`mt-3 font-semibold ${dailyPlan.todayOverspent > 0 ? "text-red-600" : "text-green-600"}`}>{dailyPlan.todayOverspent > 0 ? `⚠️ Overspent today by ${currencySymbol}${formatAmount(dailyPlan.todayOverspent)}` : dailyPlan.todayRemaining === 0 ? "✓ On today's target" : `✓ ${currencySymbol}${formatAmount(dailyPlan.todayRemaining)} remaining today`}</p>
               </div>
-              <div>
-                <p className="text-slate-500">Actual Spending</p>
-                <p className="mt-1 font-semibold">{currencySymbol}{formatAmount(safeSpent)}</p>
+              <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Monthly progress</p>
+                <div className="mt-3 space-y-2">
+                  <p><span className="text-slate-500">Expected so far: </span><span className="font-semibold">{currencySymbol}{formatAmount(dailyPlan.expectedSpent)}</span></p>
+                  <p><span className="text-slate-500">Actual spending: </span><span className="font-semibold">{currencySymbol}{formatAmount(safeSpent)}</span></p>
+                  <p><span className="text-slate-500">Monthly budget remaining: </span><span className="font-semibold">{currencySymbol}{formatAmount(Math.abs(remaining))}</span></p>
+                </div>
               </div>
-              <div>
-                <p className="text-slate-500">Remaining Daily Allowance</p>
-                <p className="mt-1 font-semibold">{currencySymbol}{formatAmount(dailyPlan.recommendedDailySpending)} / day</p>
-              </div>
-              <div>
-                <p className="text-slate-500">Days Remaining</p>
-                <p className="mt-1 font-semibold">{dailyPlan.daysRemaining} {dailyPlan.daysRemaining === 1 ? "day" : "days"}</p>
-              </div>
+              {dailyPlan.todayOverspent > 0 && (
+                <div className="border-t border-red-200 pt-4 text-red-700 dark:border-red-900">
+                  <p className="font-semibold">⚠️ Catch-up plan</p>
+                  {dailyPlan.daysRemainingAfterToday > 0 && remaining > 0 ? <p className="mt-1">Suggested spending for the remaining days: <strong>{currencySymbol}{formatAmount(dailyPlan.catchUpDailyAmount)} / day</strong></p> : <p className="mt-1">There are no days left after today to adjust your spending.</p>}
+                </div>
+              )}
             </>}
           </div>
-
-          {dailyPlan.status === "on_track" && (
-            <p className="mt-4 text-sm font-medium text-green-600">🟢 You&apos;re on track.</p>
-          )}
-          {dailyPlan.status === "slightly_above" && (
-            <p className="mt-4 text-sm font-medium text-yellow-600">🟡 You&apos;re spending slightly above your daily target. You have spent {currencySymbol}{formatAmount(dailyPlan.amountAboveTarget)} above your expected spending so far.</p>
-          )}
-          {dailyPlan.status === "overspending" && (
-            <div className="mt-4 text-sm text-red-600">
-              <p className="font-medium">🔴 Spending Alert</p>
-              <p className="mt-1">You have spent {currencySymbol}{formatAmount(dailyPlan.amountAboveTarget)} above your expected spending so far.</p>
-              <p className="mt-1">To stay on track, spend no more than {currencySymbol}{formatAmount(dailyPlan.recommendedDailySpending)} per day for the remaining days.</p>
-            </div>
-          )}
-          {dailyPlan.status === "budget_reached" && (
-            <p className="mt-4 text-sm font-medium text-red-600">🔴 Budget limit reached.</p>
-          )}
-          {dailyPlan.status === "exceeded" && (
-            <p className="mt-4 text-sm font-medium text-red-600">🔴 You have exceeded this budget by {currencySymbol}{formatAmount(Math.abs(dailyPlan.remaining))}.</p>
-          )}
         </section>
       )}
 

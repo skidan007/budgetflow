@@ -16,6 +16,12 @@ export function getDaysInMonth(month) {
     : 0;
 }
 
+export function getDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
+}
+
 export function getBudgetDaysRemaining(month, currentDate = new Date()) {
   const parsedMonth = parseBudgetMonth(month);
 
@@ -33,11 +39,13 @@ export function getBudgetDaysRemaining(month, currentDate = new Date()) {
 export function calculateDailyBudgetStatus({
   budgetAmount,
   spentAmount,
+  spentToday = 0,
   month,
   currentDate = new Date(),
 }) {
   const budget = Math.max(Number(budgetAmount) || 0, 0);
   const spent = Math.max(Number(spentAmount) || 0, 0);
+  const todaySpent = Math.max(Number(spentToday) || 0, 0);
   const totalDays = getDaysInMonth(month);
   const currentMonth = `${currentDate.getFullYear()}-${String(
     currentDate.getMonth() + 1,
@@ -51,8 +59,15 @@ export function calculateDailyBudgetStatus({
   const originalDailyTarget = totalDays > 0 ? budget / totalDays : 0;
   const expectedSpent = originalDailyTarget * daysElapsed;
   const amountAboveTarget = Math.max(spent - expectedSpent, 0);
-  const recommendedDailySpending =
-    daysRemaining > 0 ? Math.max(remaining, 0) / daysRemaining : 0;
+  const todayRemaining = Math.max(originalDailyTarget - todaySpent, 0);
+  const todayOverspent = Math.max(todaySpent - originalDailyTarget, 0);
+  const daysRemainingAfterToday = isCurrentMonth
+    ? Math.max(totalDays - currentDate.getDate(), 0)
+    : 0;
+  const catchUpDailyAmount =
+    daysRemainingAfterToday > 0 && todayOverspent > 0 && remaining > 0
+      ? remaining / daysRemainingAfterToday
+      : 0;
 
   let status = "not_current";
 
@@ -74,9 +89,13 @@ export function calculateDailyBudgetStatus({
     totalDays,
     daysElapsed,
     daysRemaining,
+    daysRemainingAfterToday,
     remaining,
     originalDailyTarget,
-    recommendedDailySpending,
+    spentToday: todaySpent,
+    todayRemaining,
+    todayOverspent,
+    catchUpDailyAmount,
     expectedSpent,
     amountAboveTarget,
     status,

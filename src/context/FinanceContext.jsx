@@ -29,6 +29,13 @@ function getCurrentMonth() {
   )}`;
 }
 
+function getPreviousMonth(month) {
+  const [year, monthNumber] = String(month || "").split("-").map(Number);
+  const date = new Date(year, monthNumber - 2, 1);
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function getMonthLabel(month) {
   if (!month) return "";
 
@@ -338,6 +345,11 @@ export function FinanceProvider({ children }) {
   const [budgets, setBudgets] = useState([]);
   const [budgetsLoading, setBudgetsLoading] = useState(true);
 
+  // The rollover record is the cross-device source of truth for the prior cycle.
+  const [financialCycle, setFinancialCycle] = useState(null);
+  const [financialCycleLoading, setFinancialCycleLoading] = useState(true);
+  const [financialCycleError, setFinancialCycleError] = useState(null);
+
   // -----------------------------------
   // FINANCIAL PROFILE
   // -----------------------------------
@@ -432,6 +444,48 @@ export function FinanceProvider({ children }) {
 
     loadTransactions();
   }, [user, authLoading]);
+
+  // -----------------------------------
+  // LOAD CURRENT FINANCIAL CYCLE STATE
+  // -----------------------------------
+
+  const loadFinancialCycle = async () => {
+    if (authLoading) return;
+
+    if (!user) {
+      setFinancialCycle(null);
+      setFinancialCycleError(null);
+      setFinancialCycleLoading(false);
+      return;
+    }
+
+    setFinancialCycleLoading(true);
+    setFinancialCycleError(null);
+
+    const cycleMonth = getPreviousMonth(currentMonth);
+    const { data, error } = await supabase
+      .from("financial_cycles")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("cycle_month", cycleMonth)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Load financial cycle error:", error);
+      setFinancialCycle(null);
+      setFinancialCycleError(error);
+    } else {
+      setFinancialCycle(data ?? null);
+    }
+
+    setFinancialCycleLoading(false);
+  };
+
+  useEffect(() => {
+    loadFinancialCycle();
+    // The loader is also exposed for the dashboard retry action.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading, currentMonth]);
 
   // -----------------------------------
   // LOAD BUDGETS FROM SUPABASE
@@ -659,6 +713,150 @@ export function FinanceProvider({ children }) {
     setTransactions((prev) => [normalized, ...prev]);
 
     return normalized;
+  };
+
+  // Claims one cycle before applying its action so two devices cannot process it twice.
+  const completeFinancialCycle = async ({
+    cycleMonth,
+    nextMonth,
+    action,
+    previousBalance,
+    carriedForwardAmount = 0,
+    carryForwardDescription,
+    currency,
+  }) => {
+    if (!user) throw new Error("You must be logged in.");
+
+    const cycle = {
+      user_id: user.id,
+      cycle_month: cycleMonth,
+      next_month: nextMonth,
+      status: "pending",
+      rollover_action: action,
+      previous_balance: Number(previousBalance) || 0,
+      carried_forward_amount: Number(carriedForwardAmount) || 0,
+    };
+
+    let { data, error } = await supabase
+      .from("financial_cycles")
+      .insert(cycle)
+      .select()
+      .single();
+
+    if (error?.code === "23505") {
+      const existing = await supabase
+        .from("financial_cycles")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("cycle_month", cycleMonth)
+        .maybeSingle();
+
+      if (existing.error) throw existing.error;
+      if (existing.data?.status === "completed") {
+        setFinancialCycle(existing.data);
+        return existing.data;
+      }
+
+      const pendingAge = existing.data?.updated_at
+        ? Date.now() - new Date(existing.data.updated_at).getTime()
+        : 0;
+      if (pendingAge >= 5 * 60 * 1000) {
+        const takeover = await supabase
+          .from("financial_cycles")
+          .update({
+            ...cycle,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.data.id)
+          .eq("status", "pending")
+          .eq("updated_at", existing.data.updated_at)
+          .select()
+          .maybeSingle();
+
+        if (takeover.error) throw takeover.error;
+        if (takeover.data) {
+          data = takeover.data;
+          error = null;
+        }
+      }
+
+      if (data) {
+        // The stale claim was reclaimed by this request; continue below.
+      } else {
+        data = existing.data;
+
+        if (action === "carry_forward") {
+          const matchingTransaction = await supabase
+            .from("transactions")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("type", "Income")
+            .eq("category", "Carry Forward")
+            .eq("amount", Number(carriedForwardAmount) || 0)
+            .eq("date", `${nextMonth}-01`)
+            .limit(1)
+            .maybeSingle();
+
+          if (matchingTransaction.error) throw matchingTransaction.error;
+          if (!matchingTransaction.data) {
+            throw new Error("This rollover is already being processed on another device.");
+          }
+
+          const completed = await supabase
+            .from("financial_cycles")
+            .update({
+              status: "completed",
+              completed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existing.data.id)
+            .eq("status", "pending")
+            .select()
+            .single();
+
+          if (completed.error) throw completed.error;
+          setFinancialCycle(completed.data);
+          return completed.data;
+        }
+
+        throw new Error("This rollover is already being processed on another device.");
+      }
+    }
+
+    if (error) throw error;
+
+    if (action === "carry_forward") {
+      try {
+        await addTransaction({
+          type: "Income",
+          amount: carriedForwardAmount,
+          category: "Carry Forward",
+          description: carryForwardDescription,
+          date: `${nextMonth}-01`,
+          currency: currency || defaultCurrency,
+          month: nextMonth,
+        });
+      } catch (transactionError) {
+        await supabase.from("financial_cycles").delete().eq("id", data.id).eq("status", "pending");
+        throw transactionError;
+      }
+    }
+
+    const completed = await supabase
+      .from("financial_cycles")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id)
+      .eq("status", "pending")
+      .select()
+      .single();
+
+    if (completed.error) throw completed.error;
+    setFinancialCycle(completed.data);
+    return completed.data;
   };
 
   // -----------------------------------
@@ -1132,6 +1330,13 @@ export function FinanceProvider({ children }) {
         updateBudget,
         deleteBudget,
         budgetsLoading,
+
+        // Financial cycle rollover
+        financialCycle,
+        financialCycleLoading,
+        financialCycleError,
+        loadFinancialCycle,
+        completeFinancialCycle,
 
         // Financial profile
         financialProfile,
