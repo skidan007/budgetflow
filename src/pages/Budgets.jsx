@@ -238,7 +238,8 @@ function Budgets() {
   };
 
   return (
-    <section className="relative mx-auto max-w-6xl pb-24">
+    <div className="relative mx-auto max-w-6xl">
+      <section className="pb-8 md:pb-24">
       <header className="mb-6">
         <h1 className="text-3xl font-bold">Budgets</h1>
         <p className="mt-1 text-sm text-slate-500">Budget for {currentMonthLabel}</p>
@@ -431,12 +432,14 @@ function Budgets() {
         </section>
       )}
 
+      </section>
+
       <button
         type="button"
         onClick={openCreateForm}
         aria-label="Create a budget"
         title="Create a budget"
-        className="fixed bottom-6 right-6 grid size-14 place-items-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 md:absolute md:right-0 md:top-44"
+        className="fixed bottom-6 right-6 z-30 grid size-14 place-items-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 md:absolute md:right-0 md:top-44"
       >
         <Plus size={26} aria-hidden="true" />
       </button>
@@ -474,8 +477,7 @@ function Budgets() {
           </button>
         </div>
       </Modal>
-
-    </section>
+    </div>
   );
 }
 
