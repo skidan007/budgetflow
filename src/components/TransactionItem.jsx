@@ -29,7 +29,7 @@ const TransactionItem = ({
     currencyMap[transaction.currency] || "₦";
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-emerald-200 hover:bg-emerald-50/20">
       {/* Top Section */}
       <div className="flex items-center justify-between gap-4">
         {/* Left Side */}
@@ -72,7 +72,7 @@ const TransactionItem = ({
             <button
               type="button"
               onClick={() => onEdit(transaction)}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+              className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
             >
               ✏️ Edit
             </button>
@@ -82,7 +82,7 @@ const TransactionItem = ({
             <button
               type="button"
               onClick={() => onDelete(transaction.id)}
-              className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+              className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
             >
               🗑️ Delete
             </button>

@@ -84,7 +84,7 @@ function TransactionForm({
       {type !== "Income" && (
         <>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Category
             </label>
 
@@ -92,7 +92,7 @@ function TransactionForm({
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               disabled={disableSubmit}
-              className={`w-full rounded-lg border border-slate-300 p-3 outline-none transition ${accentClasses.focus}`}
+              className={`w-full rounded-lg border border-slate-300 p-3 outline-none transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${accentClasses.focus}`}
             >
               {categories.map((item) => (
                 <option key={item} value={item}>
@@ -112,14 +112,14 @@ function TransactionForm({
           )}
 
           {isBudgetMode && !disableSubmit && category && (
-            <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+            <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               Remaining budget for {category}: {currencySymbol || "₦"}
               {Number(selectedCategoryRemaining || 0).toLocaleString()}
             </p>
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               What did you spend it on?
             </label>
 
@@ -128,7 +128,7 @@ function TransactionForm({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. Rice, trip to work, electricity bill"
-              className={`w-full rounded-lg border border-slate-300 p-3 outline-none transition ${accentClasses.focus}`}
+              className={`w-full rounded-lg border border-slate-300 p-3 outline-none transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${accentClasses.focus}`}
             />
           </div>
         </>
@@ -136,14 +136,14 @@ function TransactionForm({
 
       {type === "Income" && (
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
             {categoryLabel}
           </label>
 
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className={`w-full rounded-lg border border-slate-300 p-3 outline-none transition ${accentClasses.focus}`}
+            className={`w-full rounded-lg border border-slate-300 p-3 outline-none transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${accentClasses.focus}`}
           >
             {categories.map((item) => (
               <option key={item} value={item}>
@@ -155,7 +155,7 @@ function TransactionForm({
       )}
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
+        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
           {dateLabel}
         </label>
 
@@ -175,12 +175,12 @@ function TransactionForm({
             }
           }}
           onChange={(e) => setDate(e.target.value)}
-          className={`w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-slate-300 p-3 outline-none transition ${accentClasses.focus}`}
+          className={`w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-slate-300 p-3 outline-none transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${accentClasses.focus}`}
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
+        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
           {amountLabel}
         </label>
 
@@ -189,7 +189,7 @@ function TransactionForm({
           placeholder={amountPlaceholder}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className={`w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-slate-300 p-3 outline-none transition ${accentClasses.focus}`}
+          className={`w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-slate-300 p-3 outline-none transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${accentClasses.focus}`}
         />
       </div>
 

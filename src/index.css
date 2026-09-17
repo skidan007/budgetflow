@@ -3,15 +3,15 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --app-bg: #f1f5f9;
-  --app-bg-muted: #e2e8f0;
+  --app-bg: #f5f7f6;
+  --app-bg-muted: #e8eeeb;
   --app-surface: #ffffff;
-  --app-surface-muted: #f8fafc;
+  --app-surface-muted: #f8faf9;
   --app-text: #0f172a;
   --app-text-soft: #334155;
   --app-text-muted: #64748b;
   --app-text-subtle: #94a3b8;
-  --app-border: #cbd5e1;
+  --app-border: #dce5e0;
   --app-input-bg: #ffffff;
   --app-input-text: #0f172a;
   --app-input-placeholder: #94a3b8;
@@ -47,7 +47,34 @@ body,
 body {
   background-color: var(--app-bg);
   color: var(--app-text);
+  font-family: "DM Sans", "Avenir Next", sans-serif;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgb(22 163 74 / 0.28);
+  outline-offset: 2px;
+}
+
+@keyframes budgetflow-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+main > section {
+  animation: budgetflow-rise 0.35s ease both;
 }
 
 .bg-white {
@@ -177,4 +204,133 @@ textarea::placeholder {
 .no-spinner {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+/* Dark surfaces use explicit contrast so legacy utility combinations remain readable. */
+.dark {
+  color-scheme: dark;
+}
+
+.dark .bg-white,
+.dark [class~="bg-white/90"] {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #111827 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-indigo-50,
+.dark .bg-purple-50,
+.dark .bg-blue-50,
+.dark .bg-green-50,
+.dark .bg-red-50,
+.dark .bg-amber-50,
+.dark .bg-orange-50 {
+  background-color: #172033 !important;
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-black {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-700,
+.dark .text-gray-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-400,
+.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-indigo-950,
+.dark .text-indigo-900,
+.dark .text-indigo-800 {
+  color: #c7d2fe !important;
+}
+
+.dark .text-green-950,
+.dark .text-green-900,
+.dark .text-green-800 {
+  color: #86efac !important;
+}
+
+.dark .text-purple-950,
+.dark .text-purple-900,
+.dark .text-purple-800 {
+  color: #d8b4fe !important;
+}
+
+.dark .text-blue-950,
+.dark .text-blue-900,
+.dark .text-blue-800 {
+  color: #93c5fd !important;
+}
+
+.dark .text-amber-950,
+.dark .text-amber-900,
+.dark .text-amber-800,
+.dark .text-orange-950,
+.dark .text-orange-900,
+.dark .text-orange-800 {
+  color: #fcd34d !important;
+}
+
+.dark .text-red-950,
+.dark .text-red-900,
+.dark .text-red-800 {
+  color: #fca5a5 !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e293b !important;
+}
+
+.dark .border-indigo-100,
+.dark .border-indigo-200,
+.dark .border-purple-200,
+.dark .border-blue-200,
+.dark .border-green-200,
+.dark .border-red-200,
+.dark .border-amber-200,
+.dark .border-orange-200 {
+  border-color: #334155 !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #111827;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b;
+}
+
+.dark option {
+  background-color: #111827;
+  color: #f8fafc;
 }

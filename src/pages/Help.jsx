@@ -38,16 +38,16 @@ function Help() {
           <HelpCircle size={26} />
         </div>
 
-        <h1 className="mt-4 text-3xl font-bold text-slate-900">
+        <h1 className="mt-4 text-3xl font-bold text-slate-900 dark:text-slate-100">
           Help & Support
         </h1>
 
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Answers to common questions about using BudgetFlow.
         </p>
       </div>
 
-      <div className="divide-y divide-slate-100 rounded-2xl bg-white shadow-md">
+      <div className="divide-y divide-slate-100 rounded-2xl bg-white shadow-md dark:border dark:border-slate-800">
         {faqs.map((faq, index) => (
           <div key={faq.question} className="p-5">
             <button
@@ -55,7 +55,7 @@ function Help() {
               onClick={() => toggle(index)}
               className="flex w-full items-center justify-between gap-4 text-left"
             >
-              <span className="font-semibold text-slate-900">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {faq.question}
               </span>
 
@@ -68,7 +68,7 @@ function Help() {
             </button>
 
             {openIndex === index && (
-              <p className="mt-3 text-sm leading-6 text-slate-600">
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {faq.answer}
               </p>
             )}
@@ -76,13 +76,13 @@ function Help() {
         ))}
       </div>
 
-      <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-6">
+      <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-6 dark:border-slate-700 dark:bg-slate-900">
         <div className="flex items-center gap-3">
           <Mail size={20} className="text-indigo-600" />
-          <p className="font-semibold text-indigo-900">Still need help?</p>
+          <p className="font-semibold text-indigo-900 dark:text-indigo-200">Still need help?</p>
         </div>
 
-        <p className="mt-2 text-sm text-indigo-700">
+        <p className="mt-2 text-sm text-indigo-700 dark:text-slate-300">
           Reach out to us at{" "}
           <a
             href="mailto:deetek@gmail.com"

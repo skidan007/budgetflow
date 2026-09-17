@@ -238,26 +238,26 @@ function Budgets() {
   };
 
   return (
-    <section className="relative mx-auto max-w-5xl pb-24">
+    <section className="relative mx-auto max-w-6xl pb-24">
       <header className="mb-6">
         <h1 className="text-3xl font-bold">Budgets</h1>
         <p className="mt-1 text-sm text-slate-500">Budget for {currentMonthLabel}</p>
       </header>
 
-      <section className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 shadow-sm dark:border-indigo-800/50 dark:bg-indigo-950/30 sm:p-8">
-        <p className="text-sm font-medium text-indigo-700 dark:text-indigo-200">
+      <section className="rounded-3xl bg-slate-950 p-6 text-white shadow-xl sm:p-8">
+        <p className="text-sm font-medium text-emerald-300">
           Budget for {currentMonthLabel}
         </p>
-        <p className="mt-6 text-sm font-medium text-slate-600 dark:text-slate-300">
+        <p className="mt-6 text-sm font-medium text-slate-400">
           Total Budget
         </p>
-        <p className="mt-2 text-4xl font-bold text-slate-900 dark:text-slate-100 sm:text-5xl">
+        <p className="mt-2 text-4xl font-bold sm:text-5xl">
           {currencySymbol}{totalBudgetAmount.toLocaleString()}
         </p>
         <button
           type="button"
           onClick={openCreateForm}
-          className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 font-semibold text-white transition hover:bg-indigo-700"
+          className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-500"
         >
           Create a Budget <ArrowRight size={18} aria-hidden="true" />
         </button>
@@ -272,7 +272,7 @@ function Budgets() {
               onClick={() => setActiveTab(tab)}
               className={`min-h-12 border-b-2 px-1 text-sm font-semibold capitalize transition ${
                 activeTab === tab
-                  ? "border-indigo-600 text-indigo-600"
+                  ? "border-emerald-600 text-emerald-700"
                   : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
@@ -308,7 +308,7 @@ function Budgets() {
                     key={budget.id}
                     type="button"
                     onClick={() => navigate(`/budgets/${budget.id}`)}
-                    className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-slate-700"
+                    className="group rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <span className="text-2xl" aria-hidden="true">
@@ -333,11 +333,11 @@ function Budgets() {
                     </div>
                     <div className="mt-3 text-sm">
                       <p className="text-slate-500">Daily Target</p>
-                      <p className="mt-1 font-semibold text-indigo-600">
+                      <p className="mt-1 font-semibold text-emerald-700">
                         {currencySymbol}{dailyPlan.originalDailyTarget.toLocaleString(undefined, { maximumFractionDigits: 2 })}/day
                       </p>
                     </div>
-                    <p className="mt-4 text-sm font-semibold text-indigo-600">View progress</p>
+                    <p className="mt-4 text-sm font-semibold text-emerald-700">View progress</p>
                   </button>
                 );
               })}

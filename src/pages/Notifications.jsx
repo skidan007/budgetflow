@@ -26,8 +26,8 @@ function Notifications() {
     <section className="mx-auto max-w-3xl space-y-6 pb-16">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-        <h1 className="text-3xl font-bold text-slate-900">Notifications</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Notifications</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Stay updated with your financial progress.
         </p>
         </div>
@@ -38,7 +38,7 @@ function Notifications() {
         )}
       </div>
 
-      <div className="flex gap-2 border-b border-slate-200">
+      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800">
         {[["all", "All"], ["unread", "Unread"]].map(([value, label]) => (
           <button key={value} type="button" onClick={() => setFilter(value)} className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${filter === value ? "border-indigo-600 text-indigo-700 dark:text-indigo-300" : "border-transparent text-slate-500 hover:text-slate-900"}`}>
             {label}{value === "unread" && ` (${notifications.filter((notification) => !notification.read).length})`}
@@ -47,14 +47,14 @@ function Notifications() {
       </div>
 
       {loading ? (
-        <div className="rounded-2xl bg-white p-10 text-center text-sm text-slate-500 shadow-md">Loading notifications…</div>
+        <div className="rounded-2xl bg-white p-10 text-center text-sm text-slate-500 shadow-md dark:border dark:border-slate-800">Loading notifications…</div>
       ) : filteredNotifications.length === 0 ? (
-      <div className="flex flex-col items-center justify-center rounded-2xl bg-white p-12 text-center shadow-md">
+      <div className="flex flex-col items-center justify-center rounded-2xl bg-white p-12 text-center shadow-md dark:border dark:border-slate-800">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
           <Bell size={28} />
         </div>
 
-        <p className="mt-4 font-semibold text-slate-900">
+        <p className="mt-4 font-semibold text-slate-900 dark:text-slate-100">
           {filter === "unread" ? "No unread notifications." : "No notifications yet."}
         </p>
 
@@ -63,7 +63,7 @@ function Notifications() {
         </p>
       </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md dark:border-slate-800">
           {filteredNotifications.map((notification) => (
             <button key={notification.id} type="button" onClick={async () => {
               if (notification.read) return;
@@ -72,7 +72,7 @@ function Notifications() {
               <NotificationIcon type={notification.type} size={19} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-slate-900">{notification.title}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{notification.title}</span>
                   {!notification.read && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-600" aria-label="Unread" />}
                 </span>
                 <span className="mt-1 block text-sm text-slate-600">{notification.message}</span>

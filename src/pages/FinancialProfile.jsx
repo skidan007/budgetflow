@@ -89,24 +89,24 @@ function FinancialProfile() {
           <Wallet size={26} />
         </div>
 
-        <h1 className="mt-4 text-3xl font-bold text-slate-900">
+        <h1 className="mt-4 text-3xl font-bold text-slate-900 dark:text-slate-100">
           Financial Profile
         </h1>
 
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Save your financial preferences so BudgetFlow (and the AI Planner)
           can suggest better defaults. You can still override any value.
         </p>
       </div>
 
-      <div className="space-y-6 rounded-2xl bg-white p-6 shadow-md sm:p-8">
+      <div className="space-y-6 rounded-2xl bg-white p-6 shadow-md dark:border dark:border-slate-800 sm:p-8">
         {/* INCOME */}
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Income</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Income</h2>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Monthly Income
               </label>
               <div className="relative">
@@ -119,19 +119,19 @@ function FinancialProfile() {
                   value={monthlyIncome}
                   onChange={(e) => setMonthlyIncome(e.target.value)}
                   placeholder="350000"
-                  className="w-full rounded-lg border border-slate-300 py-3 pl-10 pr-4 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-lg border border-slate-300 py-3 pl-10 pr-4 outline-none transition dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Default Currency
               </label>
               <select
                 value={defaultCurrency}
                 onChange={(e) => setDefaultCurrency(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none transition dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20"
               >
                 <option value="NGN">₦ Nigerian Naira</option>
                 <option value="USD">$ US Dollar</option>
@@ -149,7 +149,7 @@ function FinancialProfile() {
 
         {/* GOAL */}
         <div className="border-t border-slate-100 pt-6">
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             Financial Goal
           </h2>
 
@@ -173,11 +173,11 @@ function FinancialProfile() {
 
         {/* SAVINGS */}
         <div className="border-t border-slate-100 pt-6">
-          <h2 className="text-lg font-semibold text-slate-900">Savings</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Savings</h2>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Monthly Savings Target
               </label>
               <input
@@ -186,12 +186,12 @@ function FinancialProfile() {
                 value={monthlySavingsTarget}
                 onChange={(e) => setMonthlySavingsTarget(e.target.value)}
                 placeholder="100000"
-                className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-lg border border-slate-300 p-3 outline-none transition dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Emergency Fund Target{" "}
                 <span className="text-slate-400">(optional)</span>
               </label>
@@ -201,7 +201,7 @@ function FinancialProfile() {
                 value={emergencyFundTarget}
                 onChange={(e) => setEmergencyFundTarget(e.target.value)}
                 placeholder="500000"
-                className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-lg border border-slate-300 p-3 outline-none transition dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20"
               />
             </div>
           </div>
@@ -209,18 +209,18 @@ function FinancialProfile() {
 
         {/* BUDGET PREFERENCE */}
         <div className="border-t border-slate-100 pt-6">
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             Budget Preference
           </h2>
 
           <div className="mt-4">
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Preferred budgeting approach
             </label>
             <select
               value={budgetPreference}
               onChange={(e) => setBudgetPreference(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none transition dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20"
             >
               {budgetPreferences.map((preference) => (
                 <option key={preference} value={preference}>

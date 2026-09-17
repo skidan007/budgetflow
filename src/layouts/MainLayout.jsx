@@ -16,7 +16,7 @@ const MainLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen bg-[#f5f7f6] text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -27,7 +27,7 @@ const MainLayout = () => {
       <div className="min-h-screen md:ml-64">
         <Navbar onMenuClick={handleOpenSidebar} />
 
-        <main className=" p-4 pt-30 md:p-6 md:pt-30 ">
+        <main className="min-h-[calc(100vh-5rem)] p-4 pt-28 md:p-8 md:pt-28">
           <Outlet  />
         </main>
       </div>

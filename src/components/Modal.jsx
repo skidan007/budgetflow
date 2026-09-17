@@ -3,13 +3,14 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-bold">{title}</h2>
 
           <button
             onClick={onClose}
-            className="text-2xl text-slate-500 hover:text-black"
+            aria-label="Close dialog"
+            className="text-2xl text-slate-500 hover:text-black dark:text-slate-400 dark:hover:text-white"
           >
             x
           </button>

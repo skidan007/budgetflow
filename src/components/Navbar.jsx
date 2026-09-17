@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   Menu,
@@ -18,6 +19,7 @@ import { formatNotificationTime, NotificationIcon } from "./NotificationIcon";
 
 const Navbar = ({ onMenuClick }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const { notifications, unreadCount, markAsRead } = useNotifications();
 
@@ -31,6 +33,16 @@ const Navbar = ({ onMenuClick }) => {
     user?.user_metadata?.full_name || user?.user_metadata?.name || "";
 
   const avatarUrl = user?.user_metadata?.custom_avatar_url || "";
+  const pageTitles = {
+    "/": "Overview",
+    "/ai-planner": "Smart Planner",
+    "/budgets": "Budgets",
+    "/expenses": "Expenses",
+    "/goals": "Goals",
+    "/reports": "Reports",
+    "/compound-interest": "Compound Interest",
+    "/settings": "Settings",
+  };
 
   // Close the dropdown when clicking outside of it.
   useEffect(() => {
@@ -88,7 +100,7 @@ const Navbar = ({ onMenuClick }) => {
   ];
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 h-20 border-b border-slate-200 bg-white shadow-sm md:left-64">
+    <header className="fixed left-0 right-0 top-0 z-40 h-20 border-b border-slate-200/80 bg-white/90 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 md:left-64">
       <div className="flex h-full items-center justify-between px-4 md:px-6">
 
         {/* LEFT SIDE */}
@@ -98,7 +110,7 @@ const Navbar = ({ onMenuClick }) => {
           <button
             type="button"
             onClick={onMenuClick}
-            className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 md:hidden"
+            className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:hidden"
           >
             <Menu size={24} />
           </button>
@@ -111,15 +123,15 @@ const Navbar = ({ onMenuClick }) => {
               className="h-12 w-auto rounded-full object-contain"
             /> */}
 
-            <span className="text-lg font-bold text-slate-900">
+            <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
               BudgetFlow
             </span>
           </div>
 
-          {/* DESKTOP PAGE TITLE */}
-          {/* <h2 className="hidden font-semibold text-slate-900 md:block">
-            Dashboard
-          </h2> */}
+          <div className="hidden md:block">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-400">BudgetFlow</p>
+            <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">{pageTitles[location.pathname] || "Your finances"}</h2>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -132,7 +144,7 @@ const Navbar = ({ onMenuClick }) => {
                 setNotificationsOpen((previous) => !previous);
                 setMenuOpen(false);
               }}
-              className="relative flex h-11 w-11 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-700 hover:text-indigo-600"
+              className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-emerald-300"
             >
               <Bell size={21} aria-hidden="true" />
               {unreadCount > 0 && (
@@ -145,7 +157,7 @@ const Navbar = ({ onMenuClick }) => {
             {notificationsOpen && (
               <div className="fixed left-4 right-4 top-20 z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:absolute sm:left-auto sm:right-0 sm:top-14 sm:w-80 dark:border-slate-600">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-600">
-                  <p className="font-semibold text-slate-900">Notifications</p>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">Notifications</p>
                   {unreadCount > 0 && <span className="text-xs font-medium text-indigo-600">{unreadCount} unread</span>}
                 </div>
                 <div className="max-h-96 overflow-y-auto">
@@ -156,12 +168,12 @@ const Navbar = ({ onMenuClick }) => {
                       onClick={async () => {
                         if (!notification.read) await markAsRead(notification.id);
                       }}
-                      className={`flex w-full gap-3 border-b border-slate-200 px-4 py-3 text-left transition hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700 ${!notification.read ? "bg-indigo-50 dark:bg-slate-800" : ""}`}
+                      className={`flex w-full gap-3 border-b border-slate-200 px-4 py-3 text-left transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 ${!notification.read ? "bg-indigo-50 dark:bg-indigo-950/50" : ""}`}
                     >
                       <NotificationIcon type={notification.type} size={16} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
-                          <span className="truncate text-sm font-semibold text-slate-900">{notification.title}</span>
+                          <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{notification.title}</span>
                           {!notification.read && <span className="h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
                         </span>
                         <span className="mt-0.5 block line-clamp-2 text-xs text-slate-600 dark:text-slate-200">{notification.message}</span>
@@ -171,7 +183,7 @@ const Navbar = ({ onMenuClick }) => {
                   ))}
                   {notifications.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">No notifications yet.</p>}
                 </div>
-                <button type="button" onClick={() => goTo("/notifications")} className="w-full px-4 py-3 text-left text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-slate-700">
+                <button type="button" onClick={() => goTo("/notifications")} className="w-full px-4 py-3 text-left text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-slate-800">
                   View all notifications →
                 </button>
               </div>
@@ -188,7 +200,7 @@ const Navbar = ({ onMenuClick }) => {
               setMenuOpen((prev) => !prev);
               setNotificationsOpen(false);
             }}
-            className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-white shadow-sm transition hover:bg-slate-700"
+            className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-emerald-200 bg-emerald-100 text-emerald-800 shadow-sm transition hover:bg-emerald-200 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900"
           >
             {avatarUrl && !avatarLoadError ? (
               <img
@@ -203,12 +215,12 @@ const Navbar = ({ onMenuClick }) => {
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-14 z-50 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-              <div className="border-b border-slate-100 px-4 py-3">
-                <p className="truncate font-semibold text-slate-900">
+            <div className="absolute right-0 top-14 z-50 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+              <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-700">
+                <p className="truncate font-semibold text-slate-900 dark:text-slate-100">
                   {displayName || "BudgetFlow User"}
                 </p>
-                <p className="truncate text-sm text-slate-500">
+                <p className="truncate text-sm text-slate-500 dark:text-slate-400">
                   {user?.email || ""}
                 </p>
               </div>
@@ -219,19 +231,19 @@ const Navbar = ({ onMenuClick }) => {
                     key={label}
                     type="button"
                     onClick={onClick}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
-                    <Icon size={18} className="text-slate-500" />
+                    <Icon size={18} className="text-slate-500 dark:text-slate-400" />
                     {label}
                   </button>
                 ))}
               </div>
 
-              <div className="border-t border-slate-100 py-1">
+              <div className="border-t border-slate-100 py-1 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
                 >
                   <LogOut size={18} />
                   Logout

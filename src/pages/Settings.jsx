@@ -70,33 +70,33 @@ const Settings = () => {
     <section className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Settings</h1>
 
-        <p className="mt-2 text-slate-500">
+        <p className="mt-2 text-slate-500 dark:text-slate-400">
           Update your preferences and app configuration.
         </p>
       </div>
 
       {/* General Settings */}
-      <div className="max-w-2xl rounded-xl bg-white p-6 shadow-md">
-        <h2 className="text-xl font-semibold text-slate-900">
+      <div className="max-w-2xl rounded-xl bg-white p-6 shadow-md dark:border dark:border-slate-800">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
           General Settings
         </h2>
 
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Choose the default currency used throughout BudgetFlow.
         </p>
 
         {/* Currency */}
         <div className="mt-6">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Default Currency
           </label>
 
           <select
             value={defaultCurrency}
             onChange={(e) => setDefaultCurrency(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            className="w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-indigo-500/20"
           >
             {currencies.map((currency) => (
               <option key={currency.code} value={currency.code}>
@@ -108,10 +108,10 @@ const Settings = () => {
 
         {/* Preview */}
         {selectedCurrency && (
-          <div className="mt-4 rounded-lg bg-slate-50 p-4">
-            <p className="text-sm text-slate-500">Selected currency</p>
+          <div className="mt-4 rounded-lg bg-slate-50 p-4 dark:border dark:border-slate-800">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Selected currency</p>
 
-            <p className="mt-1 text-lg font-semibold text-slate-900">
+            <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
               {selectedCurrency.symbol} {selectedCurrency.name}
             </p>
           </div>

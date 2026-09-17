@@ -9,35 +9,36 @@ function GoalCard({ goal }) {
   const progress = target > 0 ? Math.min((saved / target) * 100, 100) : 0;
   const currency = goal?.currency || "NGN";
   const icon = String(goal?.type || "").match(/^\S+/)?.[0] || "🎯";
+  const goalTypeLabel = goal?.type === "AI Plan" ? "Smart Plan" : goal?.type || "Goal";
 
   return (
     <button
       type="button"
       onClick={() => navigate(`/goals/${goal.id}`)}
-      className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
+      className="group rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg"
     >
       <div className="flex items-start justify-between gap-4">
-        <span className="text-2xl" aria-hidden="true">{icon}</span>
-        <ArrowRight size={19} className="text-slate-400" aria-hidden="true" />
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-2xl" aria-hidden="true">{icon}</span>
+        <ArrowRight size={19} className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-emerald-600" aria-hidden="true" />
       </div>
-      <h2 className="mt-3 text-lg font-semibold">{goal?.name || "Goal"}</h2>
-      <p className="mt-1 text-sm text-slate-500">{goal?.type || "Goal"}</p>
-      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
+      <h2 className="mt-4 text-lg font-bold tracking-tight text-slate-900">{goal?.name || "Goal"}</h2>
+      <p className="mt-1 text-sm text-slate-500">{goalTypeLabel}</p>
+      <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 text-sm">
         <div>
           <p className="text-slate-500">Saved</p>
-          <p className="mt-1 font-bold">{currency}{saved.toLocaleString()}</p>
+          <p className="mt-1 font-bold text-slate-900">{currency}{saved.toLocaleString()}</p>
         </div>
         <div className="text-right">
           <p className="text-slate-500">Target</p>
-          <p className="mt-1 font-bold">{currency}{target.toLocaleString()}</p>
+          <p className="mt-1 font-bold text-slate-900">{currency}{target.toLocaleString()}</p>
         </div>
       </div>
       <div className="mt-4 flex justify-between text-sm">
         <span className="text-slate-500">Remaining {currency}{remaining.toLocaleString()}</span>
-        <span className="font-semibold text-indigo-600">{progress.toFixed(0)}%</span>
+        <span className="font-semibold text-emerald-600">{progress.toFixed(0)}%</span>
       </div>
-      <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-        <div className={`h-full rounded-full ${progress >= 100 ? "bg-green-500" : "bg-indigo-600"}`} style={{ width: `${progress}%` }} />
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full rounded-full transition-all duration-700 ${progress >= 100 ? "bg-emerald-500" : "bg-emerald-600"}`} style={{ width: `${progress}%` }} />
       </div>
     </button>
   );

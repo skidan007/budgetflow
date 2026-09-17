@@ -131,13 +131,13 @@ function Profile() {
   return (
     <section className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">My Profile</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           View and manage your account information.
         </p>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-md sm:p-8">
+      <div className="rounded-2xl bg-white p-6 shadow-md dark:border dark:border-slate-800 sm:p-8">
         <div className="flex items-center gap-4">
           <div className="relative">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-white">
@@ -173,21 +173,21 @@ function Profile() {
           </div>
 
           <div className="min-w-0">
-            <p className="truncate text-xl font-bold text-slate-900">
+            <p className="truncate text-xl font-bold text-slate-900 dark:text-slate-100">
               {currentName || "BudgetFlow User"}
             </p>
-            <p className="truncate text-sm text-slate-500">{user?.email}</p>
+            <p className="truncate text-sm text-slate-500 dark:text-slate-400">{user?.email}</p>
             {uploadingAvatar && (
-              <p className="mt-1 text-xs font-medium text-indigo-600">
+              <p className="mt-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
                 Uploading...
               </p>
             )}
           </div>
         </div>
 
-        <div className="mt-6 space-y-4 border-t border-slate-100 pt-6">
+        <div className="mt-6 space-y-4 border-t border-slate-100 pt-6 dark:border-slate-800">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
+            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
               Full Name
             </label>
 
@@ -196,30 +196,30 @@ function Profile() {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-indigo-500/20"
               />
             ) : (
-              <p className="rounded-lg bg-slate-50 p-3 text-slate-900">
+              <p className="rounded-lg bg-slate-50 p-3 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
                 {currentName || "Not set"}
               </p>
             )}
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
+            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
               Email
             </label>
-            <p className="rounded-lg bg-slate-50 p-3 text-slate-900">
+            <p className="rounded-lg bg-slate-50 p-3 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
               {user?.email}
             </p>
           </div>
 
           {memberSince && (
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Member Since
               </label>
-              <p className="rounded-lg bg-slate-50 p-3 text-slate-900">
+              <p className="rounded-lg bg-slate-50 p-3 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
                 {memberSince}
               </p>
             </div>
@@ -233,7 +233,7 @@ function Profile() {
                 type="button"
                 onClick={handleCancel}
                 disabled={saving}
-                className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-60"
               >
                 <X size={18} />
                 Cancel

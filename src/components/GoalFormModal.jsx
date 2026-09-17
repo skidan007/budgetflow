@@ -81,7 +81,7 @@ function GoalFormModal({ isOpen, goal, defaultCurrency, onClose, onSubmit }) {
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Goal Name
           </label>
 
@@ -90,19 +90,19 @@ function GoalFormModal({ isOpen, goal, defaultCurrency, onClose, onSubmit }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Emergency Fund"
-            className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500"
+            className="w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Goal Type
           </label>
 
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none focus:border-indigo-500"
+            className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             {goalTypes.map((option) => (
               <option key={option} value={option}>
@@ -113,14 +113,14 @@ function GoalFormModal({ isOpen, goal, defaultCurrency, onClose, onSubmit }) {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Currency
           </label>
 
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none focus:border-indigo-500"
+            className="w-full rounded-lg border border-slate-300 bg-white p-3 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             {currencyOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -131,12 +131,12 @@ function GoalFormModal({ isOpen, goal, defaultCurrency, onClose, onSubmit }) {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Target Amount
           </label>
 
           <div className="flex">
-            <span className="flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-4 text-slate-600">
+            <span className="flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-4 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               {currency}
             </span>
 
@@ -147,13 +147,13 @@ function GoalFormModal({ isOpen, goal, defaultCurrency, onClose, onSubmit }) {
               value={targetAmount}
               onChange={(e) => setTargetAmount(e.target.value)}
               placeholder="500000"
-              className="w-full rounded-r-lg border border-slate-300 p-3 outline-none focus:border-indigo-500"
+              className="w-full rounded-r-lg border border-slate-300 p-3 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Target Date
           </label>
 
@@ -161,7 +161,7 @@ function GoalFormModal({ isOpen, goal, defaultCurrency, onClose, onSubmit }) {
             type="date"
             value={targetDate}
             onChange={(e) => setTargetDate(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-indigo-500"
+            className="w-full rounded-lg border border-slate-300 p-3 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
 

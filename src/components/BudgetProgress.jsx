@@ -40,8 +40,16 @@ function BudgetProgress({
         : "bg-red-500";
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow-md">
-      <h3 className="mb-4 text-xl font-semibold">{category}</h3>
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:shadow-md">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600">Budget category</p>
+          <h3 className="mt-1 text-xl font-bold tracking-tight">{category}</h3>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isOverBudget ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
+          {isOverBudget ? "Over budget" : "On track"}
+        </span>
+      </div>
 
       <div className="space-y-3">
         <div className="flex justify-between">
@@ -81,7 +89,7 @@ function BudgetProgress({
       {/* Progress Bar */}
 
       <div className="mt-3 flex items-center gap-3">
-        <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-200">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
           <div
             className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
             style={{ width: `${percentage}%` }}
@@ -94,7 +102,7 @@ function BudgetProgress({
       </div>
 
       {dailyPlan.totalDays > 0 && (
-        <section className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+        <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <h4 className="font-semibold">Daily Spending Plan</h4>
           <div className="mt-3 space-y-5 text-sm">
             <div>

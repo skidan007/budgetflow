@@ -412,7 +412,7 @@ const budgetAmount = Number(budget?.amount || 0);
   // -------------------------------------
 
   return (
-    <section className="space-y-6">
+    <section className="mx-auto max-w-6xl space-y-6">
       {/* HEADER */}
 
       <div>
@@ -427,25 +427,25 @@ const budgetAmount = Number(budget?.amount || 0);
 
       {/* CURRENT BUDGET PERIOD */}
 
-      <div className="rounded-lg bg-indigo-50 p-4">
-        <p className="text-sm text-indigo-600">
+      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+        <p className="text-sm text-emerald-700">
           Current Budget Period
         </p>
 
-        <p className="mt-1 text-lg font-semibold text-indigo-900">
+        <p className="mt-1 text-lg font-semibold text-emerald-900">
           {currentMonthLabel}
         </p>
       </div>
 
       {/* TOTAL EXPENSES */}
 
-      <div className="rounded-xl bg-white p-6 shadow-md">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <p className="text-sm text-slate-500">
           Total Expenses for{" "}
           {currentMonthLabel}
         </p>
 
-        <h2 className="mt-2 text-3xl font-bold text-red-600">
+        <h2 className="mt-2 text-3xl font-bold text-slate-950 dark:text-red-300">
           {currencySymbol}
           {totalExpenses.toLocaleString()}
         </h2>
@@ -540,7 +540,7 @@ const budgetAmount = Number(budget?.amount || 0);
               return (
                 <div
                   key={expense.id}
-                  className="flex flex-col gap-4 rounded-xl border bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-200 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <h3 className="font-semibold text-slate-900">
@@ -559,7 +559,7 @@ const budgetAmount = Number(budget?.amount || 0);
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-red-600">
+                    <span className="font-bold text-red-600 dark:text-red-300">
                       {expenseCurrency}
                       {Number(
                         expense.amount || 0,
@@ -573,7 +573,7 @@ const budgetAmount = Number(budget?.amount || 0);
                           ...expense,
                         })
                       }
-                      className="rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-600"
+                      className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
                     >
                       Edit
                     </button>

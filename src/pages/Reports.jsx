@@ -335,7 +335,7 @@ function Reports() {
             )}% of your income. Your spending is currently under control.`;
 
   return (
-    <section>
+    <section className="mx-auto max-w-7xl">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <h1 className="text-3xl font-bold">Financial Reports</h1>
 
@@ -380,8 +380,8 @@ function Reports() {
           currency={currencySymbol}
           amount={goalSavingsTotal}
           icon={PiggyBank}
-          iconBg="bg-blue-100"
-          iconColor="text-blue-600"
+          iconBg="bg-emerald-100"
+          iconColor="text-emerald-700"
         />
 
         <SummaryCard
@@ -389,21 +389,21 @@ function Reports() {
           currency={currencySymbol}
           amount={totalSavings}
           icon={Landmark}
-          iconBg="bg-purple-100"
-          iconColor="text-purple-600"
+          iconBg="bg-amber-100"
+          iconColor="text-amber-700"
         />
       </div>
 
-      <div className="mt-6 rounded-xl border border-purple-200 bg-purple-50 p-6 dark:border-purple-700/40 dark:bg-purple-950/40">
+      <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-purple-700 dark:text-purple-200">Savings Rate</p>
+            <p className="text-sm font-medium text-emerald-700">Savings Rate</p>
 
-            <p className="mt-2 text-3xl font-bold text-purple-900 dark:text-purple-100">
+            <p className="mt-2 text-3xl font-bold text-emerald-900">
               {savingsRate.toFixed(1)}%
             </p>
 
-            <p className="mt-1 text-sm text-purple-700 dark:text-purple-200/90">
+            <p className="mt-1 text-sm text-emerald-700">
               Percentage of your income remaining after expenses.
             </p>
           </div>

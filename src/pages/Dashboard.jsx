@@ -778,8 +778,8 @@ function Dashboard() {
       title: "Total Balance",
       amount: balance,
       icon: Wallet,
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600",
+      iconBg: "bg-emerald-100",
+      iconColor: "text-emerald-700",
     },
     {
       title: "Income",
@@ -799,8 +799,8 @@ function Dashboard() {
       title: "Savings",
       amount: monthlySavings,
       icon: PiggyBank,
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
+      iconBg: "bg-amber-100",
+      iconColor: "text-amber-700",
     },
   ];
 
@@ -809,25 +809,21 @@ function Dashboard() {
   // -------------------------------------
 
   return (
-    <section className="space-y-8">
+    <section className="mx-auto max-w-7xl space-y-8">
       {/* HEADER */}
-
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          {greeting}. <span className="flex flex-col text-md text-slate-700 font-medium">Welcome back 👋</span>
-        </h1>
-
-        <p className="text-gray-500 mt-2">Here's your financial overview.</p>
-
-        <p className="mt-1 text-sm font-medium text-indigo-600">
-          Currency: {defaultCurrency}
-        </p>
-
-        <p className="mt-1 text-sm text-slate-500">
-          Budget period:{" "}
-          <span className="font-medium text-slate-700">
-            {currentMonthLabel}
-          </span>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-emerald-600">{currentMonthLabel}</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950 dark:text-slate-50 sm:text-4xl">
+            {greeting}.
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">Here&apos;s your financial overview.</p>
+        </div>
+        <p className="text-sm font-medium text-slate-500">
+          Currency: <span className="text-slate-900">{defaultCurrency}</span>
+          <span className="mx-2 text-slate-300">/</span>
+          Budget period: {" "}
+          <span className="font-semibold text-slate-900">{currentMonthLabel}</span>
         </p>
       </div>
 
@@ -895,14 +891,14 @@ function Dashboard() {
 
       {/* ADD INCOME / EXPENSE */}
 
-      <div className="mx-auto grid grid-cols-2 justify-center gap-4 md:w-2/3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:max-w-xl">
         <button
           type="button"
           onClick={() => setShowIncomeModal(true)}
-          className="flex flex-col items-center justify-center gap-2 rounded-xl bg-green-600 p-5 text-white shadow-md transition hover:bg-green-700 active:scale-95"
+          className="flex items-center justify-center gap-3 rounded-2xl bg-emerald-600 p-4 text-white shadow-sm transition hover:bg-emerald-700 active:scale-[.98] sm:p-5"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <TrendingUp size={26} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+            <TrendingUp size={21} />
           </div>
 
           <span className="text-sm font-semibold">Add Income</span>
@@ -911,10 +907,10 @@ function Dashboard() {
         <button
           type="button"
           onClick={() => setShowExpenseModal(true)}
-          className="flex flex-col items-center justify-center gap-2 rounded-xl bg-red-600 p-5 text-white shadow-md transition hover:bg-red-700 active:scale-95"
+          className="flex items-center justify-center gap-3 rounded-2xl bg-slate-950 p-4 text-white shadow-sm transition hover:bg-slate-800 active:scale-[.98] sm:p-5"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <Receipt size={26} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
+            <Receipt size={21} />
           </div>
 
           <span className="text-sm font-semibold">Add Expense</span>
@@ -923,7 +919,7 @@ function Dashboard() {
 
       {/* GOALS OVERVIEW */}
 
-      <div className="rounded-xl bg-white p-6 shadow-md">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-7">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">
@@ -935,17 +931,17 @@ function Dashboard() {
             </p>
           </div>
 
-          <div className="text-3xl">🎯</div>
+          <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">{overallProgress.toFixed(0)}% funded</div>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-lg bg-slate-50 p-4">
+          <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Total Goals</p>
 
             <p className="mt-2 text-2xl font-bold">{totalGoals}</p>
           </div>
 
-          <div className="rounded-lg bg-slate-50 p-4">
+          <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Total Target</p>
 
             <p className="mt-2 text-2xl font-bold">
@@ -954,7 +950,7 @@ function Dashboard() {
             </p>
           </div>
 
-          <div className="rounded-lg bg-slate-50 p-4">
+          <div className="rounded-xl bg-emerald-50 p-4">
             <p className="text-sm text-slate-500">Total Saved</p>
 
             <p className="mt-2 text-2xl font-bold text-green-600">
@@ -979,7 +975,7 @@ function Dashboard() {
 
           <div className="h-3 overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full rounded-full bg-indigo-600 transition-all"
+              className="h-full rounded-full bg-emerald-600 transition-all duration-700"
               style={{
                 width: `${overallProgress}%`,
               }}
@@ -990,7 +986,7 @@ function Dashboard() {
 
       {/* YOUR GOALS */}
 
-      <div className="rounded-xl bg-white p-6 shadow-md">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-7">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Your Goals</h2>
 
@@ -998,7 +994,7 @@ function Dashboard() {
             <button
               type="button"
               onClick={() => navigate("/goals")}
-              className="text-sm font-semibold text-indigo-600"
+              className="text-sm font-semibold text-emerald-700"
             >
               View All Goals →
             </button>
@@ -1023,7 +1019,7 @@ function Dashboard() {
                 <div
                   key={goal.id}
                   onClick={() => navigate("/goals")}
-                  className="cursor-pointer rounded-lg border p-4 hover:bg-slate-50"
+                  className="cursor-pointer rounded-xl border border-slate-200 p-4 transition hover:border-emerald-300 hover:bg-emerald-50/30"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -1039,7 +1035,7 @@ function Dashboard() {
 
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className="h-full rounded-full bg-indigo-600"
+                      className="h-full rounded-full bg-emerald-600"
                       style={{
                         width: `${progress}%`,
                       }}
@@ -1180,7 +1176,7 @@ function Dashboard() {
 
       {/* RECENT TRANSACTIONS */}
 
-      <div className="rounded-xl bg-white p-6 shadow">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-7">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <h2 className="text-xl font-semibold">Recent Transactions</h2>
 
@@ -1232,7 +1228,7 @@ function Dashboard() {
         <div className="mt-6 flex justify-center">
           <Link
             to="/expenses"
-            className="rounded-lg bg-slate-900 px-5 py-3 font-medium text-white hover:bg-slate-800"
+            className="rounded-xl bg-slate-950 px-5 py-3 font-medium text-white transition hover:bg-emerald-700"
           >
             View All Expenses →
           </Link>
