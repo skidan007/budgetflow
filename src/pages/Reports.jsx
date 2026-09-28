@@ -10,6 +10,17 @@ function getTransactionMonth(transaction) {
   return transaction.month || transaction.date?.slice(0, 7) || "";
 }
 
+function getLatestUpdateDate(items) {
+  return items.reduce((latest, item) => {
+    const value = item?.updated_at || item?.updatedAt || item?.date;
+    if (!value || !Number.isFinite(new Date(value).getTime())) return latest;
+
+    return !latest || new Date(value).getTime() > new Date(latest).getTime()
+      ? value
+      : latest;
+  }, null);
+}
+
 function formatShortMonth(monthKey) {
   if (!monthKey) return "";
 
@@ -360,6 +371,9 @@ function Reports() {
         <SummaryCard
           title="Total Income"
           amount={totalIncome}
+          updatedAt={getLatestUpdateDate(
+            filteredTransactions.filter((transaction) => transaction.type === "Income"),
+          )}
           currency={currencySymbol}
           icon={Wallet}
           iconBg="bg-green-100"
@@ -369,6 +383,9 @@ function Reports() {
         <SummaryCard
           title="Total Expenses"
           amount={totalExpenses}
+          updatedAt={getLatestUpdateDate(
+            filteredTransactions.filter((transaction) => transaction.type === "Expense"),
+          )}
           currency={currencySymbol}
           icon={TrendingDown}
           iconBg="bg-red-100"
@@ -379,6 +396,14 @@ function Reports() {
           title="Savings"
           currency={currencySymbol}
           amount={goalSavingsTotal}
+          updatedAt={getLatestUpdateDate(
+            goals.flatMap((goal) => [
+              ...(goal.savingsHistory || []),
+              ...Object.values(goal.savingsUpdatedAtByMonth || {}).map(
+                (updatedAt) => ({ updated_at: updatedAt }),
+              ),
+            ]),
+          )}
           icon={PiggyBank}
           iconBg="bg-emerald-100"
           iconColor="text-emerald-700"
@@ -388,6 +413,7 @@ function Reports() {
           title="Net Balance"
           currency={currencySymbol}
           amount={totalSavings}
+          updatedAt={getLatestUpdateDate(filteredTransactions)}
           icon={Landmark}
           iconBg="bg-amber-100"
           iconColor="text-amber-700"

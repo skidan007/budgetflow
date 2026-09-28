@@ -5,6 +5,7 @@ const SummaryCard = ({
   iconBg = "bg-blue-100",
   iconColor = "text-blue-600",
   currency = "₦",
+  updatedAt,
 }) => {
   const parsedAmount =
     typeof amount === "number"
@@ -13,6 +14,37 @@ const SummaryCard = ({
 
   const safeAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
   const isNegative = safeAmount < 0;
+  const parsedUpdatedAt = updatedAt
+    ? new Date(
+        /^\d{4}-\d{2}-\d{2}$/.test(updatedAt)
+          ? `${updatedAt}T00:00:00`
+          : updatedAt,
+      )
+    : null;
+  const updateLabel = (() => {
+    if (!parsedUpdatedAt || !Number.isFinite(parsedUpdatedAt.getTime())) {
+      return null;
+    }
+
+    const now = new Date();
+    const updatedDay = Date.UTC(
+      parsedUpdatedAt.getFullYear(),
+      parsedUpdatedAt.getMonth(),
+      parsedUpdatedAt.getDate(),
+    );
+    const currentDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const daysAgo = Math.floor((currentDay - updatedDay) / 86_400_000);
+
+    if (daysAgo <= 0) return "Updated today";
+    if (daysAgo === 1) return "Updated yesterday";
+    if (daysAgo < 7) {
+      return `Updated ${parsedUpdatedAt
+        .toLocaleDateString(undefined, { weekday: "long" })
+        .toLowerCase()}`;
+    }
+
+    return "Updated last week";
+  })();
 
   return (
     <div className="group h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-6">
@@ -38,7 +70,7 @@ const SummaryCard = ({
           {safeAmount.toLocaleString()}
         </p>
 
-        <p className="text-xs text-slate-400">Updated today</p>
+        {updateLabel && <p className="text-xs text-slate-400">{updateLabel}</p>}
       </div>
     </div>
   );

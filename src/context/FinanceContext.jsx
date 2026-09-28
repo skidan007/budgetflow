@@ -139,6 +139,12 @@ function normalizeTransactions(items) {
       date,
       currency,
       description,
+      updated_at:
+        typeof transaction.updated_at === "string" && transaction.updated_at
+          ? transaction.updated_at
+          : typeof transaction.created_at === "string"
+            ? transaction.created_at
+            : null,
 
       month:
         typeof transaction.month === "string" && transaction.month
@@ -193,6 +199,10 @@ function normalizeGoals(items) {
                 : new Date().toISOString().split("T")[0],
 
             note: typeof saving.note === "string" ? saving.note : "",
+            updatedAt:
+              typeof saving.updatedAt === "string" && saving.updatedAt
+                ? saving.updatedAt
+                : null,
           });
 
           return historyAcc;
@@ -218,6 +228,11 @@ function normalizeGoals(items) {
           : "NGN",
 
       savingsHistory,
+      savingsUpdatedAtByMonth:
+        goal.savingsUpdatedAtByMonth &&
+        typeof goal.savingsUpdatedAtByMonth === "object"
+          ? goal.savingsUpdatedAtByMonth
+          : {},
     });
 
     return acc;
@@ -1181,18 +1196,26 @@ export function FinanceProvider({ children }) {
         const savingsHistory = Array.isArray(goal.savingsHistory)
           ? goal.savingsHistory
           : [];
+        const updatedAt = new Date().toISOString();
+        const savingDate = saving.date || new Date().toISOString().split("T")[0];
+        const savingMonth = savingDate.slice(0, 7);
 
         const newSaving = {
           id: `saving-${Date.now()}`,
           amount,
-          date: saving.date || new Date().toISOString().split("T")[0],
+          date: savingDate,
           note: saving.note || "",
+          updatedAt,
         };
 
         return {
           ...goal,
           currentAmount: Number(goal.currentAmount || 0) + amount,
           savingsHistory: [...savingsHistory, newSaving],
+          savingsUpdatedAtByMonth: {
+            ...(goal.savingsUpdatedAtByMonth || {}),
+            [savingMonth]: updatedAt,
+          },
         };
       }),
     );
@@ -1220,6 +1243,8 @@ export function FinanceProvider({ children }) {
         if (!savingToDelete) {
           return goal;
         }
+        const updatedAt = new Date().toISOString();
+        const savingMonth = savingToDelete.date?.slice(0, 7);
 
         return {
           ...goal,
@@ -1230,6 +1255,12 @@ export function FinanceProvider({ children }) {
           savingsHistory: savingsHistory.filter(
             (saving) => String(saving.id) !== String(savingId),
           ),
+          savingsUpdatedAtByMonth: savingMonth
+            ? {
+                ...(goal.savingsUpdatedAtByMonth || {}),
+                [savingMonth]: updatedAt,
+              }
+            : goal.savingsUpdatedAtByMonth || {},
         };
       }),
     );

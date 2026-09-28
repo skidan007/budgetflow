@@ -56,6 +56,19 @@ const formatMonthLabel = (month) => {
   });
 };
 
+const getLatestUpdateDate = (items) => {
+  const latestUpdate = items.reduce((latest, item) => {
+    const value = item?.updated_at || item?.updatedAt || item?.date;
+    if (!value || !Number.isFinite(new Date(value).getTime())) return latest;
+
+    return !latest || new Date(value).getTime() > new Date(latest).getTime()
+      ? value
+      : latest;
+  }, null);
+
+  return latestUpdate;
+};
+
 const getPreviousMonth = (month) => {
   const [year, monthNumber] = month.split("-").map(Number);
   const date = new Date(year, monthNumber - 2, 1);
@@ -777,6 +790,7 @@ function Dashboard() {
     {
       title: "Total Balance",
       amount: balance,
+      updatedAt: getLatestUpdateDate(currencyTransactions),
       icon: Wallet,
       iconBg: "bg-emerald-100",
       iconColor: "text-emerald-700",
@@ -784,6 +798,9 @@ function Dashboard() {
     {
       title: "Income",
       amount: income,
+      updatedAt: getLatestUpdateDate(
+        currencyTransactions.filter((transaction) => transaction.type === "Income"),
+      ),
       icon: TrendingUp,
       iconBg: "bg-green-100",
       iconColor: "text-green-600",
@@ -791,6 +808,9 @@ function Dashboard() {
     {
       title: "Expenses",
       amount: expenses,
+      updatedAt: getLatestUpdateDate(
+        currencyTransactions.filter((transaction) => transaction.type === "Expense"),
+      ),
       icon: Receipt,
       iconBg: "bg-red-100",
       iconColor: "text-red-600",
@@ -798,6 +818,16 @@ function Dashboard() {
     {
       title: "Savings",
       amount: monthlySavings,
+      updatedAt: getLatestUpdateDate(
+        currencyGoals.flatMap((goal) => [
+          ...(goal.savingsHistory || []).filter(
+            (saving) => saving.date?.slice(0, 7) === currentMonth,
+          ),
+          ...(goal.savingsUpdatedAtByMonth?.[currentMonth]
+            ? [{ updated_at: goal.savingsUpdatedAtByMonth[currentMonth] }]
+            : []),
+        ]),
+      ),
       icon: PiggyBank,
       iconBg: "bg-amber-100",
       iconColor: "text-amber-700",
@@ -881,6 +911,7 @@ function Dashboard() {
             key={card.title}
             title={card.title}
             amount={card.amount}
+            updatedAt={card.updatedAt}
             icon={card.icon}
             iconBg={card.iconBg}
             iconColor={card.iconColor}
