@@ -938,7 +938,7 @@ function Dashboard() {
         <button
           type="button"
           onClick={() => setShowExpenseModal(true)}
-          className="flex items-center justify-center gap-3 rounded-2xl bg-slate-950 p-4 text-white shadow-sm transition hover:bg-slate-800 active:scale-[.98] sm:p-5"
+          className="flex items-center justify-center gap-3 rounded-2xl bg-red-600 p-4 text-white shadow-sm transition hover:bg-red-700 active:scale-[.98] sm:p-5"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
             <Receipt size={21} />
