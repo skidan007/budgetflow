@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { StyleSheet, Text, type TextStyle } from 'react-native';
 import { AppHeader, Button, ScreenContainer } from '../components/ui';
 import { SPACE, TEXT } from '../src/theme';
+import { ThemeScope } from '../src/ThemeContext';
 
 export default function NotFoundScreen() {
   const router = useRouter();
@@ -9,11 +10,11 @@ export default function NotFoundScreen() {
   return (
     <ScreenContainer
       style={undefined}
-      header={<AppHeader title="Page not found" onBack={undefined} rightAction={undefined} style={undefined} />}
+      header={<AppHeader title="Page not found" onBack={undefined} backLabel={undefined} backHint={undefined} rightAction={undefined} style={undefined} />}
       edges={['top', 'bottom', 'left', 'right']}
       contentStyle={styles.container}
     >
-      <Text style={styles.title as TextStyle}>This screen does not exist.</Text>
+      <ThemeScope><Text style={styles.title as TextStyle}>This screen does not exist.</Text></ThemeScope>
       <Button
         title="Go to Home"
         variant="secondary"

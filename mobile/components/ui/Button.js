@@ -1,12 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { COLORS, CONTROL, RADIUS, SHADOW, SPACE, TEXT } from "../../src/theme";
-
-const labelColors = {
-  primary: COLORS.white,
-  secondary: COLORS.primary,
-  danger: COLORS.white,
-  outline: COLORS.primary,
-};
+import { useTheme } from "../../src/ThemeContext";
 
 export function Button({
   title,
@@ -22,7 +16,16 @@ export function Button({
   textStyle,
   testID,
 }) {
+  const { colors } = useTheme();
   const unavailable = disabled || loading;
+  const variantColors = variant === 'danger'
+    ? { backgroundColor: colors.danger, borderColor: colors.danger }
+    : variant === 'secondary'
+      ? { backgroundColor: colors.purpleTint, borderColor: colors.purpleTint }
+      : variant === 'outline'
+        ? { backgroundColor: colors.card, borderColor: colors.border }
+        : { backgroundColor: colors.primary, borderColor: colors.primary };
+  const labelColor = variant === 'secondary' || variant === 'outline' ? colors.accentText : colors.onPrimary;
 
   return (
     <Pressable
@@ -36,19 +39,25 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         variants[variant] || variants.primary,
+        variantColors,
         unavailable && styles.disabled,
+        unavailable && { backgroundColor: colors.mutedTint, borderColor: colors.border },
         pressed && !unavailable && styles.pressed,
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator accessible={false} color={labelColors[variant] || COLORS.white} />
-      ) : (
-        <View style={styles.content}>
-          {icon ? <View accessible={false}>{icon}</View> : null}
-          <Text style={[styles.label, { color: labelColors[variant] || COLORS.white }, unavailable && styles.disabledLabel, textStyle]}>{title}</Text>
-        </View>
-      )}
+      <View style={styles.content}>
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            accessible={false}
+            color={unavailable ? colors.secondaryText : labelColor}
+          />
+        ) : icon ? <View accessible={false}>{icon}</View> : null}
+        <Text style={[styles.label, { color: labelColor }, unavailable && styles.disabledLabel, { color: unavailable ? colors.secondaryText : labelColor }, textStyle]}>
+          {title}
+        </Text>
+      </View>
     </Pressable>
   );
 }

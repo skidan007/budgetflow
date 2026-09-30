@@ -16,6 +16,7 @@ export function FinanceProvider({ children }) {
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [goals, setGoals] = useState([]);
+  const [goalSyncSnapshot, setGoalSyncSnapshot] = useState(null);
   const [profile, setProfile] = useState(null);
   const [cycle, setCycle] = useState(null);
   const [currency, setCurrency] = useState('NGN');
@@ -23,6 +24,7 @@ export function FinanceProvider({ children }) {
   const currentMonth = monthNow();
   const requestId = useRef(0);
   const loadedUserId = useRef(null);
+  const authUserId = useRef(null);
 
   // Supabase emits INITIAL_SESSION only after its persistent mobile session is restored.
   // getSession is a fallback for the web runtime and for missed initial events.
@@ -31,13 +33,24 @@ export function FinanceProvider({ children }) {
     let authEventSeen = false;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       authEventSeen = true;
-      setUser(session?.user ?? null);
+      const nextUser = session?.user ?? null;
+      if (authUserId.current !== (nextUser?.id ?? null)) {
+        authUserId.current = nextUser?.id ?? null;
+        requestId.current += 1;
+        loadedUserId.current = null;
+        setTransactions([]); setBudgets([]); setGoals([]); setProfile(null); setCycle(null);
+        setGoalSyncSnapshot(null);
+        setError(''); setLoading(Boolean(nextUser));
+      }
+      setUser(nextUser);
       setAuthReady(true);
     });
     supabase.auth.getSession().then(({ data, error: sessionError }) => {
       if (!active || authEventSeen) return;
       if (sessionError) setError(sessionError.message);
-      setUser(data.session?.user ?? null);
+      const nextUser = data.session?.user ?? null;
+      authUserId.current = nextUser?.id ?? null;
+      setUser(nextUser);
       setAuthReady(true);
     });
     return () => { active = false; subscription.unsubscribe(); };
@@ -49,6 +62,7 @@ export function FinanceProvider({ children }) {
     if (!user) {
       loadedUserId.current = null;
       setTransactions([]); setBudgets([]); setGoals([]); setProfile(null); setCycle(null);
+      setGoalSyncSnapshot(null);
       setError(''); setLoading(false);
       return;
     }
@@ -59,23 +73,74 @@ export function FinanceProvider({ children }) {
     loadedUserId.current = user.id;
     setLoading(true); setError('');
     try {
-      const [t, b, g, contributions, p, c, storedCurrency] = await Promise.all([
+      const [{ data: authData, error: authError }, savedCurrency] = await Promise.all([
+        supabase.auth.getUser(),
+        AsyncStorage.getItem('defaultCurrency'),
+      ]);
+      const authenticatedUser = authData?.user ?? null;
+      const preferredCurrency = currencies.includes(savedCurrency) ? savedCurrency : 'NGN';
+      if (__DEV__) {
+        console.info('[BudgetFlow Goal Sync]', {
+          Platform: 'MOBILE',
+          'Supabase project': new URL(process.env.EXPO_PUBLIC_SUPABASE_URL).hostname.split('.')[0],
+          'Authenticated user ID': authenticatedUser?.id ?? null,
+          'Authenticated email': authenticatedUser?.email ?? null,
+          'Authentication lookup error': authError?.message ?? null,
+          'Query user ID': user.id,
+          'Goal query currency filter': 'NONE',
+          'Goals screen currency preference/filter': preferredCurrency,
+          'Goals data source': 'SUPABASE',
+          'Goal query': "supabase.from('goals').select('*').eq('user_id', user.id)",
+        });
+      }
+      const [t, b, g, contributions, p, c] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false }),
         supabase.from('budgets').select('*').eq('user_id', user.id).order('month', { ascending: false }),
         supabase.from('goals').select('*').eq('user_id', user.id),
         supabase.from('goal_contributions').select('*').eq('user_id', user.id).order('date', { ascending: false }),
         supabase.from('financial_profiles').select('*').eq('user_id', user.id).maybeSingle(),
         supabase.from('financial_cycles').select('*').eq('user_id', user.id).eq('cycle_month', prevMonth(currentMonth)).maybeSingle(),
-        AsyncStorage.getItem('defaultCurrency'),
       ]);
       const failed = [t, b, g, contributions, p, c].find((result) => result.error);
       if (failed?.error) throw failed.error;
       if (id !== requestId.current) return;
 
+      if (__DEV__) {
+        const projectUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+        setGoalSyncSnapshot({
+          platform: 'MOBILE',
+          project: projectUrl ? new URL(projectUrl).hostname.split('.')[0] : 'UNCONFIGURED',
+          userId: authenticatedUser?.id ?? null,
+          email: authenticatedUser?.email ?? null,
+          sessionAuthenticated: Boolean(authenticatedUser),
+          queryUserId: user.id,
+          currencyPreference: preferredCurrency,
+          queryCurrencyFilter: 'NONE',
+          displayCurrencyFilter: preferredCurrency,
+          dataSource: 'SUPABASE',
+          table: 'public.goals',
+          otherFilters: [],
+          goals: g.data || [],
+        });
+      }
+
       const historyByGoal = (contributions.data || []).reduce((map, row) => {
         (map[row.goal_id] ||= []).push(contributionView(row));
         return map;
       }, {});
+      if (__DEV__) {
+        console.info('[BudgetFlow Goal Sync] Goals returned:', (g.data || []).length);
+        console.info('[BudgetFlow Goal Sync] Goals screen currency preference/filter:', preferredCurrency);
+        (g.data || []).forEach((goal) => console.info('[BudgetFlow Goal Sync] Goal:', {
+          id: goal.id,
+          name: goal.name,
+          user_id: goal.user_id,
+          currency: goal.currency,
+          target_amount: goal.target_amount,
+          current_amount: goal.current_amount,
+          legacy_key: goal.legacy_key ?? null,
+        }));
+      }
       setTransactions((t.data || []).map((row) => ({ ...row, amount: Number(row.amount), month: row.month || row.date?.slice(0, 7) })));
       setBudgets((b.data || []).map((row) => ({ ...row, amount: Number(row.amount) })));
       setGoals((g.data || []).map((row) => ({
@@ -91,7 +156,7 @@ export function FinanceProvider({ children }) {
         }, {}),
       })));
       setProfile(p.data || null); setCycle(c.data || null);
-      const preferred = currencies.includes(storedCurrency) ? storedCurrency : 'NGN';
+      const preferred = preferredCurrency;
       setCurrency(preferred);
     } catch (e) {
       if (id === requestId.current) setError(e.message || 'Could not load your financial data.');
@@ -127,6 +192,17 @@ export function FinanceProvider({ children }) {
     if (saveError) throw saveError;
     setBudgets((items) => [...items.filter((item) => !(item.category === data.category && item.month === data.month && item.currency === data.currency)), { ...data, amount: Number(data.amount) }]);
     return data;
+  };
+
+  const deleteBudget = async (budgetId) => {
+    if (!user) throw new Error('You must be logged in to delete a budget.');
+    const { error: deleteError } = await supabase
+      .from('budgets')
+      .delete()
+      .eq('id', budgetId)
+      .eq('user_id', user.id);
+    if (deleteError) throw deleteError;
+    setBudgets((items) => items.filter((item) => String(item.id) !== String(budgetId)));
   };
 
   const saveGoal = async (input) => {
@@ -217,7 +293,7 @@ export function FinanceProvider({ children }) {
 
   const changeCurrency = async (value) => { if (!currencies.includes(value)) return; setCurrency(value); await AsyncStorage.setItem('defaultCurrency', value); };
   const signOut = async () => { const { error: signOutError } = await supabase.auth.signOut(); if (signOutError) throw signOutError; };
-  const value = { user, authReady, loading: !authReady || loading, error, transactions, budgets, goals, profile, cycle, currency, symbol: currencySymbols[currency] || '₦', currentMonth, refresh, addTransaction, saveBudget, saveGoal, updateGoal, deleteGoal, addSaving, deleteSaving, completeFinancialCycle, changeCurrency, signOut };
+  const value = { user, authReady, loading: !authReady || loading, error, transactions, budgets, goals, goalSyncSnapshot, profile, cycle, currency, symbol: currencySymbols[currency] || '₦', currentMonth, refresh, addTransaction, saveBudget, deleteBudget, saveGoal, updateGoal, deleteGoal, addSaving, deleteSaving, completeFinancialCycle, changeCurrency, signOut };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

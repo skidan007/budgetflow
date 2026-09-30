@@ -1,11 +1,13 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import { COLORS, SPACE, TEXT } from "../../src/theme";
+import { SPACE, TEXT } from "../../src/theme";
+import { useTheme } from "../../src/ThemeContext";
 
 export function LoadingState({ label = "Loading your finances...", style }) {
+  const { colors } = useTheme();
   return (
     <View style={[styles.container, style]}>
-      <ActivityIndicator color={COLORS.primary} accessible={false} />
-      <Text accessibilityRole="text" style={styles.label}>
+      <ActivityIndicator color={colors.primary} accessible={false} />
+      <Text accessibilityRole="text" style={[styles.label, { color: colors.text }]}>
         {label}
       </Text>
     </View>

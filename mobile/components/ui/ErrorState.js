@@ -1,6 +1,7 @@
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { COLORS, RADIUS, SPACE, TEXT } from "../../src/theme";
 import { Button } from "./Button";
+import { useTheme } from "../../src/ThemeContext";
 
 /** Keep the supplied copy user-safe; never pass raw service errors here. */
 export function ErrorState({
@@ -10,13 +11,14 @@ export function ErrorState({
   retryLabel = "Try again",
   style,
 }) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.container, style]}>
-      <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.redTint }, style]}>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.danger }]}>{title}</Text>
       <Text
         accessibilityRole="alert"
         accessibilityLiveRegion={Platform.OS === "android" ? "polite" : undefined}
-        style={styles.description}
+        style={[styles.description, { color: colors.text }]}
       >
         {description}
       </Text>

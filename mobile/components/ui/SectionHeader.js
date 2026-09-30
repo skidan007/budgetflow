@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { COLORS, CONTROL, SPACE, TEXT } from "../../src/theme";
+import { useTheme } from "../../src/ThemeContext";
 
 export function SectionHeader({ title, actionLabel, onAction, style }) {
+  const { colors } = useTheme();
   return (
     <View style={[styles.row, style]}>
-      <Text accessibilityRole="header" style={styles.title}>
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>
         {title}
       </Text>
       {actionLabel && onAction ? (
@@ -15,7 +17,7 @@ export function SectionHeader({ title, actionLabel, onAction, style }) {
           hitSlop={SPACE.xs}
           style={({ pressed }) => [styles.action, pressed && styles.pressed]}
         >
-          <Text style={styles.actionText}>{actionLabel}</Text>
+          <Text style={[styles.actionText, { color: colors.primary }]}>{actionLabel}</Text>
         </Pressable>
       ) : null}
     </View>

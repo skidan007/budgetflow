@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { COLORS, RADIUS, SPACE, TEXT } from "../../src/theme";
 import { Button } from "./Button";
+import { useTheme } from "../../src/ThemeContext";
 
 export function EmptyState({
   title,
@@ -10,11 +11,12 @@ export function EmptyState({
   onAction,
   style,
 }) {
+  const { colors } = useTheme();
   return (
     <View style={[styles.container, style]}>
-      {icon ? <View style={styles.icon} accessible={false}>{icon}</View> : null}
-      <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-      {description ? <Text style={styles.description}>{description}</Text> : null}
+      {icon ? <View style={[styles.icon, { backgroundColor: colors.purpleTint }]} accessible={false}>{icon}</View> : null}
+      <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>{title}</Text>
+      {description ? <Text style={[styles.description, { color: colors.secondaryText }]}>{description}</Text> : null}
       {actionLabel && onAction ? <Button title={actionLabel} onPress={onAction} variant="secondary" /> : null}
     </View>
   );

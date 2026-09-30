@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { COLORS, CONTROL, RADIUS, SPACE } from "../../src/theme";
+import { useTheme } from "../../src/ThemeContext";
 
 export function AccessibleIconButton({
   label,
@@ -10,6 +11,7 @@ export function AccessibleIconButton({
   style,
   testID,
 }) {
+  const { colors } = useTheme();
   return (
     <Pressable
       testID={testID}
@@ -22,6 +24,7 @@ export function AccessibleIconButton({
       hitSlop={SPACE.xs}
       style={({ pressed }) => [
         styles.button,
+        { backgroundColor: colors.mutedTint },
         disabled && styles.disabled,
         pressed && !disabled && styles.pressed,
         style,

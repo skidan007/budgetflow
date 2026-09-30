@@ -1,5 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { COLORS, RADIUS } from "../../src/theme";
+import { useTheme } from "../../src/ThemeContext";
 
 export function ProgressBar({
   value,
@@ -9,6 +10,7 @@ export function ProgressBar({
   trackColor = COLORS.mutedTint,
   style,
 }) {
+  const { colors } = useTheme();
   const progress = Math.max(0, Math.min(Number(value) || 0, 100));
 
   return (
@@ -22,7 +24,7 @@ export function ProgressBar({
         now: progress,
         text: accessibilityValueText ?? `${Math.round(progress)} percent`,
       }}
-      style={[styles.track, { backgroundColor: trackColor }, style]}
+      style={[styles.track, { backgroundColor: trackColor === COLORS.mutedTint ? colors.mutedTint : trackColor }, style]}
     >
       <View
         accessible={false}

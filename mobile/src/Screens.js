@@ -1,9 +1,11 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -14,12 +16,18 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowDownLeft,
+  ArrowDown,
   ArrowUpRight,
+  ArrowUp,
   CalendarDays,
   Check,
   ChevronRight,
+  ChevronDown,
   CircleDollarSign,
+  Eye,
+  EyeOff,
   Landmark,
+  Minus,
   ReceiptText,
   Trash2,
   Wallet,
@@ -28,6 +36,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { announceAccessibility } from "../components/accessibility/announce";
+import { analyzeMonthlyChange, monthlyChangeTone } from "./monthlyChange.mjs";
+import { AMOUNT_DECIMAL_SEPARATOR, amountCursorForEdit, editedTextRange, formatEditableAmount, parseEditableAmount, validateEditableAmount } from "./amountInput.mjs";
+import { ThemeScope, useTheme } from "./ThemeContext";
+import { FunctionalIcon, functionalToneForName } from "../components/ui/FunctionalIcon";
+import { FeatureRow } from "../components/ui/FeatureRow";
 import { AppIcon } from "../components/icons";
 import {
   AppHeader,
@@ -49,7 +62,7 @@ import {
   prevMonth,
   useFinance,
 } from "./FinanceContext";
-import { COLORS, SPACE, RADIUS, TYPE, TEXT, CONTROL, COMPONENT } from "./theme";
+import { COLORS, FUNCTIONAL_ICON_TONES, SPACE, RADIUS, TYPE, TEXT, CONTROL, COMPONENT, SHADOW } from "./theme";
 
 const C = {
   navy: COLORS.navy,
@@ -63,8 +76,12 @@ const C = {
   white: COLORS.white,
   warning: COLORS.warning,
 };
-const money = (v, s) =>
-  `${s}${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+const money = (v, s, options) => {
+  if (options?.editing) {
+    return formatEditableAmount(v);
+  }
+  return `${s}${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+};
 function dateFromKey(key) {
   const [year, month, day] = String(key || "").split("-").map(Number);
   return year && month && day ? new Date(year, month - 1, day) : new Date();
@@ -100,18 +117,21 @@ function Page({
   children,
   scroll = true,
   back,
+  backLabel,
+  backHint,
   rightAction,
+  rightActions,
   keyboardAvoiding = false,
 }) {
   return (
     <ScreenContainer
-      header={<AppHeader title={title} onBack={back} rightAction={rightAction} style={S.header} />}
+      header={<AppHeader title={title} onBack={back} backLabel={backLabel} backHint={backHint} rightAction={rightAction} rightActions={rightActions} style={S.header} />}
       scroll={scroll}
       keyboardAvoiding={keyboardAvoiding}
       edges={back ? ["top", "bottom", "left", "right"] : ["top", "left", "right"]}
       contentStyle={scroll ? S.content : S.listContainer}
     >
-      {children}
+      <ThemeScope>{children}</ThemeScope>
     </ScreenContainer>
   );
 }
@@ -133,6 +153,35 @@ function Field({ style, ...props }) {
     />
   );
 }
+function SelectField({ label, value, options, onChange, accessibilityLabel = label, leadingIcon, tone }) {
+  const [open, setOpen] = useState(false);
+  const { colors } = useTheme();
+  return (
+    <View style={S.field}>
+      <Label>{label}</Label>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${accessibilityLabel}, ${value}`} accessibilityHint="Opens available options" onPress={() => setOpen(true)} style={[S.dateSelector, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
+        {leadingIcon ? <FunctionalIcon name={leadingIcon} tone={tone} containerSize={36} size={17} /> : null}
+        <Text style={[S.dateSelectorText, leadingIcon && S.selectValue, { color: colors.text }]} numberOfLines={1}>{value}</Text>
+        <ChevronDown size={18} color={colors.accentText} />
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={[S.selectBackdrop, { backgroundColor: colors.overlay }]} onPress={() => setOpen(false)}>
+          <View style={[S.selectSheet, { backgroundColor: colors.card }]} accessibilityRole="radiogroup" accessibilityLabel={label}>
+            <Text accessibilityRole="header" style={[S.cardTitle, { color: colors.text }]}>{label}</Text>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {options.map((option) => {
+              const selected = option.value === value;
+              return <Pressable key={option.value} accessibilityRole="radio" accessibilityLabel={option.label} accessibilityState={{ selected }} onPress={() => { onChange(option.value); setOpen(false); }} style={[S.selectOption, selected && S.selectOptionSelected, { backgroundColor: selected ? colors.purpleTint : "transparent" }]}>
+                <Text style={[S.bodyText, { color: colors.text }]}>{option.label}</Text>{selected ? <Check size={18} color={colors.accentText} /> : null}
+              </Pressable>;
+            })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
 function Button({
   title,
   onPress,
@@ -142,6 +191,8 @@ function Button({
   disabled,
   loading,
   variant,
+  icon,
+  style,
 }) {
   return (
     <SharedButton
@@ -152,7 +203,8 @@ function Button({
       accessibilityHint={accessibilityHint}
       disabled={disabled}
       loading={loading}
-      style={S.buttonSpacing}
+      icon={icon}
+      style={style ? [S.buttonSpacing, style] : S.buttonSpacing}
     />
   );
 }
@@ -176,6 +228,10 @@ const CATEGORY_ICONS = {
   bills: "bills",
   entertainment: "entertainment",
   shopping: "shopping",
+  business: "business",
+  travel: "travel",
+  laptop: "laptop",
+  "emergency fund": "emergencyFund",
   health: "health",
   education: "education",
   rent: "home",
@@ -187,36 +243,40 @@ const CATEGORY_ICONS = {
   expense: "expenses",
 };
 function CategoryIcon({ name, size = 20, tint = C.purple }) {
-  const iconName =
-    CATEGORY_ICONS[
-      String(name || "")
-        .trim()
-        .toLowerCase()
-    ] || "balance";
-  return (
-    <View
-      accessible={false}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={[
-        S.categoryIcon,
-        {
-          backgroundColor:
-            tint === COLORS.white
-              ? COLORS.overlayWhite16
-              : tint === C.green
-                ? COLORS.greenTint
-                : tint === C.red
-                  ? COLORS.redTint
-                  : COLORS.purpleTint,
-        },
-      ]}
-    >
-      <AppIcon name={iconName} size={size} color={tint} strokeWidth={2} />
-    </View>
-  );
+  const normalized = String(name || "").trim().toLowerCase();
+  const iconName = CATEGORY_ICONS[normalized] || "balance";
+  const tone = functionalToneForName(normalized);
+  if (tint === C.green) return <FunctionalIcon name={iconName} tone="green" size={size} containerSize={size <= 18 ? 40 : 48} />;
+  if (tint === C.red) return <FunctionalIcon name={iconName} tone="red" size={size} containerSize={size <= 18 ? 40 : 48} />;
+  if (tint === COLORS.white) return <FunctionalIcon name={iconName} tone="gray" size={size} containerSize={size <= 18 ? 40 : 48} />;
+  return <FunctionalIcon name={iconName} tone={tone} size={size} containerSize={size <= 18 ? 40 : 48} />;
 }
-function CurrencyField({ label, value, onChangeText, symbol, inputStyle, ...inputProps }) {
+function progressAccent(category, theme, danger = false) {
+  if (danger) return theme.colors.danger;
+  const normalizedCategory = String(category || "").toLowerCase();
+  const tone = /transport/.test(normalizedCategory) ? "purple" : functionalToneForName(normalizedCategory);
+  return FUNCTIONAL_ICON_TONES[tone]?.[theme.themeName]?.foreground || theme.colors.primary;
+}
+function budgetUsageState(percent) {
+  if (percent > 100) return "Over budget";
+  if (percent >= 80) return "Approaching limit";
+  return "Within budget";
+}
+function goalVisual(goal) {
+  const label = `${goal?.name || ""} ${goal?.type || ""}`.toLowerCase();
+  if (/emergency/.test(label)) return { icon: "emergencyFund", tone: "green" };
+  if (/business/.test(label)) return { icon: "business", tone: "blue" };
+  if (/house|home|property/.test(label)) return { icon: "home", tone: "pink" };
+  if (/vacation|travel|trip|holiday/.test(label)) return { icon: "travel", tone: "orange" };
+  if (/car|vehicle|transport/.test(label)) return { icon: "transport", tone: "purple" };
+  if (/education|school|tuition/.test(label)) return { icon: "education", tone: "teal" };
+  if (/laptop|computer|device/.test(label)) return { icon: "laptop", tone: "indigo" };
+  if (/investment/.test(label)) return { icon: "compoundInterest", tone: "teal" };
+  if (/health|medical/.test(label)) return { icon: "health", tone: "red" };
+  if (/saving/.test(label)) return { icon: "savings", tone: "green" };
+  return { icon: "savings", tone: "teal" };
+}
+function CurrencyField({ label, value, onChangeText, symbol, currency, accessibilityLabel, inputStyle, ...inputProps }) {
   return (
     <Input
       {...inputProps}
@@ -233,7 +293,7 @@ function CurrencyField({ label, value, onChangeText, symbol, inputStyle, ...inpu
         </Text>
       }
       inputStyle={[S.currencyTextInput, inputStyle]}
-      accessibilityLabel={`${label}, amount in ${symbol === currencySymbols.NGN ? "Nigerian naira" : symbol}`}
+      accessibilityLabel={accessibilityLabel || `${label}, amount in ${currencyNames[currency] || symbol}`}
     />
   );
 }
@@ -294,27 +354,37 @@ export function AuthScreen() {
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false);
+  const submittingRef = useRef(false);
   const router = useRouter();
   async function submit() {
+    if (submittingRef.current) return;
     if (!supabaseConfigured)
       return Alert.alert(
         "Setup required",
         "Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY to mobile/.env.",
       );
+    submittingRef.current = true;
     setBusy(true);
-    const res = signup
-      ? await supabase.auth.signUp({ email: email.trim(), password })
-      : await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-    setBusy(false);
-    if (res.error) Alert.alert("Sign in failed", res.error.message);
-    else if (signup && !res.data.session)
-      Alert.alert("Check your email", "Confirm your account, then sign in.");
-    else router.replace("/");
+    try {
+      const res = signup
+        ? await supabase.auth.signUp({ email: email.trim(), password })
+        : await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+      if (res.error) Alert.alert(signup ? "Sign up failed" : "Sign in failed", res.error.message);
+      else if (signup && !res.data.session)
+        Alert.alert("Check your email", "Confirm your account, then sign in.");
+      else router.replace("/");
+    } catch (error) {
+      Alert.alert(signup ? "Sign up failed" : "Sign in failed", error.message || "Could not reach the authentication service.");
+    } finally {
+      submittingRef.current = false;
+      setBusy(false);
+    }
   }
   return (
+    <ThemeScope>
     <SafeAreaView style={S.auth} edges={["top", "bottom"]}>
     <KeyboardAvoidingView
       style={S.authKeyboard}
@@ -351,12 +421,16 @@ export function AuthScreen() {
             busy ? "Please wait..." : signup ? "Create account" : "Sign in"
           }
           onPress={submit}
+          disabled={busy}
+          loading={busy}
         />
       </View>
       <Pressable
         onPress={() => setSignup(!signup)}
         accessibilityRole="button"
         accessibilityLabel={signup ? "Switch to sign in" : "Create a BudgetFlow account"}
+        accessibilityState={{ disabled: busy }}
+        disabled={busy}
         style={S.authSwitch}
       >
         <Text style={S.authSwitchText}>
@@ -368,9 +442,10 @@ export function AuthScreen() {
       </ScrollView>
     </KeyboardAvoidingView>
     </SafeAreaView>
+    </ThemeScope>
   );
 }
-function Guard({ children }) {
+function Guard({ children, errorTitle = "Unable to load your finances", errorDescription = "Your financial information is unavailable right now. Please try again." }) {
   const { f, waiting, auth } = useData(),
     focused = useRef(false),
     refresh = f.refresh,
@@ -394,7 +469,7 @@ function Guard({ children }) {
   if (f.error)
     return (
       <Page title="Connection issue">
-        <ErrorState onRetry={refresh} />
+        <ErrorState title={errorTitle} description={errorDescription} onRetry={refresh} />
       </Page>
     );
   return children;
@@ -406,17 +481,61 @@ export function HomeScreen() {
     </Guard>
   );
 }
+function ChangeIndicator({ metric, analysis }) {
+  const { colors } = useTheme();
+  const tone = monthlyChangeTone(metric, analysis.direction);
+  const color = tone === "positive" ? colors.positive : tone === "danger" ? colors.danger : colors.secondaryText;
+  const DirectionIcon = analysis.direction === "up" ? ArrowUp : analysis.direction === "down" ? ArrowDown : analysis.direction === "same" ? Minus : null;
+  return (
+    <View accessibilityRole="text" accessibilityLabel={analysis.spoken} style={S.changeIndicator}>
+      {DirectionIcon ? <DirectionIcon size={15} color={color} strokeWidth={2.6} accessible={false} /> : null}
+      <Text style={[S.changeText, { color }]} numberOfLines={2}>{analysis.label}</Text>
+    </View>
+  );
+}
 function Home() {
   const f = useFinance(),
-    router = useRouter();
-  const tx = f.transactions.filter(
-      (t) =>
-        (t.currency || "NGN") === f.currency &&
-        (t.month || t.date?.slice(0, 7)) === f.currentMonth,
-    ),
-    inc = sum(tx, "Income"),
-    spent = sum(tx, "Expense"),
-    bud = f.budgets.filter(
+    router = useRouter(),
+    theme = useTheme();
+  const [balanceVisible, setBalanceVisible] = useState(true);
+  const { tx, previousTx, inc, spent, previousIncome, previousExpenses, previousBalance, hasPreviousBalance } = useMemo(() => {
+    const priorMonth = prevMonth(f.currentMonth);
+    const currentRows = [];
+    const previousRows = [];
+    for (const transaction of f.transactions) {
+      if ((transaction.currency || "NGN") !== f.currency) continue;
+      const month = transaction.month || transaction.date?.slice(0, 7);
+      if (month === f.currentMonth) currentRows.push(transaction);
+      else if (month === priorMonth) previousRows.push(transaction);
+    }
+    const currentIncome = sum(currentRows, "Income");
+    const currentExpenses = sum(currentRows, "Expense");
+    const priorIncome = sum(previousRows, "Income");
+    const priorExpenses = sum(previousRows, "Expense");
+    const cycleMatchesPriorMonth = f.cycle?.cycle_month === priorMonth;
+    const savedCycleBalance = cycleMatchesPriorMonth && f.cycle?.previous_balance != null
+      ? Number(f.cycle.previous_balance)
+      : NaN;
+    return {
+      tx: currentRows,
+      previousTx: previousRows,
+      inc: currentIncome,
+      spent: currentExpenses,
+      previousIncome: priorIncome,
+      previousExpenses: priorExpenses,
+      previousBalance: Number.isFinite(savedCycleBalance) ? savedCycleBalance : priorIncome - priorExpenses,
+      hasPreviousBalance: previousRows.length > 0 || cycleMatchesPriorMonth,
+    };
+  }, [f.transactions, f.currency, f.currentMonth, f.cycle]);
+  const incomeChange = analyzeMonthlyChange(inc, previousIncome, previousTx.length > 0);
+  const expensesChange = analyzeMonthlyChange(spent, previousExpenses, previousTx.length > 0);
+  const balanceChange = analyzeMonthlyChange(inc - spent, previousBalance, hasPreviousBalance);
+  const recentTransactions = useMemo(() => f.transactions
+    .filter((transaction) => (transaction.currency || "NGN") === f.currency)
+    .slice()
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .slice(0, 5), [f.transactions, f.currency]);
+  const bud = f.budgets.filter(
       (b) => b.currency === f.currency && b.month === f.currentMonth,
     ),
     days = daysInMonth(f.currentMonth),
@@ -452,49 +571,143 @@ function Home() {
     futureDays = Math.max(days - dayOfMonth, 1),
     tomorrowTarget =
       Math.max(monthlyRemaining - Math.max(dailyRemaining, 0), 0) / futureDays;
+  const currentGoals = f.goals.filter((goal) => goal.currency === f.currency);
+  const netSavings = inc - spent;
+  const metadata = f.user?.user_metadata || {};
+  const displayName = metadata.full_name || metadata.name || f.user?.email?.split("@")[0] || "there";
+  const avatarUrl = metadata.avatar_url || metadata.picture;
   return (
     <Page
       title="BudgetFlow"
-      rightAction={{
-        label: "Open profile",
-        hint: "View your account profile",
-        icon: <AppIcon name="financialProfile" color={C.ink} />,
-        onPress: () => router.push("/profile"),
-      }}
+      rightActions={[
+        { label: "Notifications", hint: "Notifications are not available in mobile yet", icon: <AppIcon name="notifications" color={theme.colors.text} />, onPress: () => Alert.alert("Notifications", "Notifications are not available in the mobile app yet.") },
+        { label: "Profile", hint: "View your account profile", icon: avatarUrl ? <Image source={{ uri: avatarUrl }} style={S.profileAvatar} /> : <AppIcon name="profile" color={theme.colors.text} />, onPress: () => router.push("/profile") },
+      ]}
     >
       <View style={S.monthPill}>
-        <CircleDollarSign size={16} color={C.purple} accessible={false} />
+        <CalendarDays size={16} color={theme.colors.accentText} accessible={false} />
         <Text style={S.monthPillText}>
           {monthLabel(f.currentMonth)}
         </Text>
       </View>
-      <Card style={S.hero}>
+      <View style={S.dashboardGreeting}>
+        <Text accessibilityRole="header" style={S.greetingTitle}>{`${new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening"}, ${displayName}.`}</Text>
+        <Text style={S.sub}>Here&apos;s your financial overview.</Text>
+        <Text style={S.caption}>Currency: {f.currency}</Text>
+      </View>
+      <Card style={[S.hero, { backgroundColor: theme.isDark ? "#352DA0" : "#5143C7", borderColor: theme.isDark ? "#5145D5" : "#5143C7" }]}>
+        <View pointerEvents="none" style={S.heroGlow} />
         <View style={S.heroTop}>
           <View>
             <Text style={S.heroLabel} accessible={false}>TOTAL BALANCE</Text>
-            <Text style={S.heroAmount} accessibilityLabel={`Total balance, ${accessibleMoney(inc - spent, f.currency)}`}>{money(inc - spent, f.symbol)}</Text>
+            <View style={S.balanceAmountRow}>
+              <Text style={S.heroAmount} accessibilityLabel={balanceVisible ? `Total balance, ${accessibleMoney(inc - spent, f.currency)}` : "Total balance hidden"}>{balanceVisible ? money(inc - spent, f.symbol) : "••••••"}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? "Hide total balance" : "Show total balance"} accessibilityHint="Toggles whether your total balance is visible" onPress={() => setBalanceVisible((visible) => !visible)} style={S.balanceVisibility}>
+                {balanceVisible ? <Eye size={19} color="#FFFFFF" /> : <EyeOff size={19} color="#FFFFFF" />}
+              </Pressable>
+            </View>
           </View>
           <View style={S.balanceIcon}>
-            <Wallet size={21} color={COLORS.white} accessible={false} />
+            <Wallet size={21} color="#FFFFFF" accessible={false} />
           </View>
         </View>
+        <ChangeIndicator metric="balance" analysis={balanceChange} />
       </Card>
+      <Section title="Monthly Overview" />
       <View style={S.summaryGrid}>
-        <Card style={S.summaryCard} accessibilityLabel={`Income, ${accessibleMoney(inc, f.currency)}${inc === 0 ? ". No income recorded this month." : ""}`}>
+        <Card style={S.summaryCard} accessibilityLabel={`Income, ${accessibleMoney(inc, f.currency)}. ${incomeChange.spoken}${inc === 0 ? ". No income recorded this month." : ""}`}>
           <View style={S.summaryHeading}>
-            <ArrowDownLeft size={18} color={C.green} accessible={false} />
-            <Text style={S.summaryLabel}>Income</Text>
+            <View style={S.summaryIdentity}>
+              <FunctionalIcon name="income" containerSize={40} size={18} />
+              <Text style={S.summaryLabel}>Income</Text>
+            </View>
+            <ChevronRight size={21} color={theme.colors.accentText} accessible={false} />
           </View>
           <Text style={S.summaryAmount} numberOfLines={1} adjustsFontSizeToFit>{money(inc, f.symbol)}</Text>
+          <ChangeIndicator metric="income" analysis={incomeChange} />
           {inc === 0 && <Text style={S.caption}>No income recorded this month.</Text>}
         </Card>
-        <Card style={S.summaryCard} accessibilityLabel={`Expenses, ${accessibleMoney(spent, f.currency)}`}>
+        <Card style={S.summaryCard} accessibilityLabel={`Expenses, ${accessibleMoney(spent, f.currency)}. ${expensesChange.spoken}`}>
           <View style={S.summaryHeading}>
-            <ArrowUpRight size={18} color={C.red} accessible={false} />
-            <Text style={S.summaryLabel}>Expenses</Text>
+            <View style={S.summaryIdentity}>
+              <FunctionalIcon name="expenses" tone="red" containerSize={40} size={18} />
+              <Text style={S.summaryLabel}>Expenses</Text>
+            </View>
+            <ChevronRight size={21} color={theme.colors.accentText} accessible={false} />
           </View>
           <Text style={S.summaryAmount} numberOfLines={1} adjustsFontSizeToFit>{money(spent, f.symbol)}</Text>
+          <ChangeIndicator metric="expenses" analysis={expensesChange} />
         </Card>
+      </View>
+      <Card
+        style={S.monthlySavingsCard}
+        accessibilityLabel={`${netSavings < 0 ? "Net deficit" : "Net savings"} this month, ${accessibleMoney(Math.abs(netSavings), f.currency)}, calculated from this month's income and expenses`}
+      >
+        <FunctionalIcon name="savings" tone={netSavings < 0 ? "red" : "teal"} containerSize={42} size={20} />
+        <View style={S.monthlySavingsCopy}>
+          <Text style={S.summaryLabel}>{netSavings < 0 ? "Net deficit this month" : "Net savings this month"}</Text>
+          <Text style={[S.monthlySavingsAmount, netSavings < 0 && { color: theme.colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+            {netSavings < 0 ? `-${money(Math.abs(netSavings), f.symbol)}` : money(netSavings, f.symbol)}
+          </Text>
+        </View>
+      </Card>
+      <Section title="Today's Spending" />
+      <Card accessibilityLabel={dailyRemaining < 0
+        ? `Spent today ${accessibleMoney(spentToday, f.currency)}; target ${accessibleMoney(dailyTarget, f.currency)}; overspent by ${accessibleMoney(Math.abs(dailyRemaining), f.currency)}`
+        : `Spent today ${accessibleMoney(spentToday, f.currency)}; target ${accessibleMoney(dailyTarget, f.currency)}; ${accessibleMoney(dailyRemaining, f.currency)} remaining`}>
+        <View style={S.dailyHeading}>
+          <View>
+            <Text style={S.cardTitle}>Today&apos;s spending</Text>
+            <Text style={S.caption}>Based on your {days}-day budget month</Text>
+          </View>
+          <View style={S.dailyIcon}>
+            <CircleDollarSign size={20} color={C.purple} accessible={false} />
+          </View>
+        </View>
+        <View style={S.dailyStats}>
+          <View style={S.dailyStat}>
+            <FunctionalIcon name="goals" tone="purple" containerSize={34} size={17} />
+            <Text style={S.dailyLabel}>TODAY&apos;S TARGET</Text>
+            <Text style={S.dailyValue} numberOfLines={1} adjustsFontSizeToFit>{money(dailyTarget, f.symbol)}</Text>
+          </View>
+          <View style={S.dailyStat}>
+            <FunctionalIcon name="expenses" tone="red" containerSize={34} size={17} />
+            <Text style={S.dailyLabel}>SPENT TODAY</Text>
+            <Text style={S.dailyValue} numberOfLines={1} adjustsFontSizeToFit>{money(spentToday, f.symbol)}</Text>
+          </View>
+          <View style={S.dailyStatWide}>
+            <FunctionalIcon name={dailyRemaining < 0 ? "expenses" : "history"} tone={dailyRemaining < 0 ? "red" : "orange"} containerSize={34} size={17} />
+            <Text style={S.dailyLabel}>{dailyRemaining < 0 ? "OVERSPENT TODAY" : "REMAINING TODAY"}</Text>
+            <Text style={S.dailyValue} numberOfLines={1} adjustsFontSizeToFit>{money(Math.abs(dailyRemaining), f.symbol)}</Text>
+          </View>
+        </View>
+        <View
+          accessible
+          accessibilityLabel={dailyRemaining < 0
+            ? `You overspent today by ${accessibleMoney(Math.abs(dailyRemaining), f.currency)}. New daily target from tomorrow: ${accessibleMoney(tomorrowTarget, f.currency)}`
+            : dailyRemaining === 0
+              ? "Today's target reached"
+              : "You're on track"}
+          style={[S.dailyNotice, dailyRemaining < 0 && S.dailyNoticeDanger, dailyRemaining === 0 && S.dailyNoticeReached]}
+        >
+          <Text style={[S.dailyNoticeTitle, dailyRemaining < 0 && { color: C.red }]}>
+            {dailyRemaining < 0
+              ? `You overspent today by ${money(Math.abs(dailyRemaining), f.symbol)}`
+              : dailyRemaining === 0
+                ? "Today's target reached"
+                : "You're on track"}
+          </Text>
+          {dailyRemaining < 0 && (
+            <Text style={S.caption}>New daily target from tomorrow: {money(tomorrowTarget, f.symbol)}</Text>
+          )}
+        </View>
+      </Card>
+      <Section title="Quick Actions" />
+      <View style={S.quickActions}>
+        <QuickAction label="Add Expense" icon="expenses" tone="red" hint="Opens a new expense form" onPress={() => router.push({ pathname: "/add", params: { type: "Expense" } })} />
+        <QuickAction label="Add Income" icon="income" tone="green" hint="Opens a new income form" onPress={() => router.push({ pathname: "/add", params: { type: "Income" } })} />
+        <QuickAction label="Budgets" icon="budgets" tone="blue" hint="Opens your budgets" onPress={() => router.push("/budgets")} />
+        <QuickAction label="Goals" icon="goals" tone="purple" hint="Opens your financial goals" onPress={() => router.push("/goals")} />
       </View>
       <Section
         title="Budget Overview"
@@ -502,13 +715,13 @@ function Home() {
         onPress={() => router.push("/budgets")}
       />
       {bud.length ? (
-        bud.slice(0, 4).map((b) => <BudgetCard key={b.id} budget={b} />)
+        bud.slice(0, 3).map((b) => <BudgetCard key={b.id} budget={b} compact />)
       ) : (
         <Empty
           text="No budgets yet"
           description="Create a budget to start tracking your spending."
           icon={WalletCards}
-          actionLabel="View budgets"
+          actionLabel="Create a budget"
           onAction={() => router.push("/budgets")}
         />
       )}
@@ -522,65 +735,27 @@ function Home() {
           ))}
         </Card>
       )}
-      <Section title="Daily Spending" />
-      <Card>
-        <View style={S.dailyHeading}>
-          <View>
-            <Text style={S.cardTitle}>Today&apos;s spending</Text>
-            <Text style={S.caption}>Based on your {days}-day budget month</Text>
-          </View>
-          <View style={S.dailyIcon}>
-            <CircleDollarSign size={20} color={C.purple} accessible={false} />
-          </View>
-        </View>
-        <View style={S.dailyStats}>
-          <View style={S.dailyStat}>
-            <Text style={S.label}>TODAY&apos;S TARGET</Text>
-            <Text style={S.dailyValue}>{money(dailyTarget, f.symbol)}</Text>
-          </View>
-          <View style={S.dailyStat}>
-            <Text style={S.label}>SPENT TODAY</Text>
-            <Text style={S.dailyValue}>{money(spentToday, f.symbol)}</Text>
-          </View>
-          <View style={S.dailyStatWide}>
-            <Text style={S.label}>REMAINING TODAY</Text>
-            <Text style={S.dailyValue}>{money(Math.max(dailyRemaining, 0), f.symbol)}</Text>
-          </View>
-        </View>
-        <View
-          accessible
-          accessibilityLabel={dailyRemaining < 0
-            ? `You overspent today by ${accessibleMoney(Math.abs(dailyRemaining), f.currency)}. New daily target from tomorrow: ${accessibleMoney(tomorrowTarget, f.currency)}`
-            : dailyRemaining === 0
-              ? "Today's target reached"
-              : "You're on track"}
-          style={[S.dailyNotice, dailyRemaining < 0 && S.dailyNoticeDanger, dailyRemaining === 0 && S.dailyNoticeReached]}
-        >
-          <Text
-            style={[S.dailyNoticeTitle, dailyRemaining < 0 && { color: C.red }]}
-          >
-            {dailyRemaining < 0
-              ? `You overspent today by ${money(Math.abs(dailyRemaining), f.symbol)}`
-              : dailyRemaining === 0
-                ? "Today's target reached"
-                : "You're on track"}
-          </Text>
-          {dailyRemaining < 0 && (
-            <Text style={S.caption}>
-              New daily target from tomorrow: {money(tomorrowTarget, f.symbol)}
-            </Text>
-          )}
-        </View>
-      </Card>
+      <Section title="Goals" action="View all goals" onPress={() => router.push("/goals")} />
+      {currentGoals.length ? (
+        currentGoals.slice(0, 3).map((goal) => <HomeGoalPreview key={goal.id} goal={goal} />)
+      ) : (
+        <Empty
+          text="No financial goals yet"
+          description="Create a goal and start building toward it."
+          icon={Landmark}
+          actionLabel="Create a goal"
+          onAction={() => router.push("/goals")}
+        />
+      )}
       <Section
         title="Recent Transactions"
         action="View all transactions"
         onPress={() => router.push("/transactions")}
       />
-      {tx.slice(0, 5).map((t) => (
-        <Transaction key={t.id} t={t} symbol={f.symbol} currency={f.currency} />
+      {recentTransactions.map((transaction) => (
+        <Transaction key={transaction.id} t={transaction} symbol={f.symbol} currency={f.currency} />
       ))}
-      {!tx.length && (
+      {!recentTransactions.length && (
         <Empty
           text="No transactions yet"
           description="Add your first income or expense."
@@ -592,17 +767,19 @@ function Home() {
       <Section title="Monthly cycle" />
       <Card>
         <View style={S.row}>
-          <View>
-            <Text style={S.cardTitle}>
-              {monthLabel(prevMonth(f.currentMonth))}
-            </Text>
-            <Text style={S.caption}>Previous month balance</Text>
+          <View style={S.rowStart}>
+            <FunctionalIcon name="history" tone="purple" containerSize={48} size={22} />
+            <View style={S.cycleCopy}>
+              <Text style={S.cardTitle}>{monthLabel(prevMonth(f.currentMonth))}</Text>
+              <Text style={S.caption}>Previous month balance</Text>
+              <Text style={S.caption}>Cycle status: {f.cycle?.status || "No rollover recorded"}</Text>
+            </View>
           </View>
-          <Text style={S.metric}>{money(previous, f.symbol)}</Text>
+          <View style={S.cycleValue}>
+            <Text style={S.metric} numberOfLines={1} adjustsFontSizeToFit>{money(previous, f.symbol)}</Text>
+            <ChevronRight size={20} color={theme.colors.tabInactive} accessible={false} />
+          </View>
         </View>
-        <Text style={S.caption}>
-          Cycle status: {f.cycle?.status || "No rollover recorded"}
-        </Text>
         {previous > 0 && f.cycle?.status !== "completed" && (
           <View style={S.row}>
             <Pressable
@@ -671,25 +848,83 @@ function Home() {
 function Section({ title, action, onPress }) {
   return <SectionHeader title={title} actionLabel={action} onAction={onPress} style={S.sectionSpacing} />;
 }
-function Progress({ value, label = "Progress", accessibilityValueText }) {
-  const progress = Math.max(0, Math.min(value, 100));
-  return <ProgressBar value={progress} label={label} accessibilityValueText={accessibilityValueText || `${Math.round(progress)} percent`} style={S.progressSpacing} />;
+function QuickAction({ label, icon, tone, hint, onPress }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={hint}
+      onPress={onPress}
+      style={({ pressed }) => [S.quickAction, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }, pressed && { opacity: 0.78 }]}
+    >
+      <FunctionalIcon name={icon} tone={tone} containerSize={40} size={19} />
+      <Text style={[S.quickActionText, { color: theme.colors.text }]}>{label}</Text>
+      <ChevronRight size={18} color={theme.colors.secondaryText} accessible={false} />
+    </Pressable>
+  );
 }
-function BudgetCard({ budget, detail = true }) {
+function HomeGoalPreview({ goal }) {
   const f = useFinance(),
     router = useRouter(),
+    theme = useTheme(),
+    goalIcon = goalVisual(goal),
+    visual = goalIcon.icon === "savings" ? { icon: "goals", tone: "purple" } : goalIcon,
+    progress = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
+  const accessibleGoal = `${goal.name}, ${accessibleMoney(goal.currentAmount, goal.currency)} saved of ${accessibleMoney(goal.targetAmount, goal.currency)}, ${Math.round(progress)} percent complete`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibleGoal}
+      accessibilityHint="Opens this goal's details"
+      onPress={() => router.push(`/goal/${goal.id}`)}
+      style={({ pressed }) => [S.homeGoalPreview, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }, pressed && { opacity: 0.82 }]}
+    >
+      <View style={S.homeGoalHeading}>
+        <FunctionalIcon {...visual} containerSize={40} size={19} />
+        <View style={S.homeGoalCopy}>
+          <Text style={[S.cardTitle, { color: theme.colors.text }]} numberOfLines={1}>{goal.name}</Text>
+          <Text style={[S.caption, { color: theme.colors.secondaryText }]} numberOfLines={1}>
+            {money(goal.currentAmount, f.symbol)} / {money(goal.targetAmount, f.symbol)}
+          </Text>
+        </View>
+        <ChevronRight size={19} color={theme.colors.secondaryText} accessible={false} />
+      </View>
+      <Progress
+        value={progress}
+        label={`${goal.name} progress`}
+        accessibilityValueText={`${Math.round(progress)} percent complete`}
+        color={FUNCTIONAL_ICON_TONES[visual.tone]?.[theme.themeName]?.foreground || theme.colors.primary}
+      />
+    </Pressable>
+  );
+}
+function Progress({ value, label = "Progress", accessibilityValueText, color, compact = false }) {
+  const progress = Math.max(0, Math.min(value, 100));
+  return <ProgressBar value={progress} label={label} accessibilityValueText={accessibilityValueText || `${Math.round(progress)} percent`} color={color} style={compact ? S.homeBudgetProgress : S.progressSpacing} />;
+}
+function BudgetCard({ budget, detail = true, compact = false }) {
+  const f = useFinance(),
+    router = useRouter(),
+    theme = useTheme(),
     spent = categorySpent(f.transactions, budget, budget.month, f.currency),
     remain = Number(budget.amount) - spent,
     pct = Number(budget.amount) ? (spent / Number(budget.amount)) * 100 : 0,
     days = daysInMonth(budget.month),
-    daily = Number(budget.amount) / Math.max(days, 1);
+    daily = Number(budget.amount) / Math.max(days, 1),
+    usageState = budgetUsageState(pct),
+    progressColor = remain < 0
+      ? theme.colors.danger
+      : pct >= 80
+        ? theme.colors.warning
+        : progressAccent(budget.category, theme);
   return (
     <Pressable
       onPress={detail ? () => router.push(`/budget/${budget.id}`) : undefined}
       accessibilityRole={detail ? "button" : undefined}
       accessibilityLabel={
         detail
-          ? `${budget.category} budget, ${accessibleMoney(budget.amount, f.currency)} total, ${accessibleMoney(spent, f.currency)} spent, ${remain < 0 ? `${accessibleMoney(Math.abs(remain), f.currency)} over budget` : `${accessibleMoney(remain, f.currency)} remaining`}`
+          ? `${budget.category} budget, ${usageState}, ${Math.round(pct)} percent used, ${accessibleMoney(spent, f.currency)} spent of ${accessibleMoney(budget.amount, f.currency)}, ${remain < 0 ? `${accessibleMoney(Math.abs(remain), f.currency)} over budget` : `${accessibleMoney(remain, f.currency)} remaining`}`
           : undefined
       }
       accessibilityHint={
@@ -697,32 +932,34 @@ function BudgetCard({ budget, detail = true }) {
       }
       style={({ pressed }) => (pressed && detail ? { opacity: 0.9 } : null)}
     >
-      <Card>
+      <Card style={compact ? S.homeBudgetCard : undefined}>
         <View style={S.row}>
           <View style={S.rowStart}>
-            <CategoryIcon name={budget.category} />
-            <View>
-              <Text style={S.cardTitle}>{budget.category}</Text>
-              <Text style={S.caption}>
+            <CategoryIcon name={budget.category} size={compact ? 18 : 20} />
+            <View style={S.budgetCategoryCopy}>
+              <Text style={[S.cardTitle, { color: theme.colors.text }]}>{budget.category}</Text>
+              <Text style={[S.caption, { color: theme.colors.secondaryText }]}>
                 {money(budget.amount, f.symbol)} monthly budget
               </Text>
             </View>
           </View>
-          <Text style={S.pct}>{Math.round(pct)}%</Text>
+          <View style={S.budgetUsageCopy}>
+            <Text accessibilityLabel={`${Math.round(pct)} percent used`} style={[S.pct, { color: progressColor }]}>{Math.round(pct)}%</Text>
+            <Text style={[S.budgetUsageState, { color: progressColor }]}>{usageState}</Text>
+          </View>
         </View>
-        <Progress value={pct} label={`${budget.category} budget used`} />
-        <View style={S.row}>
+        <Progress value={pct} label={`${budget.category} budget used`} accessibilityValueText={`${Math.round(pct)} percent used. ${money(spent, f.symbol)} spent of ${money(budget.amount, f.symbol)} budget. ${usageState}.`} color={progressColor} compact={compact} />
+        <View style={compact ? S.homeBudgetBottomRow : S.row}>
           <View>
-            <Text style={S.value}>{money(spent, f.symbol)} spent</Text>
-            <Text style={S.caption}>
-              {remain < 0
-                ? `Over by ${money(Math.abs(remain), f.symbol)}`
-                : `${money(remain, f.symbol)} left`}
+            <Text style={[S.value, { color: theme.colors.text }]}>{money(spent, f.symbol)} spent</Text>
+            <Text style={[S.caption, { color: theme.colors.secondaryText }]}>
+              {money(daily, f.symbol)} / day
             </Text>
           </View>
-          <Text style={S.dailyTarget}>
-            {money(daily, f.symbol)}
-            <Text style={S.caption}> / day</Text>
+          <Text style={[compact ? S.homeBudgetRemaining : S.dailyTarget, { color: remain < 0 ? theme.colors.danger : theme.colors.secondaryText }]}>
+            {remain < 0
+              ? `${money(Math.abs(remain), f.symbol)} over budget`
+              : `${money(remain, f.symbol)} left`}
           </Text>
         </View>
       </Card>
@@ -731,22 +968,27 @@ function BudgetCard({ budget, detail = true }) {
 }
 export function BudgetsScreen() {
   return (
-    <Guard>
+    <Guard errorTitle="Unable to load budgets" errorDescription="Your budgets are unavailable right now. Please try again.">
       <Budgets />
     </Guard>
   );
 }
 function Budgets() {
+  const params = useLocalSearchParams();
+  const requestedMonth = Array.isArray(params.month) ? params.month[0] : params.month;
   const f = useFinance(),
+    router = useRouter(),
     bs = f.budgets.filter(
       (b) => b.currency === f.currency && b.month === f.currentMonth,
     ),
-    pastBudgets = f.budgets.filter(
-      (b) => b.currency === f.currency && b.month !== f.currentMonth,
-    ),
     [show, setShow] = useState(false),
     [category, setCategory] = useState("Food"),
-    [amount, setAmount] = useState("");
+    [amount, setAmount] = useState(""),
+    [view, setView] = useState("ongoing"),
+    [selectedMonthState, setSelectedMonth] = useState(null);
+  const selectedMonth = requestedMonth || selectedMonthState;
+  const theme = useTheme();
+  const activeView = requestedMonth ? "history" : view;
   const totalBudget = bs.reduce((total, b) => total + Number(b.amount || 0), 0),
     totalSpent = bs.reduce(
       (total, b) =>
@@ -755,6 +997,16 @@ function Budgets() {
     ),
     totalRemaining = totalBudget - totalSpent,
     totalPercent = totalBudget ? (totalSpent / totalBudget) * 100 : 0;
+  const totalUsageState = budgetUsageState(totalPercent);
+  const totalUsageColor = totalRemaining < 0
+    ? theme.colors.danger
+    : totalPercent >= 80
+      ? theme.colors.warning
+      : theme.colors.primary;
+  const months = [...new Set(f.budgets.filter((b) => b.currency === f.currency).map((b) => b.month).filter(Boolean))].sort((a, b) => b.localeCompare(a));
+  const historicalBudgets = f.budgets.filter((b) => b.currency === f.currency && b.month === selectedMonth);
+  const historicalTotal = historicalBudgets.reduce((total, b) => total + Number(b.amount || 0), 0);
+  const historicalSpent = historicalBudgets.reduce((total, b) => total + categorySpent(f.transactions, b, selectedMonth, f.currency), 0);
   async function save() {
     try {
       await f.saveBudget({ category, amount });
@@ -765,32 +1017,37 @@ function Budgets() {
     }
   }
   return (
-    <Page title="Budgets" keyboardAvoiding>
+    <Page title={selectedMonth ? monthLabel(selectedMonth) : "Budgets"} keyboardAvoiding>
+      {selectedMonth ? <Button title="Back to budget history" secondary onPress={() => { setSelectedMonth(null); if (requestedMonth) router.setParams({ month: undefined }); }} /> : null}
       <View style={S.pageIntro}>
-        <Text style={S.sub}>{monthLabel(f.currentMonth)}</Text>
-        <Text style={S.caption}>Current month budget overview</Text>
+        <Text style={[S.sub, { color: theme.colors.secondaryText }]}>{monthLabel(selectedMonth || f.currentMonth)}</Text>
+        <Text style={[S.caption, { color: theme.colors.secondaryText }]}>{selectedMonth ? "Historical budget overview" : "Current month budget overview"}</Text>
       </View>
-      <Card style={S.budgetSummaryCard}>
-        <Text style={S.budgetSummaryLabel}>{monthLabel(f.currentMonth)} budget</Text>
-        <Text style={S.budgetSummaryAmount} numberOfLines={1} adjustsFontSizeToFit>{money(totalBudget, f.symbol)}</Text>
+      {!selectedMonth ? <Card style={S.budgetSummaryCard}>
+        <Text style={[S.budgetSummaryLabel, { color: theme.colors.secondaryText }]}>Total budget · {monthLabel(f.currentMonth)}</Text>
+        <Text style={[S.budgetSummaryAmount, { color: theme.colors.text }]} numberOfLines={1} adjustsFontSizeToFit>{money(totalBudget, f.symbol)}</Text>
         <View style={S.budgetSummaryMetrics}>
           <Metric label="Amount spent" value={money(totalSpent, f.symbol)} />
           <Metric
             label={totalRemaining < 0 ? "Over budget" : "Amount remaining"}
             value={totalRemaining < 0 ? money(Math.abs(totalRemaining), f.symbol) : money(totalRemaining, f.symbol)}
-            color={totalRemaining < 0 ? C.red : undefined}
+            color={totalRemaining < 0 ? theme.colors.danger : theme.colors.text}
           />
         </View>
         <View style={S.row}>
-          <Text style={S.caption}>Percentage used</Text>
-          <Text style={S.pct}>{Math.round(totalPercent)}%</Text>
+          <Text style={[S.caption, { color: theme.colors.secondaryText }]}>Overall spending · {totalUsageState}</Text>
+          <Text style={[S.pct, { color: totalUsageColor }]}>{Math.round(totalPercent)}%</Text>
         </View>
-        <Progress value={totalPercent} label={`${monthLabel(f.currentMonth)} total budget used`} />
-      </Card>
-      <Section title="Monthly budgets" />
+        <Progress value={totalPercent} label={`${monthLabel(f.currentMonth)} overall budget usage`} accessibilityValueText={`${Math.round(totalPercent)} percent used. ${money(totalSpent, f.symbol)} spent of ${money(totalBudget, f.symbol)} total budget. ${totalUsageState}${totalRemaining < 0 ? ` by ${money(Math.abs(totalRemaining), f.symbol)}` : ""}.`} color={totalUsageColor} />
+        <Button title={show ? "Close budget form" : "Create Budget"} accessibilityLabel="Create Budget" accessibilityHint="Opens the form to add a monthly category budget" onPress={() => setShow(!show)} />
+      </Card> : null}
+      <View style={S.segmentedToggle} accessibilityRole="radiogroup" accessibilityLabel="Budget period view">
+        {["ongoing", "history"].map((item) => <Pressable key={item} accessibilityRole="radio" accessibilityLabel={item === "ongoing" ? "Ongoing budgets" : "Budget history"} accessibilityState={{ selected: view === item }} style={[S.segmentedOption, view === item && S.segmentedOptionSelected]} onPress={() => { setView(item); setSelectedMonth(null); }}><Text style={[S.segmentedOptionText, view === item && S.segmentedOptionTextSelected]}>{item.toUpperCase()}</Text></Pressable>)}
+      </View>
+      {activeView === "ongoing" ? <Section title="Ongoing budgets" /> : <Section title="Budget History" />}
       {show && (
         <Card>
-          <Text accessibilityRole="header" style={S.cardTitle}>New monthly budget</Text>
+          <Text accessibilityRole="header" style={[S.cardTitle, { color: theme.colors.text }]}>New monthly budget</Text>
           <Field
             label="Category"
             value={category}
@@ -807,32 +1064,23 @@ function Budgets() {
           <Button title="Cancel" secondary onPress={() => setShow(false)} />
         </Card>
       )}
-      {bs.map((b) => (
-        <BudgetCard key={b.id} budget={b} />
-      ))}
-      {!bs.length && (
-        <Empty
-          text="No budgets yet"
-          description="Create a budget to set a monthly limit for a category."
+      {activeView === "ongoing" && !selectedMonth && bs.map((b) => <BudgetCard key={b.id} budget={b} />)}
+      {activeView === "ongoing" && !selectedMonth && !bs.length && (
+          <Empty
+            text="No budgets yet"
+          description="Create your first budget to start tracking your spending."
           icon={WalletCards}
+          actionLabel="Create Budget"
+          onAction={() => setShow(true)}
         />
       )}
-      {pastBudgets.length > 0 && (
-        <>
-          <Section title="Past budgets" />
-          {pastBudgets.map((b) => (
-            <View key={b.id}>
-              <Text style={S.budgetHistoryMonth}>{monthLabel(b.month)}</Text>
-              <BudgetCard budget={b} />
-            </View>
-          ))}
-        </>
-      )}
-      <Button
-        title={show ? "Close add budget form" : "Add budget"}
-        accessibilityLabel={show ? "Close add budget form" : "Add budget"}
-        onPress={() => setShow(!show)}
-      />
+      {activeView === "history" && !selectedMonth && (months.length ? months.map((month) => {
+        const monthBudgets = f.budgets.filter((b) => b.currency === f.currency && b.month === month);
+        const budgetSum = monthBudgets.reduce((sumValue, b) => sumValue + Number(b.amount || 0), 0);
+        const spentSum = monthBudgets.reduce((sumValue, b) => sumValue + categorySpent(f.transactions, b, month, f.currency), 0);
+        return <Pressable key={month} accessibilityRole="button" accessibilityLabel={`${monthLabel(month)}, ${month === f.currentMonth ? "current" : "completed"}, total budget ${accessibleMoney(budgetSum, f.currency)}, expenses ${accessibleMoney(spentSum, f.currency)}`} onPress={() => setSelectedMonth(month)} style={[S.historyMonthCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}><View style={S.row}><Text style={[S.cardTitle, { color: theme.colors.text }]}>{monthLabel(month)}</Text><Text style={[S.label, { color: theme.colors.secondaryText }]}>{month === f.currentMonth ? "Current" : "Completed"}</Text></View><View style={S.row}><Text style={[S.caption, { color: theme.colors.secondaryText }]}>Budget {money(budgetSum, f.symbol)}</Text><Text style={[S.caption, { color: theme.colors.secondaryText }]}>Spent {money(spentSum, f.symbol)}</Text></View><Text style={[S.caption, { color: theme.colors.secondaryText }]}>Remaining {money(budgetSum - spentSum, f.symbol)}</Text></Pressable>;
+      }) : <Empty text="No budget history" description="Monthly budgets will appear here when available." />)}
+      {activeView === "history" && selectedMonth && <><Card><Text style={[S.cardTitle, { color: theme.colors.text }]}>{monthLabel(selectedMonth)} · {selectedMonth === f.currentMonth ? "Current" : "Completed"}</Text><View style={S.row}><Text style={[S.caption, { color: theme.colors.secondaryText }]}>Total budget</Text><Text style={[S.value, { color: theme.colors.text }]}>{money(historicalTotal, f.symbol)}</Text></View><View style={S.row}><Text style={[S.caption, { color: theme.colors.secondaryText }]}>Total expenses</Text><Text style={[S.value, { color: theme.colors.text }]}>{money(historicalSpent, f.symbol)}</Text></View><View style={S.row}><Text style={[S.caption, { color: theme.colors.secondaryText }]}>Remaining</Text><Text style={[S.value, { color: historicalTotal < historicalSpent ? theme.colors.danger : theme.colors.text }]}>{money(historicalTotal - historicalSpent, f.symbol)}</Text></View></Card>{historicalBudgets.length ? historicalBudgets.map((b) => <BudgetCard key={b.id} budget={b} />) : <Empty text="No budgets for this month" />}</>}
     </Page>
   );
 }
@@ -847,12 +1095,13 @@ function BudgetDetail() {
   const { id } = useLocalSearchParams(),
     f = useFinance(),
     router = useRouter(),
+    theme = useTheme(),
     budget = f.budgets.find((b) => String(b.id) === String(id)),
     [editing, setEditing] = useState(false),
     [editAmount, setEditAmount] = useState("");
   if (!budget)
     return (
-      <Page title="Budget details" back={backTo(router, "/(tabs)/budgets")}>
+      <Page title="Budget details" back={backTo(router, "/(tabs)/budgets")} backLabel="Back to Budgets" backHint="Returns to the budget overview">
         <Empty text="This budget could not be found." />
       </Page>
     );
@@ -876,6 +1125,13 @@ function BudgetDetail() {
       ? (spent / Number(budget.amount)) * 100
       : 0,
     canEdit = budget.month === f.currentMonth && budget.currency === f.currency;
+  const progressColor = progressAccent(budget.category, theme, remaining < 0);
+  const usageState = budgetUsageState(budgetPercent);
+  const usageColor = remaining < 0
+    ? theme.colors.danger
+    : budgetPercent >= 80
+      ? theme.colors.warning
+      : progressColor;
   async function saveEdit() {
     try {
       await f.saveBudget({
@@ -904,13 +1160,13 @@ function BudgetDetail() {
         ListHeaderComponent={
           <>
             <View style={S.pageIntro}>
-              <Text style={S.sub}>
+              <Text style={[S.sub, { color: theme.colors.secondaryText }]}>
                 {monthLabel(budget.month)} · {budget.month === f.currentMonth ? "Current" : "History"}
               </Text>
             </View>
             {editing && (
               <Card style={S.editBudgetCard}>
-                <Text accessibilityRole="header" style={S.cardTitle}>Edit Budget</Text>
+                  <Text accessibilityRole="header" style={[S.cardTitle, { color: theme.colors.text }]}>Edit Budget</Text>
                 <View style={S.editCategory}>
                   <Text style={S.label}>CATEGORY</Text>
                   <Text style={S.cardTitle}>{budget.category}</Text>
@@ -929,11 +1185,11 @@ function BudgetDetail() {
               <View style={S.rowStart}>
                 <CategoryIcon name={budget.category} />
                 <View style={S.budgetDetailHeading}>
-                  <Text style={S.cardTitle}>{budget.category}</Text>
-                  <Text style={S.caption}>{monthLabel(budget.month)} budget</Text>
+                  <Text style={[S.cardTitle, { color: theme.colors.text }]}>{budget.category}</Text>
+                  <Text style={[S.caption, { color: theme.colors.secondaryText }]}>{monthLabel(budget.month)} budget</Text>
                 </View>
               </View>
-              <Text style={S.budgetDetailAmount} numberOfLines={1} adjustsFontSizeToFit>{money(budget.amount, f.symbol)}</Text>
+              <Text style={[S.budgetDetailAmount, { color: theme.colors.text }]} numberOfLines={1} adjustsFontSizeToFit>{money(budget.amount, f.symbol)}</Text>
               <View style={S.budgetDetailStats}>
                 <Metric label="Spent" value={money(spent, f.symbol)} />
                 <Metric
@@ -943,15 +1199,36 @@ function BudgetDetail() {
                 />
               </View>
               <View style={S.row}>
-                <Text style={S.caption}>Percentage used</Text>
-                <Text style={S.pct}>{Math.round(budgetPercent)}%</Text>
+                <Text style={[S.caption, { color: theme.colors.secondaryText }]}>Percentage used · {usageState}</Text>
+                <View style={S.budgetUsageCopy}>
+                  <Text style={[S.pct, { color: usageColor }]}>{Math.round(budgetPercent)}%</Text>
+                  <Text style={[S.budgetUsageState, { color: usageColor }]}>{usageState}</Text>
+                </View>
               </View>
               <Progress
                 value={budgetPercent}
                 label={`${budget.category} budget used`}
+                accessibilityValueText={`${Math.round(budgetPercent)} percent used. ${money(spent, f.symbol)} spent of ${money(budget.amount, f.symbol)} budget. ${usageState}${remaining < 0 ? ` by ${money(Math.abs(remaining), f.symbol)}` : ""}.`}
+                color={usageColor}
               />
             </Card>
             {canEdit && <Button title="Edit Budget" secondary accessibilityLabel="Edit budget" onPress={() => { setEditAmount(String(budget.amount)); setEditing(true); }} />}
+            <Button title="Delete Budget" variant="danger" accessibilityLabel={`Delete ${budget.category} budget`} accessibilityHint="Asks for confirmation before deleting this budget. Transactions are not deleted." onPress={() => Alert.alert(
+                "Delete budget?",
+                `Delete the ${budget.category} budget for ${monthLabel(budget.month)}? This will not delete any expenses or transactions.`,
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Delete", style: "destructive", onPress: async () => {
+                    try {
+                      await f.deleteBudget(budget.id);
+                      router.replace("/(tabs)/budgets");
+                    } catch (error) {
+                      Alert.alert("Could not delete budget", error.message);
+                    }
+                  } },
+                ],
+                { cancelable: true },
+              )} />
             <Section title="Daily spending" />
             <Card>
               <Metric
@@ -979,8 +1256,9 @@ function BudgetDetail() {
                 color={todaySpent > original ? C.red : C.green}
               />
               <Metric
-                label="Monthly budget remaining"
-                value={money(remaining, f.symbol)}
+                label={remaining < 0 ? "Monthly budget over by" : "Monthly budget remaining"}
+                value={money(Math.abs(remaining), f.symbol)}
+                color={remaining < 0 ? theme.colors.danger : theme.colors.text}
               />
               <Metric
                 label={todaySpent > original ? "New daily target from tomorrow" : "Daily target for remaining days"}
@@ -1020,6 +1298,7 @@ function BudgetDetail() {
   );
 }
 function Metric({ label, value, color, accessibilityLabel }) {
+  const theme = useTheme();
   return (
     <View
       style={S.metricRow}
@@ -1027,10 +1306,10 @@ function Metric({ label, value, color, accessibilityLabel }) {
       accessibilityRole="text"
       accessibilityLabel={accessibilityLabel || `${label}: ${value}`}
     >
-      <Text style={S.caption} accessible={false}>
+      <Text style={[S.caption, { color: theme.colors.secondaryText }]} accessible={false}>
         {label}
       </Text>
-      <Text style={[S.value, color && { color }]} accessible={false}>
+      <Text style={[S.value, { color: color || theme.colors.text }]} accessible={false}>
         {value}
       </Text>
     </View>
@@ -1046,8 +1325,11 @@ export function AddScreen() {
 function Add() {
   const f = useFinance(),
     router = useRouter(),
-    [type, setType] = useState("Expense"),
+    { type: requestedType } = useLocalSearchParams(),
+    theme = useTheme(),
+    [type, setType] = useState(requestedType === "Income" ? "Income" : "Expense"),
     [amount, setAmount] = useState(""),
+    [amountSelection, setAmountSelection] = useState({ start: 0, end: 0 }),
     [category, setCategory] = useState("Food"),
     [date, setDate] = useState(new Date().toISOString().slice(0, 10)),
     [desc, setDesc] = useState(""),
@@ -1057,6 +1339,14 @@ function Add() {
     [showDatePicker, setShowDatePicker] = useState(false),
     [amountFocused, setAmountFocused] = useState(false);
   const submittingRef = useRef(false);
+  const amountSelectionRef = useRef({ start: 0, end: 0 });
+  const amountDisplay = money(amount, "", { editing: true });
+  useFocusEffect(useCallback(() => {
+    if (requestedType === "Income" || requestedType === "Expense") {
+      setType(requestedType);
+      setCategory(requestedType === "Income" ? "Salary" : "Food");
+    }
+  }, [requestedType]));
   const categories =
     type === "Expense"
       ? ["Food", "Transport", "Bills", "Shopping", "Health", "Entertainment"]
@@ -1067,9 +1357,11 @@ function Add() {
   async function save() {
     if (submittingRef.current) return;
     const nextErrors = {};
-    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0)
-      nextErrors.amount = amount.trim() ? "Enter a valid amount." : "Enter an amount.";
+    const amountError = errors.amount || validateEditableAmount(amount);
+    if (amountError) nextErrors.amount = amountError;
     if (!category.trim()) nextErrors.category = "Select a category.";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || dateToKey(dateFromKey(date)) !== date)
+      nextErrors.date = "Select a valid date.";
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
       announceAccessibility(Object.values(nextErrors).join(" "));
@@ -1081,12 +1373,14 @@ function Add() {
     try {
       await f.addTransaction({
         type,
-        amount,
+        amount: Number(amount),
         category,
         date,
         description: desc,
       });
       setAmount("");
+      setAmountSelection({ start: 0, end: 0 });
+      amountSelectionRef.current = { start: 0, end: 0 };
       setDesc("");
       setErrors({});
       const successMessage = `${type} added successfully.`;
@@ -1104,64 +1398,92 @@ function Add() {
         <View style={S.formIntro}>
           <Text style={S.sub}>Record income or spending</Text>
         </View>
-        <View style={S.typeSwitcher} accessibilityRole="radiogroup" accessibilityLabel="Transaction type">
+        <View style={[S.typeSwitcher, { backgroundColor: theme.colors.controlBackground, borderColor: theme.colors.border }]} accessibilityRole="radiogroup" accessibilityLabel="Transaction type">
           <Pressable
             accessibilityRole="radio"
-            accessibilityLabel="Expense"
+            accessibilityLabel={`Expense${type === "Expense" ? ", selected" : ""}`}
             accessibilityState={{ selected: type === "Expense" }}
-            style={[S.typeOption, type === "Expense" && S.expenseSelected]}
-            onPress={() => { Keyboard.dismiss(); setType("Expense"); }}
+            style={[S.typeOption, type === "Expense" && { backgroundColor: theme.colors.purpleTint, borderColor: theme.colors.borderPurple }]}
+            onPress={() => { Keyboard.dismiss(); setType("Expense"); setCategory("Food"); setErrors((current) => ({ ...current, category: undefined })); }}
           >
             <View accessible={false}>
               <ArrowUpRight
                 size={18}
-                color={type === "Expense" ? C.red : C.muted}
+                color={type === "Expense" ? theme.colors.accentText : theme.colors.secondaryText}
               />
             </View>
             <Text
-              style={[S.typeOptionText, type === "Expense" && { color: C.red }]}
+              style={[S.typeOptionText, { color: type === "Expense" ? theme.colors.accentText : theme.colors.secondaryText }]}
             >
               Expense
             </Text>
-            {type === "Expense" && <Text style={S.selectionMarker}>Selected</Text>}
+            {type === "Expense" ? <Check size={15} color={theme.colors.accentText} accessible={false} /> : null}
           </Pressable>
           <Pressable
             accessibilityRole="radio"
-            accessibilityLabel="Income"
+            accessibilityLabel={`Income${type === "Income" ? ", selected" : ""}`}
             accessibilityState={{ selected: type === "Income" }}
-            style={[S.typeOption, type === "Income" && S.incomeSelected]}
+            style={[S.typeOption, type === "Income" && { backgroundColor: theme.colors.purpleTint, borderColor: theme.colors.borderPurple }]}
             onPress={() => {
               Keyboard.dismiss();
               setType("Income");
               setCategory("Salary");
+              setErrors((current) => ({ ...current, category: undefined }));
             }}
           >
             <View accessible={false}>
               <ArrowDownLeft
                 size={18}
-                color={type === "Income" ? C.green : C.muted}
+                color={type === "Income" ? theme.colors.accentText : theme.colors.secondaryText}
               />
             </View>
             <Text
-              style={[
-                S.typeOptionText,
-                type === "Income" && { color: C.green },
-              ]}
+              style={[S.typeOptionText, { color: type === "Income" ? theme.colors.accentText : theme.colors.secondaryText }]}
             >
               Income
             </Text>
-            {type === "Income" && <Text style={S.selectionMarker}>Selected</Text>}
+            {type === "Income" ? <Check size={15} color={theme.colors.accentText} accessible={false} /> : null}
           </Pressable>
         </View>
         <Card style={S.transactionAmountCard}>
           <CurrencyField
             label="Amount"
-            value={amount}
+            value={amountDisplay}
+            selection={amountSelection}
+            onSelectionChange={(event) => {
+              const selection = event.nativeEvent.selection;
+              amountSelectionRef.current = selection;
+              setAmountSelection(selection);
+            }}
             onChangeText={(value) => {
-              setAmount(value);
+              const previousDisplay = money(amount, "", { editing: true });
+              const edit = editedTextRange(previousDisplay, value);
+              const insertedIsNumeric = [...edit.inserted].every((character) => /\d/.test(character) || character === AMOUNT_DECIMAL_SEPARATOR);
+              const incrementalEdit = edit.inserted.length <= 2 && insertedIsNumeric;
+              const parsed = parseEditableAmount(value, f.symbol, incrementalEdit);
+              if (parsed.error) {
+                setErrors((current) => ({ ...current, amount: parsed.error }));
+                return;
+              }
+              const nextAmount = parsed.value;
+              setAmount(nextAmount);
               if (errors.amount) setErrors((current) => ({ ...current, amount: undefined }));
+              const priorSelection = amountSelectionRef.current;
+              let cursorPosition = edit.prefix + edit.inserted.length;
+              if (!edit.inserted.length && edit.removed.length) {
+                if (priorSelection.start !== priorSelection.end) cursorPosition = priorSelection.start;
+                else if (edit.prefix >= priorSelection.start && previousDisplay.length > value.length) cursorPosition = Math.max(priorSelection.start - 1, 0);
+                else cursorPosition = edit.prefix;
+              }
+              const nextSelection = amountCursorForEdit(value, f.symbol, cursorPosition, nextAmount);
+              const selection = { start: nextSelection, end: nextSelection };
+              amountSelectionRef.current = selection;
+              setAmountSelection(selection);
             }}
             symbol={f.symbol}
+            currency={f.currency}
+            accessibilityLabel={`Transaction amount, ${currencyNames[f.currency] || f.currency}`}
+            accessibilityValue={{ text: amount ? accessibleMoney(Number(amount), f.currency) : "No amount entered" }}
             inputStyle={S.transactionAmountInput}
             error={errors.amount}
             accessibilityHint="Enter the transaction amount"
@@ -1176,66 +1498,36 @@ function Add() {
         </Card>
         <Card style={S.transactionFieldsCard}>
           <View style={S.field}>
-            <Label>Category</Label>
-            <View style={S.categoryChoices} accessibilityRole="radiogroup" accessibilityLabel="Transaction category">
-              {categories.map((item) => (
-                <Pressable
-                  key={item}
-                  accessibilityRole="radio"
-                  accessibilityLabel={`${item} category`}
-                  accessibilityState={{ selected: category === item }}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setCategory(item);
-                    if (errors.category) setErrors((current) => ({ ...current, category: undefined }));
-                  }}
-                  style={[
-                    S.categoryChoice,
-                    category === item && S.categoryChoiceOn,
-                  ]}
-                >
-                  <CategoryIcon name={item} size={16} />
-                  <Text
-                    style={[
-                      S.categoryChoiceText,
-                      category === item && { color: C.purple },
-                    ]}
-                  >
-                    {item}
-                  </Text>
-                  {category === item && <Text style={S.selectionMarker}>Selected</Text>}
-                </Pressable>
-              ))}
+            <Label>Choose category</Label>
+            <View style={S.categoryGrid} accessibilityRole="radiogroup" accessibilityLabel="Transaction category">
+              {categories.map((item) => {
+                const iconName = CATEGORY_ICONS[item.toLowerCase()] || "balance";
+                const selected = category === item;
+                return <Pressable key={item} accessibilityRole="radio" accessibilityLabel={`${item} category${selected ? ", selected" : ""}`} accessibilityHint="Selects this transaction category" accessibilityState={{ selected }} onPress={() => { Keyboard.dismiss(); setCategory(item); if (errors.category) setErrors((current) => ({ ...current, category: undefined })); }} style={[S.categoryTile, selected && { backgroundColor: theme.colors.purpleTint, borderColor: theme.colors.borderPurple }]}>
+                  <FunctionalIcon name={iconName} tone={functionalToneForName(item)} containerSize={40} size={18} />
+                  <Text style={[S.categoryChoiceText, selected && S.categoryChoiceTextSelected]}>{item}</Text>
+                  {selected ? <Check size={18} color={theme.colors.accentText} accessible={false} /> : null}
+                </Pressable>;
+              })}
             </View>
-            <Field
-              label="Category name"
-              value={category}
-              onChangeText={(value) => {
-                setCategory(value);
-                if (errors.category) setErrors((current) => ({ ...current, category: undefined }));
-              }}
-              placeholder="Choose or enter a category"
-              error={errors.category}
-              returnKeyType="done"
-              onSubmitEditing={Keyboard.dismiss}
-            />
           </View>
+          {errors.category ? <Text accessibilityRole="alert" style={S.inlineError}>{errors.category}</Text> : null}
           {type === "Expense" && (
             <View style={S.field}>
-              <Label>Budget association</Label>
+              <Label>Budget</Label>
               {matchingBudget ? (
                 <View accessible accessibilityLabel={`${category} budget, ${money(matchingBudget.amount, f.symbol)}, expenses for ${monthLabel(date.slice(0, 7))} are counted in this budget`} style={S.budgetMatch}>
                   <CategoryIcon name={matchingBudget.category} size={18} />
                   <View style={S.budgetMatchCopy}>
-                    <Text style={S.cardTitle}>{matchingBudget.category}</Text>
-                    <Text style={S.caption}>{money(matchingBudget.amount, f.symbol)} / {monthLabel(matchingBudget.month)}</Text>
+                    <Text style={[S.cardTitle, { color: theme.colors.text }]}>{matchingBudget.category}</Text>
+                    <Text style={[S.caption, { color: theme.colors.secondaryText }]}>{money(matchingBudget.amount, f.symbol)} monthly budget · {monthLabel(matchingBudget.month)}</Text>
                   </View>
-                  <Text style={S.budgetMatchState}>Matched</Text>
+                  <Text style={[S.budgetMatchState, { color: theme.colors.accentText }]}>Matched automatically</Text>
                 </View>
               ) : (
                 <View style={S.budgetNoMatch}>
-                  <Text style={S.cardTitle}>No matching budget</Text>
-                  <Text style={S.caption}>This expense can still be saved. A budget is matched by category, currency, and month.</Text>
+                  <Text style={[S.cardTitle, { color: theme.colors.text }]}>No budget available</Text>
+                  <Text style={[S.caption, { color: theme.colors.secondaryText }]}>This expense can still be added. Budgets match automatically by category, currency, and month.</Text>
                   <Button title="View budgets" secondary onPress={() => router.push("/(tabs)/budgets")} />
                 </View>
               )}
@@ -1247,8 +1539,9 @@ function Add() {
             onChangeText={setDesc}
             placeholder="e.g. Lunch, transport to work, salary, electricity bill"
             accessibilityHint="Optional transaction description"
-            returnKeyType="done"
-            onSubmitEditing={Keyboard.dismiss}
+            multiline
+            numberOfLines={3}
+            inputStyle={S.transactionDescriptionInput}
           />
           <View style={S.field}>
             {Platform.OS === "web" ? (
@@ -1256,7 +1549,8 @@ function Add() {
                 label="Date"
                 accessibilityLabel={`Transaction date, ${formatDateLabel(date)}`}
                 value={date}
-                onChangeText={setDate}
+                onChangeText={(value) => { setDate(value); if (errors.date) setErrors((current) => ({ ...current, date: undefined })); }}
+                error={errors.date}
                 type="date"
               />
             ) : (
@@ -1264,14 +1558,15 @@ function Add() {
                 <Label>Date</Label>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Date, ${formatDateLabel(date)}`}
+                  accessibilityLabel={`Transaction date, ${formatDateLabel(date)}`}
                   accessibilityHint="Opens the date picker"
                   onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }}
-                  style={S.dateSelector}
+                  style={[S.dateSelector, { backgroundColor: theme.colors.inputBackground, borderColor: errors.date ? theme.colors.danger : theme.colors.border }]}
                 >
-                  <Text style={S.dateSelectorText}>{formatDateLabel(date)}</Text>
-                  <AppIcon name="calendar" color={C.purple} />
+                  <Text style={[S.dateSelectorText, { color: theme.colors.text }]}>{formatDateLabel(date)}</Text>
+                  <AppIcon name="calendar" color={theme.colors.accentText} />
                 </Pressable>
+                {errors.date ? <Text accessibilityRole="alert" style={[S.inlineError, { color: theme.colors.danger }]}>{errors.date}</Text> : null}
                 {showDatePicker && (
                   <View style={S.datePicker}>
                     <DateTimePicker
@@ -1279,7 +1574,9 @@ function Add() {
                       mode="date"
                       display={Platform.OS === "ios" ? "spinner" : "default"}
                       onValueChange={(_event, selectedDate) => {
+                        if (!selectedDate) return;
                         setDate(dateToKey(selectedDate));
+                        if (errors.date) setErrors((current) => ({ ...current, date: undefined }));
                         if (Platform.OS !== "ios") setShowDatePicker(false);
                       }}
                       onDismiss={() => setShowDatePicker(false)}
@@ -1292,9 +1589,20 @@ function Add() {
               </>
             )}
           </View>
+          {amount && Number.isFinite(Number(amount)) && Number(amount) > 0 ? (
+            <Card style={S.transactionReviewCard} accessibilityLabel={`${type}, ${money(amount, f.symbol)}, ${category}, ${formatDateLabel(date)}${matchingBudget ? `, ${matchingBudget.category} budget` : type === "Expense" ? ", no budget available" : ""}`}>
+              <View style={S.row}>
+                <Text style={[S.caption, { color: theme.colors.secondaryText, marginTop: 0 }]}>Review transaction</Text>
+                <Text style={[S.transactionReviewType, { color: theme.colors.accentText }]}>{type}</Text>
+              </View>
+              <Text style={[S.transactionReviewAmount, { color: theme.colors.text }]} numberOfLines={1} adjustsFontSizeToFit>{money(amount, f.symbol)}</Text>
+              <Text style={[S.caption, { color: theme.colors.secondaryText }]}>{category} · {formatDateLabel(date)}{matchingBudget ? ` · ${matchingBudget.category} budget` : type === "Expense" ? " · No budget available" : ""}</Text>
+            </Card>
+          ) : null}
           <Button
-            title={`Save ${type}`}
-            accessibilityLabel={`Save ${type}`}
+            title={`Add ${type}`}
+            accessibilityLabel={`Add ${type.toLowerCase()}`}
+            accessibilityHint="Saves this transaction to your BudgetFlow account"
             onPress={save}
             disabled={submitting}
             loading={submitting}
@@ -1303,6 +1611,7 @@ function Add() {
         {notice ? (
           <Text
             style={S.successMessage}
+            accessibilityRole="alert"
             accessibilityLiveRegion={Platform.OS === "android" ? "polite" : undefined}
           >
             {notice}
@@ -1329,7 +1638,7 @@ function Transactions() {
       )
       .sort((a, b) => String(b.date).localeCompare(String(a.date)));
   return (
-    <Page title="Transactions" scroll={false} back={backTo(router, "/(tabs)/more")}>
+    <Page title="Transactions" scroll={false} back={backTo(router, "/(tabs)/more")} backLabel="Back to More" backHint="Returns to the More screen">
       <FlatList
         data={rows}
         keyExtractor={(item) => String(item.id)}
@@ -1376,6 +1685,7 @@ function Transactions() {
 }
 function Transaction({ t, symbol, currency }) {
   const income = t.type === "Income";
+  const theme = useTheme();
   const description = String(t.description || "").trim();
   return (
     <ListRow
@@ -1390,7 +1700,7 @@ function Transaction({ t, symbol, currency }) {
       subtitle={`${t.category} / ${formatDateLabel(t.date)}`}
       accessibilityLabel={`${t.category} ${income ? "income" : "expense"}${description && description.toLowerCase() !== String(t.category || "").toLowerCase() ? `, ${description}` : ""}, ${formatDateLabel(t.date)}, ${accessibleMoney(t.amount, currency || t.currency || "NGN")}`}
       trailing={(
-        <Text style={[S.transactionAmount, { color: income ? C.green : C.ink }]} numberOfLines={1} adjustsFontSizeToFit>
+        <Text style={[S.transactionAmount, { color: income ? theme.colors.positive : theme.colors.danger }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
           {income ? "+" : "-"}{money(t.amount, symbol)}
         </Text>
       )}
@@ -1399,7 +1709,7 @@ function Transaction({ t, symbol, currency }) {
 }
 export function GoalsScreen() {
   return (
-    <Guard>
+    <Guard errorTitle="Unable to load your goals" errorDescription="Your goals are unavailable right now. Please try again.">
       <Goals />
     </Guard>
   );
@@ -1413,9 +1723,11 @@ function Goals() {
     [targetDate, setTargetDate] = useState(""),
     [errors, setErrors] = useState({}),
     [submitting, setSubmitting] = useState(false),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [showGoalSyncDiagnostics, setShowGoalSyncDiagnostics] = useState(false);
   const submittingRef = useRef(false);
   const goals = f.goals.filter((g) => g.currency === f.currency);
+  const theme = useTheme();
   async function save() {
     if (submittingRef.current) return;
     const nextErrors = {};
@@ -1447,78 +1759,167 @@ function Goals() {
     }
   }
   return (
-    <Page title="Goals" keyboardAvoiding>
-      <View style={S.pageIntro}>
-        <Text style={S.sub}>Plan for what matters</Text>
-        <Text style={S.caption}>Track each goal and build progress through contributions.</Text>
-      </View>
-      <Button
-        title={show ? "Cancel goal creation" : "Create Goal"}
-        accessibilityLabel={show ? "Cancel goal creation" : "Create Goal"}
-        onPress={() => setShow((visible) => !visible)}
+    <Page title="Goals" scroll={false} keyboardAvoiding rightAction={{
+      label: "Create financial goal",
+      hint: "Opens the goal creation form",
+      icon: <View style={[S.goalTopAddIcon, { backgroundColor: theme.colors.primary }]}><AppIcon name="plus" color={theme.colors.onPrimary} size={21} strokeWidth={2.7} /></View>,
+      onPress: () => setShow(true),
+    }}>
+      <FlatList
+        data={goals}
+        keyExtractor={(goal) => String(goal.id)}
+        contentContainerStyle={S.goalsListContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={(
+          <View style={S.goalListHeader}>
+            <View style={S.pageIntro}>
+              <Text style={S.goalIntroLead}>Plan for what matters.</Text>
+              <Text style={S.goalIntroText}>Track each goal and build progress through contributions.</Text>
+            </View>
+            {__DEV__ ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Goal Sync Diagnostics"
+                onPress={() => setShowGoalSyncDiagnostics(true)}
+                style={{ alignSelf: "flex-start", borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.card, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
+              >
+                <Text style={{ color: theme.colors.secondaryText, fontSize: 12, fontWeight: "700" }}>Goal Sync Diagnostics</Text>
+              </Pressable>
+            ) : null}
+            <Button
+              title={show ? "Cancel goal creation" : "Create Goal"}
+              accessibilityLabel={show ? "Cancel goal creation" : "Create financial goal"}
+              icon={<AppIcon name="plus" color={theme.colors.onPrimary} size={20} strokeWidth={2.8} />}
+              onPress={() => setShow((visible) => !visible)}
+              style={S.createGoalButton}
+            />
+            {notice ? <Text style={S.successMessage} accessibilityRole="alert" accessibilityLiveRegion={Platform.OS === "android" ? "polite" : undefined}>{notice}</Text> : null}
+            {show && (
+              <Card style={S.goalFormCard}>
+                <Text accessibilityRole="header" style={S.cardTitle}>Create a goal</Text>
+                <Field
+                  label="Goal name"
+                  value={name}
+                  onChangeText={(value) => { setName(value); if (errors.name) setErrors((current) => ({ ...current, name: undefined })); }}
+                  placeholder="Emergency fund"
+                  error={errors.name}
+                />
+                <Field
+                  label="Goal type"
+                  value={type}
+                  onChangeText={setType}
+                  placeholder="Savings goal"
+                />
+                <CurrencyField
+                  label="Target amount"
+                  value={target}
+                  onChangeText={(value) => { setTarget(value); if (errors.target) setErrors((current) => ({ ...current, target: undefined })); }}
+                  symbol={f.symbol}
+                  inputStyle={S.goalAmountInput}
+                  error={errors.target}
+                  accessibilityHint="Enter a target greater than zero"
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                />
+                <DatePickerField
+                  label="Target date"
+                  value={targetDate}
+                  onChange={(value) => { setTargetDate(value); if (errors.targetDate) setErrors((current) => ({ ...current, targetDate: undefined })); }}
+                  error={errors.targetDate}
+                />
+                <Button title="Save Goal" accessibilityLabel="Save goal" onPress={save} disabled={submitting} loading={submitting} />
+              </Card>
+            )}
+          </View>
+        )}
+        ListEmptyComponent={!show ? (
+          <Empty
+            text="No goals yet"
+            description="Create your first financial goal and start building toward it."
+            icon={Landmark}
+            actionLabel="Create Goal"
+            onAction={() => setShow(true)}
+          />
+        ) : null}
+        renderItem={({ item }) => <GoalCard goal={item} />}
       />
-      {notice ? <Text style={S.successMessage} accessibilityLiveRegion={Platform.OS === "android" ? "polite" : undefined}>{notice}</Text> : null}
-      {show && (
-        <Card style={S.goalFormCard}>
-          <Text accessibilityRole="header" style={S.cardTitle}>Create a goal</Text>
-          <Field
-            label="Goal name"
-            value={name}
-            onChangeText={(value) => { setName(value); if (errors.name) setErrors((current) => ({ ...current, name: undefined })); }}
-            placeholder="Emergency fund"
-            error={errors.name}
-          />
-          <Field
-            label="Goal type"
-            value={type}
-            onChangeText={setType}
-            placeholder="Savings goal"
-          />
-          <CurrencyField
-            label="Target amount"
-            value={target}
-            onChangeText={(value) => { setTarget(value); if (errors.target) setErrors((current) => ({ ...current, target: undefined })); }}
-            symbol={f.symbol}
-            inputStyle={S.goalAmountInput}
-            error={errors.target}
-            accessibilityHint="Enter a target greater than zero"
-            returnKeyType="done"
-            onSubmitEditing={Keyboard.dismiss}
-          />
-          <DatePickerField
-            label="Target date"
-            value={targetDate}
-            onChange={(value) => { setTargetDate(value); if (errors.targetDate) setErrors((current) => ({ ...current, targetDate: undefined })); }}
-            error={errors.targetDate}
-          />
-          <Button title="Save Goal" accessibilityLabel="Save goal" onPress={save} disabled={submitting} loading={submitting} />
-        </Card>
-      )}
-      {goals.map((g) => (
-        <GoalCard key={g.id} goal={g} />
-      ))}
-      {!goals.length && (
-        <Empty
-          text="No financial goals yet"
-          description="Create a goal to start planning for something important."
-          icon={Landmark}
-          actionLabel={show ? undefined : "Create Goal"}
-          onAction={show ? undefined : () => setShow(true)}
-        />
-      )}
+      {__DEV__ ? (
+        <Modal visible={showGoalSyncDiagnostics} animationType="slide" onRequestClose={() => setShowGoalSyncDiagnostics(false)}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <ScrollView contentContainerStyle={{ padding: SPACE.page, paddingBottom: SPACE.xxl, gap: SPACE.md }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACE.md }}>
+                <Text accessibilityRole="header" style={[S.cardTitle, { color: theme.colors.text, flex: 1 }]}>BudgetFlow Goal Sync Diagnostics</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel="Close Goal Sync Diagnostics" onPress={() => setShowGoalSyncDiagnostics(false)} style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
+                  <Text style={{ color: theme.colors.text, fontWeight: "700" }}>Close</Text>
+                </Pressable>
+              </View>
+              {f.goalSyncSnapshot ? (
+                <>
+                  <Card style={{ gap: SPACE.sm }}>
+                    <DiagnosticEntry label="Platform" value={f.goalSyncSnapshot.platform} />
+                    <DiagnosticEntry label="Supabase Project" value={f.goalSyncSnapshot.project} />
+                    <DiagnosticEntry label="Authenticated User ID" value={f.goalSyncSnapshot.userId || "Unavailable"} />
+                    <DiagnosticEntry label="Authenticated Email" value={f.goalSyncSnapshot.email || "Unavailable"} />
+                    <DiagnosticEntry label="Session" value={f.goalSyncSnapshot.sessionAuthenticated ? "Authenticated" : "Not authenticated"} />
+                    <DiagnosticEntry label="Currency Preference" value={f.goalSyncSnapshot.currencyPreference} />
+                    <DiagnosticEntry label="Goal Currency Filter" value={f.goalSyncSnapshot.queryCurrencyFilter} />
+                    <DiagnosticEntry label="Goals page display filter" value={f.goalSyncSnapshot.displayCurrencyFilter} />
+                    <DiagnosticEntry label="Goals Returned" value={f.goalSyncSnapshot.goals.length} />
+                    <DiagnosticEntry label="Data Source" value={f.goalSyncSnapshot.dataSource} />
+                  </Card>
+                  <Card style={{ gap: SPACE.sm }}>
+                    <Text style={[S.cardTitle, { color: theme.colors.text }]}>Logical query</Text>
+                    <DiagnosticEntry label="Table" value={f.goalSyncSnapshot.table} />
+                    <DiagnosticEntry label="User filter" value={`user_id = ${f.goalSyncSnapshot.queryUserId}`} />
+                    <DiagnosticEntry label="Currency filter" value={f.goalSyncSnapshot.queryCurrencyFilter} />
+                    <DiagnosticEntry label="Other filters" value={f.goalSyncSnapshot.otherFilters.length ? f.goalSyncSnapshot.otherFilters.join(", ") : "None"} />
+                  </Card>
+                  <Text style={[S.cardTitle, { color: theme.colors.text }]}>Goals returned by the existing query</Text>
+                  {f.goalSyncSnapshot.goals.length ? f.goalSyncSnapshot.goals.map((goal) => (
+                    <Card key={goal.id} style={{ gap: SPACE.sm }}>
+                      <DiagnosticEntry label="Goal ID" value={goal.id} />
+                      <DiagnosticEntry label="Name" value={goal.name ?? goal.title} />
+                      <DiagnosticEntry label="User ID" value={goal.user_id} />
+                      <DiagnosticEntry label="Currency" value={goal.currency} />
+                      <DiagnosticEntry label="Target" value={goal.target_amount ?? goal.targetAmount} />
+                      <DiagnosticEntry label="Saved" value={goal.current_amount ?? goal.currentAmount} />
+                      <DiagnosticEntry label="Legacy Key" value={goal.legacy_key ?? "None"} />
+                    </Card>
+                  )) : <Card><Text style={{ color: theme.colors.secondaryText }}>The current Supabase query returned no goals.</Text></Card>}
+                </>
+              ) : <Card><Text style={{ color: theme.colors.secondaryText }}>Waiting for the existing goals query to finish.</Text></Card>}
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+      ) : null}
     </Page>
+  );
+}
+function DiagnosticEntry({ label, value }) {
+  const theme = useTheme();
+  return (
+    <View style={{ gap: 2 }}>
+      <Text style={{ color: theme.colors.secondaryText, fontSize: 12 }}>{label}</Text>
+      <Text selectable style={{ color: theme.colors.text, fontSize: 14, fontWeight: "600" }}>{value == null || value === "" ? "None" : String(value)}</Text>
+    </View>
   );
 }
 function GoalCard({ goal }) {
   const f = useFinance(),
     router = useRouter(),
+    theme = useTheme(),
+    visual = goalVisual(goal),
     pct = goal.targetAmount
-      ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100)
+      ? Math.max(0, Math.min((goal.currentAmount / goal.targetAmount) * 100, 100))
       : 0,
     remaining = Math.max(
       Number(goal.targetAmount) - Number(goal.currentAmount),
       0,
     );
+  const accent = remaining === 0
+    ? theme.colors.positive
+    : FUNCTIONAL_ICON_TONES[visual.tone]?.[theme.themeName]?.foreground || theme.colors.primary;
   return (
     <Pressable
       onPress={() => router.push(`/goal/${goal.id}`)}
@@ -1530,14 +1931,14 @@ function GoalCard({ goal }) {
       <Card style={S.goalCard}>
         <View style={S.row}>
           <View style={S.rowStart}>
-            <CategoryIcon name="Savings" />
+            <FunctionalIcon {...visual} containerSize={52} size={23} />
             <View style={S.goalHeading}>
               <Text style={S.cardTitle} numberOfLines={2}>{goal.name}</Text>
-              <Text style={S.caption}>{goal.type}</Text>
+              <Text style={S.goalType}>{goal.type}</Text>
             </View>
           </View>
           <View style={S.goalChevron} accessible={false}>
-            <ChevronRight color={C.muted} size={20} />
+            <ChevronRight color={theme.colors.secondaryText} size={21} />
           </View>
         </View>
         <View style={S.goalMetrics}>
@@ -1550,13 +1951,13 @@ function GoalCard({ goal }) {
             <Text style={S.goalAmount} numberOfLines={1} adjustsFontSizeToFit>{money(goal.targetAmount, f.symbol)}</Text>
           </View>
         </View>
-        <View style={S.row}>
-          <Text style={S.caption}>
-            {remaining === 0 ? "Goal complete" : `${money(remaining, f.symbol)} remaining`}
+        <View style={S.goalCompletionRow}>
+          <Text style={S.goalRemaining}>
+            {remaining === 0 ? "Goal completed" : `${money(remaining, f.symbol)} remaining`}
           </Text>
-          <Text style={S.pct}>{Math.round(pct)}% complete</Text>
+          <Text style={[S.goalCompletion, { color: accent }]}>{Math.round(pct)}% complete</Text>
         </View>
-        <Progress value={pct} label={`${goal.name} progress`} accessibilityValueText={`${Math.round(pct)} percent complete`} />
+        <Progress value={pct} label={`${goal.name} progress`} accessibilityValueText={`${Math.round(pct)} percent complete`} color={accent} />
         {goal.targetDate ? <Text style={S.caption}>Target date · {formatDateLabel(goal.targetDate)}</Text> : null}
       </Card>
     </Pressable>
@@ -1573,6 +1974,7 @@ function GoalDetail() {
   const { id } = useLocalSearchParams(),
     f = useFinance(),
     router = useRouter(),
+    theme = useTheme(),
     [amount, setAmount] = useState(""),
     [note, setNote] = useState(""),
     [contributionDate, setContributionDate] = useState(new Date().toISOString().slice(0, 10)),
@@ -1584,14 +1986,18 @@ function GoalDetail() {
   const submittingRef = useRef(false);
   if (!g)
     return (
-      <Page title="Goal details" back={backTo(router, "/(tabs)/goals")}>
+      <Page title="Goal details" back={backTo(router, "/(tabs)/goals")} backLabel="Back to Goals" backHint="Returns to the goal list">
         <Empty text="This goal could not be found." />
       </Page>
     );
   const pct = g.targetAmount
-      ? Math.min((g.currentAmount / g.targetAmount) * 100, 100)
+      ? Math.max(0, Math.min((g.currentAmount / g.targetAmount) * 100, 100))
       : 0,
     remaining = Math.max(Number(g.targetAmount) - Number(g.currentAmount), 0);
+  const visual = goalVisual(g);
+  const goalAccent = remaining === 0
+    ? theme.colors.positive
+    : FUNCTIONAL_ICON_TONES[visual.tone]?.[theme.themeName]?.foreground || theme.colors.primary;
   async function addContribution() {
     if (submittingRef.current) return;
     submittingRef.current = true;
@@ -1640,7 +2046,7 @@ function GoalDetail() {
     );
   }
   return (
-    <Page title={g.name} back={backTo(router, "/(tabs)/goals")} scroll={false} keyboardAvoiding>
+    <Page title={g.name} back={backTo(router, "/(tabs)/goals")} backLabel="Back to Goals" backHint="Returns to the goal list" scroll={false} keyboardAvoiding>
       <FlatList
         data={g.savingsHistory || []}
         keyExtractor={(item, index) => String(item.id || index)}
@@ -1651,6 +2057,7 @@ function GoalDetail() {
             {notice ? (
               <Text
                 style={S.successMessage}
+                accessibilityRole="alert"
                 accessibilityLiveRegion={Platform.OS === "android" ? "polite" : undefined}
               >
                 {notice}
@@ -1658,7 +2065,7 @@ function GoalDetail() {
             ) : null}
             <Card style={S.goalDetailSummary}>
               <View style={S.goalDetailIconRow}>
-                <CategoryIcon name="Savings" />
+                <FunctionalIcon {...visual} containerSize={52} size={23} />
                 <Text style={S.cardTitle} numberOfLines={2}>{g.name}</Text>
               </View>
               <View style={S.goalDetailSaved}>
@@ -1671,15 +2078,15 @@ function GoalDetail() {
                   <Text style={S.goalDetailMetricAmount} numberOfLines={1} adjustsFontSizeToFit>{money(g.targetAmount, f.symbol)}</Text>
                 </View>
                 <View style={S.goalDetailMetric}>
-                  <Text style={S.label}>REMAINING</Text>
-                  <Text style={S.goalDetailMetricAmount} numberOfLines={1} adjustsFontSizeToFit>{money(remaining, f.symbol)}</Text>
+                  <Text style={S.label}>{remaining === 0 ? "STATUS" : "REMAINING"}</Text>
+                  <Text style={S.goalDetailMetricAmount} numberOfLines={2} adjustsFontSizeToFit>{remaining === 0 ? "Goal completed" : money(remaining, f.symbol)}</Text>
                 </View>
               </View>
               <View style={S.row}>
-                <Text style={S.goalCompleteText}>{remaining === 0 ? "Goal complete" : `${Math.round(pct)}% complete`}</Text>
+                <Text style={[S.goalCompleteText, { color: goalAccent }]}>{Math.round(pct)}% complete</Text>
                 {remaining === 0 ? <Check size={18} color={C.green} accessible={false} /> : null}
               </View>
-              <Progress value={pct} label={`${g.name} progress`} accessibilityValueText={`${Math.round(pct)} percent complete`} />
+              <Progress value={pct} label={`${g.name} progress`} accessibilityValueText={`${Math.round(pct)} percent complete`} color={goalAccent} />
               {g.targetDate ? <Text style={S.caption}>Target date · {formatDateLabel(g.targetDate)}</Text> : null}
             </Card>
             {remaining > 0 && !showContribution && (
@@ -1770,38 +2177,18 @@ function More() {
     f = useFinance();
   const groups = [
     {
-      title: "Profile",
+      title: "Financial Tools",
       items: [
-        [
-          "Financial Profile",
-          "Your income and financial details",
-          "/profile",
-          "financialProfile",
-        ],
+        ["Smart Planner", "Plan your money", "/planner", "planner"],
+        ["Reports", "Understand your finances", "/reports", "reports"],
+        ["Compound Interest", "Calculate investment growth", "/compound-interest", "compoundInterest"],
       ],
     },
     {
-      title: "Tools",
+      title: "Financial Management",
       items: [
-        ["Reports", "Review monthly activity", "/reports", "reports"],
-        ["Smart Planner", "Plan monthly spending", "/planner", "planner"],
-        ["Compound Interest", "Explore long-term growth", "/compound-interest", "compoundInterest"],
-      ],
-    },
-    {
-      title: "History",
-      items: [
-        [
-          "Transaction History",
-          "Browse income and expenses",
-          "/transactions",
-          "history",
-        ],
-      ],
-    },
-    {
-      title: "Account",
-      items: [
+        ["Financial Profile", "Your income and financial details", "/profile", "financialProfile"],
+        ["Transaction History", "Browse income and expenses", "/transactions", "history"],
         ["Settings", "Currency and app preferences", "/settings", "settings"],
       ],
     },
@@ -1816,25 +2203,20 @@ function More() {
           <Section title={group.title} />
           <Card>
             {group.items.map(([label, description, path, iconName], index) => (
-              <ListRow
+              <FeatureRow
                 key={`${label}-${index}`}
-                leading={(
-                  <View style={S.menuIcon}>
-                    <AppIcon name={iconName} size={20} color={C.purple} />
-                  </View>
-                )}
                 title={label}
-                subtitle={description}
-                trailing={<ChevronRight color={C.muted} size={20} />}
+                description={description}
+                iconName={iconName}
                 onPress={() => router.push(path)}
-                accessibilityLabel={`${label}. ${description}.`}
-                accessibilityHint={`Opens ${label}`}
                 divider={index < group.items.length - 1}
               />
             ))}
           </Card>
         </View>
       ))}
+      <Section title="Account" />
+      <Card style={S.accountActionCard}>
       <Button
         title="Sign out"
         variant="danger"
@@ -1853,6 +2235,7 @@ function More() {
           ],
         )}
       />
+      </Card>
     </Page>
   );
 }
@@ -1866,6 +2249,7 @@ export function SettingsScreen() {
 function Settings() {
   const f = useFinance(),
     router = useRouter(),
+    theme = useTheme(),
     currencies = [
       "NGN",
       "USD",
@@ -1878,45 +2262,26 @@ function Settings() {
       "CHF",
     ];
   return (
-    <Page title="Settings" back={backTo(router, "/(tabs)/more")}>
+    <Page title="Settings" back={backTo(router, "/(tabs)/more")} backLabel="Back to More" backHint="Returns to the More screen">
       <View style={S.pageIntro}>
         <Text style={S.sub}>Manage your BudgetFlow preferences</Text>
         <Text style={S.caption}>Choose how financial amounts are shown in the app.</Text>
       </View>
+      <Section title="Appearance" />
+      <Card style={S.settingsCurrencyCard}>
+        <Text style={S.caption}>Choose the app color theme.</Text>
+        <SelectField label="Appearance" value={theme.themeName === "dark" ? "Dark" : "Light"} leadingIcon="settings" tone="purple" options={[{ value: "Light", label: "Light" }, { value: "Dark", label: "Dark" }]} onChange={(value) => theme.setTheme(value.toLowerCase()).catch((error) => Alert.alert("Could not save appearance", error.message))} />
+      </Card>
       <Section title="Currency" />
       <Card style={S.settingsCurrencyCard}>
         <Text style={S.caption}>Choose the currency used to display financial amounts and prefill new entries.</Text>
-        {currencies.map((c, index) => {
-          const isSelected = f.currency === c;
-          return (
-            <ListRow
-              key={c}
-              leading={(
-                <View style={[S.settingsCurrencyCode, isSelected && S.settingsCurrencyCodeSelected]}>
-                  <Text style={[S.settingsCurrencyCodeText, isSelected && S.settingsCurrencyCodeTextSelected]}>{c}</Text>
-                </View>
-              )}
-              title={currencyNames[c]}
-              subtitle={`${c} - ${currencySymbols[c]}`}
-              trailing={isSelected ? (
-                <View style={S.settingsCurrencySelected}>
-                  <Check size={16} color={C.purple} />
-                  <Text style={S.settingsCurrencySelectedText}>Selected</Text>
-                </View>
-              ) : <ChevronRight color={C.muted} size={20} />}
-              onPress={() => f.changeCurrency(c)}
-              selected={isSelected}
-              accessibilityLabel={`${currencyNames[c]}, ${c}, ${isSelected ? "selected" : "not selected"}`}
-              accessibilityHint="Changes the selected currency. Existing financial amounts are not converted."
-              divider={index < currencies.length - 1}
-            />
-          );
-        })}
+        <SelectField label="Currency" value={`${currencyNames[f.currency]} (${f.currency} · ${currencySymbols[f.currency]})`} leadingIcon="balance" tone="green" options={currencies.map((code) => ({ value: `${currencyNames[code]} (${code} · ${currencySymbols[code]})`, label: `${currencyNames[code]} (${code} · ${currencySymbols[code]})` }))} onChange={(label) => f.changeCurrency(currencies.find((code) => label.startsWith(currencyNames[code])) || f.currency)} accessibilityLabel="Selected currency" />
+        <Text style={S.caption}>Existing financial amounts are not converted when you change this preference.</Text>
       </Card>
       <Section title="Account" />
       <Card>
         <ListRow
-          leading={<View style={S.menuIcon}><Wallet size={20} color={C.purple} /></View>}
+          leading={<FunctionalIcon name="financialProfile" />}
           title="Financial Profile"
           subtitle={f.user?.email || "Manage your account"}
           trailing={<ChevronRight color={C.muted} size={20} />}
@@ -1943,7 +2308,7 @@ function Profile() {
   const f = useFinance(),
     router = useRouter();
   return (
-    <Page title="Financial Profile" back={backTo(router, "/(tabs)/more")}>
+    <Page title="Financial Profile" back={backTo(router, "/(tabs)/more")} backLabel="Back to More" backHint="Returns to the More screen">
       <View style={S.pageIntro}>
         <Text style={S.sub}>Your account and financial information</Text>
         <Text style={S.caption}>Profile information is loaded from your BudgetFlow account.</Text>
@@ -1984,6 +2349,7 @@ export function ReportsScreen() {
 function Reports() {
   const f = useFinance(),
     router = useRouter(),
+    theme = useTheme(),
     tx = f.transactions.filter(
       (t) =>
         t.currency === f.currency &&
@@ -2001,8 +2367,15 @@ function Reports() {
           .reduce((a, t) => a + Number(t.amount), 0),
       }))
       .sort((a, b) => b.amount - a.amount);
+  const periodKeys = [...new Set(f.transactions.filter((t) => (t.currency || "NGN") === f.currency).map((t) => t.month || t.date?.slice(0, 7)).filter(Boolean))].sort();
+  const periods = periodKeys.slice(-6).map((month) => {
+    const rows = f.transactions.filter((t) => (t.currency || "NGN") === f.currency && (t.month || t.date?.slice(0, 7)) === month);
+    return { month, income: sum(rows, "Income"), expenses: sum(rows, "Expense") };
+  });
+  const historyMonths = [...new Set(f.budgets.filter((b) => b.currency === f.currency).map((b) => b.month).filter(Boolean))].sort((a, b) => b.localeCompare(a));
+  const largestCategory = cats[0];
   return (
-    <Page title="Reports" back={backTo(router, "/(tabs)/more")}>
+    <Page title="Reports" back={backTo(router, "/(tabs)/more")} backLabel="Back to More" backHint="Returns to the More screen">
       <Text style={S.sub}>Understand your financial activity</Text>
       <Card style={S.reportPeriod} accessibilityLabel={`Report period: ${monthLabel(f.currentMonth)}`}>
         <View>
@@ -2010,6 +2383,12 @@ function Reports() {
           <Text style={S.reportPeriodTitle}>{monthLabel(f.currentMonth)}</Text>
         </View>
         <Text style={S.caption}>Monthly summary</Text>
+      </Card>
+      <Section title="Monthly summary" />
+      <Card style={S.reportSummary}>
+        <Metric label="Income" value={money(income, f.symbol)} color={C.green} accessibilityLabel={`${monthLabel(f.currentMonth)} income, ${accessibleMoney(income, f.currency)}`} />
+        <Metric label="Expenses" value={money(spent, f.symbol)} color={C.red} accessibilityLabel={`${monthLabel(f.currentMonth)} expenses, ${accessibleMoney(spent, f.currency)}`} />
+        <Metric label="Net balance" value={money(income - spent, f.symbol)} accessibilityLabel={`${monthLabel(f.currentMonth)} net balance, ${accessibleMoney(income - spent, f.currency)}`} />
       </Card>
       {tx.length === 0 ? (
         <Empty
@@ -2021,31 +2400,12 @@ function Reports() {
         />
       ) : (
         <>
-          <Section title="Monthly summary" />
-          <Card style={S.reportSummary}>
-            <Metric
-              label="Income"
-              value={money(income, f.symbol)}
-              color={C.green}
-              accessibilityLabel={`${monthLabel(f.currentMonth)} income, ${accessibleMoney(income, f.currency)}`}
-            />
-            <Metric
-              label="Expenses"
-              value={money(spent, f.symbol)}
-              color={C.red}
-              accessibilityLabel={`${monthLabel(f.currentMonth)} expenses, ${accessibleMoney(spent, f.currency)}`}
-            />
-            <Metric
-              label="Net balance"
-              value={money(income - spent, f.symbol)}
-              accessibilityLabel={`${monthLabel(f.currentMonth)} net balance, ${accessibleMoney(income - spent, f.currency)}`}
-            />
-          </Card>
           <Section title="Spending by category" />
           {cats.length ? (
             <Card style={S.reportCategoryList}>
               {cats.map((x, index) => {
                 const share = spent ? ((x.amount / spent) * 100).toFixed(1) : 0;
+                const progressColor = progressAccent(x.category, theme);
                 return (
                   <View
                     key={x.category}
@@ -2064,8 +2424,9 @@ function Reports() {
                       value={spent ? (x.amount / spent) * 100 : 0}
                       label={`${x.category} share of ${monthLabel(f.currentMonth)} expenses`}
                       accessibilityValueText={`${share} percent of spending`}
+                      color={progressColor}
                     />
-                    <Text style={S.caption}>{share}% of spending</Text>
+                    <Text style={[S.caption, { color: progressColor }]}>{share}% of spending</Text>
                   </View>
                 );
               })}
@@ -2081,6 +2442,25 @@ function Reports() {
           )}
         </>
       )}
+      <Section title="Financial Insights" />
+      <Card style={S.insightsCard}>
+        {income > 0 ? <Text style={S.bodyText}>{income >= spent ? `Your income exceeded your expenses by ${money(income - spent, f.symbol)}.` : `Your expenses exceeded your income by ${money(spent - income, f.symbol)}.`}</Text> : null}
+        {income > 0 && spent > 0 ? <Text style={S.bodyText}>Your expenses are {((spent / income) * 100).toFixed(1)}% of your income.</Text> : null}
+        {largestCategory ? <Text style={S.bodyText}>{largestCategory.category} is your largest spending category at {money(largestCategory.amount, f.symbol)}.</Text> : null}
+        {!income && !spent ? <Text style={S.caption}>Add income or expenses to see insights for this month.</Text> : null}
+      </Card>
+      <Section title="Income vs Expenses" />
+      {periods.length ? <Card accessibilityLabel={`Income versus expenses across ${periods.length} available months: ${periods.map((p) => `${monthLabel(p.month)}, income ${accessibleMoney(p.income, f.currency)}, expenses ${accessibleMoney(p.expenses, f.currency)}`).join("; ")}`} style={S.chartCard}>
+      <View style={S.chartLegend}><Text style={S.chartLegendItem}>Income (green)</Text><Text style={S.chartLegendItem}>Expenses (purple)</Text></View>
+        {periods.map((period) => { const max = Math.max(...periods.flatMap((p) => [p.income, p.expenses]), 1); return <View key={period.month} style={S.chartPeriod}><Text style={S.caption}>{monthLabel(period.month)}</Text><View style={S.chartLine}><Text style={S.chartKind}>Income</Text><View style={[S.chartBar, S.incomeBar, { width: `${Math.max(period.income / max * 48, period.income ? 2 : 0)}%` }]} /><Text style={S.chartValue}>{money(period.income, f.symbol)}</Text></View><View style={S.chartLine}><Text style={S.chartKind}>Expenses</Text><View style={[S.chartBar, S.expenseBar, { width: `${Math.max(period.expenses / max * 48, period.expenses ? 2 : 0)}%` }]} /><Text style={S.chartValue}>{money(period.expenses, f.symbol)}</Text></View></View>; })}
+      </Card> : <Empty text="No reporting periods yet" description="Monthly comparisons appear when transactions are available." />}
+      <Section title="Budget History" />
+      {historyMonths.length ? historyMonths.map((month) => {
+        const monthBudgets = f.budgets.filter((b) => b.currency === f.currency && b.month === month);
+        const total = monthBudgets.reduce((a, b) => a + Number(b.amount || 0), 0);
+        const expenses = sum(f.transactions.filter((t) => (t.currency || "NGN") === f.currency && (t.month || t.date?.slice(0, 7)) === month), "Expense");
+        return <Pressable key={month} accessibilityRole="button" accessibilityLabel={`${monthLabel(month)} ${month === f.currentMonth ? "current" : "completed"}. Budget ${accessibleMoney(total, f.currency)}; expenses ${accessibleMoney(expenses, f.currency)}; remaining ${accessibleMoney(total - expenses, f.currency)}`} onPress={() => router.push({ pathname: "/(tabs)/budgets", params: { month } })} style={S.historyMonthCard}><View style={S.row}><Text style={S.cardTitle}>{monthLabel(month)}</Text><Text style={S.label}>{month === f.currentMonth ? "Current" : "Completed"}</Text></View><Text style={S.caption}>Budget {money(total, f.symbol)}  ·  Expenses {money(expenses, f.symbol)}</Text><Text style={S.caption}>Remaining {money(total - expenses, f.symbol)}</Text></Pressable>;
+      }) : <Empty text="No budget history" description="Monthly budgets will appear here when available." />}
     </Page>
   );
 }
@@ -2220,7 +2600,7 @@ function Planner() {
   }
   const steps = ["Amount", "Categories", "Adjust", "Review"];
   return (
-    <Page title="Smart Planner" back={backTo(router, "/(tabs)/more")} keyboardAvoiding>
+    <Page title="Smart Planner" back={backTo(router, "/(tabs)/more")} backLabel="Back to More" backHint="Returns to the More screen" keyboardAvoiding>
       <View style={S.pageIntro}>
         <Text style={S.sub}>Plan your spending with confidence.</Text>
         <Text style={S.caption}>Choose an amount, select categories, then review your allocations before applying.</Text>
@@ -2341,7 +2721,7 @@ function Planner() {
                   <View style={S.rowStart}>
                     {
                       <View style={[S.checkBox, chosen && S.checkBoxOn]}>
-                        {chosen && <Check size={14} color={COLORS.white} />}
+                        {chosen && <Check size={14} color="#FFFFFF" />}
                       </View>
                     }
                     <CategoryIcon name={name} size={18} />
@@ -2532,13 +2912,14 @@ function Compound() {
     inflationAdjusted =
       result / (1 + Number(inflation) / 100) ** Number(years);
   return (
-    <Page title="Compound Interest" back={backTo(router, "/(tabs)/more")} keyboardAvoiding>
+    <Page title="Compound Interest" back={backTo(router, "/(tabs)/more")} backLabel="Back to More" backHint="Returns to the More screen" keyboardAvoiding>
       <View style={S.pageIntro}>
         <Text style={S.sub}>Explore how your investment may grow.</Text>
         <Text style={S.caption}>Enter your assumptions to calculate an estimate.</Text>
       </View>
       <Section title="Investment details" />
       <Card style={S.compoundInputCard}>
+        <View style={S.row}><Text style={S.caption}>Currency</Text><Text style={S.cardTitle}>{f.currency} ({f.symbol})</Text></View>
         <CurrencyField
           label="Initial investment"
           value={principal}
@@ -2588,54 +2969,8 @@ function Compound() {
       </Card>
       <Section title="Frequency" />
       <Card style={S.compoundInputCard}>
-        <Label>Compounding frequency</Label>
-        <View style={S.compoundFrequencyOptions} accessibilityRole="radiogroup" accessibilityLabel="Compounding frequency">
-          {["Daily", "Weekly", "Monthly", "Yearly"].map((x) => (
-            <Pressable
-              key={x}
-              accessibilityRole="radio"
-              accessibilityLabel={`${x} compounding frequency`}
-              accessibilityHint="Select how often interest compounds"
-              accessibilityState={{ selected: frequency === x }}
-              onPress={() => setFrequency(x)}
-              style={[S.chip, S.compoundFrequencyChip, frequency === x && S.chipOn]}
-            >
-              <Text
-                style={{
-                  color: frequency === x ? C.purple : C.muted,
-                  fontWeight: "700",
-                }}
-              >
-                {x}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <Label>Contribution frequency</Label>
-        <View style={S.compoundFrequencyOptions} accessibilityRole="radiogroup" accessibilityLabel="Contribution frequency">
-          {["Weekly", "Bi-weekly", "Monthly", "Quarterly", "Yearly"].map(
-            (x) => (
-              <Pressable
-                key={x}
-                accessibilityRole="radio"
-                accessibilityLabel={`${x} contribution frequency`}
-                accessibilityHint="Select how often contributions are added"
-                accessibilityState={{ selected: contributionFrequency === x }}
-                onPress={() => setContributionFrequency(x)}
-                style={[S.chip, S.compoundFrequencyChip, contributionFrequency === x && S.chipOn]}
-              >
-                <Text
-                  style={{
-                    color: contributionFrequency === x ? C.purple : C.muted,
-                    fontWeight: "700",
-                  }}
-                >
-                  {x}
-                </Text>
-              </Pressable>
-            ),
-          )}
-        </View>
+        <SelectField label="Compounding frequency" value={frequency} leadingIcon="compoundInterest" options={["Daily", "Weekly", "Monthly", "Yearly"].map((value) => ({ value, label: value }))} onChange={setFrequency} />
+        <SelectField label="Contribution frequency" value={contributionFrequency} leadingIcon="savings" tone="teal" options={["Weekly", "Bi-weekly", "Monthly", "Quarterly", "Yearly"].map((value) => ({ value, label: value }))} onChange={setContributionFrequency} />
         <Text style={S.caption}>Contribution amount is applied at this frequency.</Text>
         <Button
           title="Calculate"
@@ -2657,7 +2992,7 @@ function Compound() {
       </Card>
       {result !== null && (
         <>
-          <Section title="Your estimate" />
+          <Section title="Investment Summary" />
           <Card
             style={S.compoundResultHero}
             accessibilityLabel={`Estimated future value, ${accessibleMoney(result, f.currency)}`}
@@ -2676,6 +3011,12 @@ function Compound() {
             value={money(inflationAdjusted, f.symbol)}
             accessibilityLabel={`Inflation-adjusted value, ${accessibleMoney(inflationAdjusted, f.currency)}`}
           />
+          </Card>
+          <Section title="Financial Insights" />
+          <Card style={S.insightsCard}>
+            <Text style={S.bodyText}>Interest earned: {money(result - totalContributions, f.symbol)}</Text>
+            {result > 0 ? <Text style={S.bodyText}>Interest contribution: {(((result - totalContributions) / result) * 100).toFixed(2)}% of future value.</Text> : null}
+            {totalContributions > 0 ? <Text style={S.bodyText}>Investment growth: {(((result - totalContributions) / totalContributions) * 100).toFixed(2)}% above contributions.</Text> : null}
           </Card>
         </>
       )}
@@ -2753,6 +3094,12 @@ const S = StyleSheet.create({
   },
   content: { paddingVertical: SPACE.lg, paddingBottom: SPACE.xxl, gap: SPACE.lg },
   listContent: { flexGrow: 1, paddingHorizontal: COMPONENT.screenHorizontalPadding, paddingVertical: SPACE.lg, paddingBottom: SPACE.xxl },
+  goalsListContent: { flexGrow: 1, paddingHorizontal: COMPONENT.screenHorizontalPadding, paddingTop: SPACE.md, paddingBottom: 72, gap: SPACE.lg },
+  goalListHeader: { gap: SPACE.md },
+  goalTopAddIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  goalIntroLead: { color: COLORS.text, fontSize: 16, fontWeight: TYPE.weight.semibold },
+  goalIntroText: { ...TEXT.secondary, fontSize: 14, lineHeight: 21 },
+  createGoalButton: { width: "100%", minHeight: 56, borderRadius: RADIUS.card, backgroundColor: COLORS.primary, borderColor: COLORS.primary, ...SHADOW.action },
   listContainer: { flex: 1, paddingHorizontal: 0, paddingVertical: 0, gap: 0 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   buttonSpacing: { marginTop: SPACE.xs },
@@ -2760,12 +3107,23 @@ const S = StyleSheet.create({
   emptyState: { padding: 0 },
   sectionSpacing: { marginTop: SPACE.sm },
   progressSpacing: { marginVertical: SPACE.md },
+  budgetUsageCopy: { alignItems: "flex-end", minWidth: 76 },
+  budgetUsageState: { fontSize: TYPE.eyebrow, lineHeight: TYPE.lineHeight.caption, fontWeight: TYPE.weight.semibold, textAlign: "right" },
   field: { marginTop: SPACE.md },
-  goalCard: { gap: SPACE.md },
+  goalCard: { gap: SPACE.md, padding: SPACE.lg, borderRadius: RADIUS.card },
   goalHeading: { flex: 1, minWidth: 0, gap: SPACE.xs },
+  budgetCategoryCopy: { flex: 1, minWidth: 0 },
+  homeBudgetCard: { padding: SPACE.md, gap: SPACE.xs },
+  homeBudgetProgress: { marginVertical: SPACE.xs },
+  homeBudgetBottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACE.sm, paddingTop: SPACE.xs },
+  homeBudgetRemaining: { maxWidth: "48%", fontSize: 13, fontWeight: TYPE.weight.semibold, textAlign: "right", flexShrink: 1 },
   goalChevron: { minWidth: 32, minHeight: CONTROL.minTouchTarget, alignItems: "center", justifyContent: "center" },
-  goalMetrics: { flexDirection: "row", gap: SPACE.md, marginTop: SPACE.sm },
+  goalType: { ...TEXT.secondary, marginTop: SPACE.xs, fontSize: 14 },
+  goalMetrics: { flexDirection: "row", gap: SPACE.lg, marginTop: SPACE.sm },
   goalMetric: { flex: 1, minWidth: 0, gap: SPACE.xs },
+  goalCompletionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACE.sm },
+  goalRemaining: { ...TEXT.secondary, flex: 1, minWidth: 0, fontSize: 14 },
+  goalCompletion: { fontSize: 14, fontWeight: TYPE.weight.bold, flexShrink: 0 },
   goalCompleteText: { ...TEXT.body, color: COLORS.positiveText, fontWeight: TYPE.weight.bold },
   goalFormCard: { gap: SPACE.md },
   goalAmountInput: { fontSize: 26, lineHeight: 32, fontWeight: TYPE.weight.heavy, color: COLORS.navy },
@@ -2782,11 +3140,13 @@ const S = StyleSheet.create({
   contributionAmount: { fontSize: 14, fontWeight: TYPE.weight.bold, color: COLORS.positiveText, textAlign: "right", flexShrink: 1 },
   inlineError: { ...TEXT.error, marginTop: SPACE.xs },
   hero: {
-    backgroundColor: COLORS.navy,
-    borderColor: COLORS.navy,
+    overflow: "hidden",
     padding: SPACE.xxl,
     borderRadius: RADIUS.card,
   },
+  heroGlow: { position: "absolute", width: 230, height: 230, right: -98, bottom: -156, borderRadius: 115, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.035)" },
+  balanceAmountRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
+  balanceVisibility: { width: CONTROL.minTouchTarget, height: CONTROL.minTouchTarget, alignItems: "center", justifyContent: "center" },
   budgetSummaryCard: { gap: SPACE.sm },
   budgetSummaryLabel: { ...TEXT.cardTitle, color: COLORS.secondaryText },
   budgetSummaryAmount: {
@@ -2930,8 +3290,12 @@ const S = StyleSheet.create({
     backgroundColor: COLORS.mutedTint,
   },
   transactionAmountCard: { paddingVertical: SPACE.xl },
-  transactionAmountInput: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: COLORS.navy },
+  transactionAmountInput: { fontSize: 32, lineHeight: 40, fontWeight: "800", color: COLORS.navy },
+  transactionDescriptionInput: { minHeight: 88, textAlignVertical: "top" },
   transactionFieldsCard: { gap: SPACE.lg },
+  transactionReviewCard: { gap: SPACE.xs, paddingVertical: SPACE.md },
+  transactionReviewType: { ...TEXT.label, marginTop: 0 },
+  transactionReviewAmount: { ...TEXT.metricAmount, fontSize: 24, lineHeight: 30 },
   transactionAmount: { fontSize: 14, fontWeight: "800", textAlign: "right", flexShrink: 1 },
   budgetMatch: {
     minHeight: CONTROL.minTouchTarget,
@@ -3041,11 +3405,38 @@ const S = StyleSheet.create({
     backgroundColor: COLORS.purpleTint,
   },
   monthPillText: { color: COLORS.primary, fontSize: 13, fontWeight: "700" },
+  dashboardGreeting: { gap: SPACE.xs, marginBottom: SPACE.xs },
+  greetingTitle: { ...TEXT.sectionTitle, fontSize: 21 },
+  profileAvatar: { width: 24, height: 24, borderRadius: 12 },
+  segmentedToggle: { flexDirection: "row", padding: SPACE.xs, borderRadius: RADIUS.md, backgroundColor: COLORS.controlBackground },
+  segmentedOption: { flex: 1, minHeight: CONTROL.minTouchTarget, alignItems: "center", justifyContent: "center", borderRadius: RADIUS.sm },
+  segmentedOptionSelected: { backgroundColor: COLORS.white },
+  segmentedOptionText: { ...TEXT.label, color: COLORS.secondaryText },
+  segmentedOptionTextSelected: { color: COLORS.primary },
+  historyMonthCard: { gap: SPACE.sm, padding: SPACE.lg, borderRadius: RADIUS.card, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.white },
+  selectBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(17,24,39,0.42)" },
+  selectSheet: { maxHeight: "75%", padding: SPACE.lg, gap: SPACE.xs, borderTopLeftRadius: RADIUS.card, borderTopRightRadius: RADIUS.card, backgroundColor: COLORS.white },
+  selectOption: { minHeight: CONTROL.minTouchTarget, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: SPACE.md, borderRadius: RADIUS.md },
+  selectOptionSelected: { backgroundColor: COLORS.purpleTint },
+  bodyText: { ...TEXT.body, lineHeight: TYPE.lineHeight.body },
+  insightsCard: { gap: SPACE.md },
+  chartCard: { gap: SPACE.md },
+  chartLegend: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.md },
+  chartLegendItem: { ...TEXT.label, color: COLORS.text },
+  chartPeriod: { gap: SPACE.xs, paddingBottom: SPACE.sm, borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle },
+  chartLine: { minHeight: 24, flexDirection: "row", alignItems: "center", gap: SPACE.sm },
+  chartKind: { width: 58, ...TEXT.label, color: COLORS.text },
+  chartBar: { height: 12, minWidth: 0, borderRadius: RADIUS.pill },
+  incomeBar: { backgroundColor: COLORS.positive },
+  expenseBar: { backgroundColor: COLORS.primary },
+  chartValue: { ...TEXT.secondary, flexShrink: 1 },
   heroTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
+  changeIndicator: { minHeight: 18, flexDirection: "row", alignItems: "flex-start", gap: SPACE.xs, marginTop: 2, flexShrink: 1 },
+  changeText: { flex: 1, minWidth: 0, fontSize: 12, lineHeight: 16, fontWeight: TYPE.weight.semibold },
   balanceIcon: {
     width: 42,
     height: 42,
@@ -3069,17 +3460,27 @@ const S = StyleSheet.create({
     flexWrap: "wrap",
     gap: SPACE.md,
   },
+  monthlySavingsCard: { flexDirection: "row", alignItems: "center", gap: SPACE.md },
+  monthlySavingsCopy: { flex: 1, minWidth: 0, gap: SPACE.xs },
+  monthlySavingsAmount: { fontSize: 18, lineHeight: 24, fontWeight: "800", color: COLORS.positive },
+  quickActions: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
+  quickAction: { flexGrow: 1, flexBasis: "45%", minWidth: 128, minHeight: 64, flexDirection: "row", alignItems: "center", gap: SPACE.sm, padding: SPACE.sm, borderWidth: 1, borderRadius: RADIUS.md },
+  quickActionText: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: TYPE.weight.bold },
+  homeGoalPreview: { gap: SPACE.xs, padding: SPACE.md, borderWidth: 1, borderRadius: RADIUS.card },
+  homeGoalHeading: { minHeight: CONTROL.minTouchTarget, flexDirection: "row", alignItems: "center", gap: SPACE.sm },
+  homeGoalCopy: { flex: 1, minWidth: 0, gap: 2 },
   summaryCard: {
     flex: 1,
     minWidth: 140,
     gap: SPACE.sm,
   },
   summaryHeading: {
-    minHeight: 24,
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACE.sm,
+    justifyContent: "space-between",
   },
+  summaryIdentity: { minWidth: 0, flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   summaryLabel: { ...TEXT.label, color: COLORS.secondaryText },
   summaryAmount: {
     fontSize: 20,
@@ -3101,26 +3502,32 @@ const S = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: COLORS.purpleTint,
   },
-  dailyStats: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.md, marginTop: SPACE.xl },
+  dailyStats: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm, marginTop: SPACE.xl },
   dailyStat: {
     flex: 1,
-    minWidth: 120,
+    minWidth: 96,
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.md,
-    padding: SPACE.md,
+    padding: SPACE.sm,
+    gap: 2,
   },
   dailyStatWide: {
-    width: "100%",
+    flex: 1,
+    minWidth: 96,
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.md,
-    padding: SPACE.md,
+    padding: SPACE.sm,
+    gap: 2,
   },
+  dailyLabel: { ...TEXT.label, fontSize: 9, lineHeight: 12 },
   dailyValue: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "800",
     color: COLORS.text,
     marginTop: SPACE.xs,
   },
+  cycleCopy: { flex: 1, minWidth: 0 },
+  cycleValue: { flexDirection: "row", alignItems: "center", gap: SPACE.xs, maxWidth: "42%" },
   dailyNotice: {
     backgroundColor: COLORS.greenTint,
     borderRadius: RADIUS.md,
@@ -3150,6 +3557,8 @@ const S = StyleSheet.create({
     justifyContent: "center",
     gap: SPACE.sm,
     borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   expenseSelected: { backgroundColor: COLORS.white },
   incomeSelected: { backgroundColor: COLORS.white },
@@ -3185,6 +3594,13 @@ const S = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.secondaryText,
   },
+  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm, marginTop: SPACE.sm },
+  categoryTile: { width: "48%", minHeight: 64, flexDirection: "row", alignItems: "center", gap: SPACE.sm, padding: SPACE.sm, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.card },
+  categoryTileSelected: { backgroundColor: COLORS.purpleTint, borderColor: COLORS.borderPurple },
+  categoryChoiceTextSelected: { color: COLORS.text, fontWeight: "800", flex: 1 },
+  accountActionCard: { paddingVertical: SPACE.xs },
+  summaryIconIncome: { width: 40, height: 40, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.greenTint },
+  summaryIconExpense: { width: 40, height: 40, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.redTint },
   menuIcon: {
     width: 40,
     height: 40,

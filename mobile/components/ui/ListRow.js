@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { COLORS, CONTROL, SPACE, TEXT } from "../../src/theme";
+import { useTheme } from "../../src/ThemeContext";
 
 export function ListRow({
   leading,
@@ -14,17 +15,18 @@ export function ListRow({
   divider = true,
   style,
 }) {
+  const { colors } = useTheme();
   const content = (
     <>
       {leading ? <View accessible={false}>{leading}</View> : null}
       <View style={styles.copy}>
-        <Text style={styles.title} numberOfLines={titleNumberOfLines}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle} numberOfLines={2}>{subtitle}</Text> : null}
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={titleNumberOfLines}>{title}</Text>
+        {subtitle ? <Text style={[styles.subtitle, { color: colors.secondaryText }]} numberOfLines={2}>{subtitle}</Text> : null}
       </View>
       {trailing ? <View accessible={false}>{trailing}</View> : null}
     </>
   );
-  const rowStyle = [styles.row, divider && styles.divider, style];
+  const rowStyle = [styles.row, divider && styles.divider, divider && { borderBottomColor: colors.borderSubtle }, style];
 
   return onPress ? (
     <Pressable

@@ -1,6 +1,7 @@
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS, COMPONENT, SPACE } from "../../src/theme";
+import { useTheme } from "../../src/ThemeContext";
 
 export function ScreenContainer({
   children,
@@ -12,8 +13,9 @@ export function ScreenContainer({
   contentStyle,
   keyboardShouldPersistTaps = "handled",
 }) {
+  const { colors } = useTheme();
   return (
-    <SafeAreaView edges={edges} style={[styles.safeArea, style]}>
+    <SafeAreaView edges={edges} style={[styles.safeArea, { backgroundColor: colors.background }, style]}>
       {header}
       <KeyboardAvoidingView
         enabled={keyboardAvoiding}

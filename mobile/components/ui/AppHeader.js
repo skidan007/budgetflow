@@ -1,33 +1,31 @@
 import { StyleSheet, Text, View } from "react-native";
-import { COLORS, CONTROL, SPACE, TEXT } from "../../src/theme";
+import { CONTROL, SPACE, TEXT } from "../../src/theme";
 import { AccessibleIconButton } from "../accessibility/AccessibleIconButton";
 import { AppIcon } from "../icons";
+import { useTheme } from "../../src/ThemeContext";
 
-export function AppHeader({ title, onBack, rightAction, style }) {
+export function AppHeader({ title, onBack, backLabel, backHint, rightAction, rightActions = [], style }) {
+  const { colors } = useTheme();
+  const actions = rightActions.length ? rightActions : rightAction ? [rightAction] : [];
   return (
-    <View style={[styles.header, style]}>
+    <View style={[styles.header, style, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
       {onBack ? (
         <AccessibleIconButton
-          label="Go back"
-          hint="Returns to the previous screen"
+          label={backLabel || (title ? `Back to ${title}` : "Go back")}
+          hint={backHint || "Returns to the previous screen"}
           onPress={onBack}
         >
-          <AppIcon name="back" color={COLORS.text} />
+          <AppIcon name="back" color={colors.text} />
         </AccessibleIconButton>
       ) : null}
-      <Text accessibilityRole="header" style={styles.title}>
-        {title}
+      <Text accessibilityRole="header" accessibilityLabel={title} style={[styles.title, title === "Goals" && styles.goalsTitle, { color: colors.text }]}>
+        {title === "BudgetFlow" ? <><Text>Budget</Text><Text style={{ color: colors.accentText }}>Flow</Text></> : title}
       </Text>
-      {rightAction ? (
-        <AccessibleIconButton
-          label={rightAction.label}
-          hint={rightAction.hint}
-          onPress={rightAction.onPress}
-          disabled={rightAction.disabled}
-        >
-          {rightAction.icon}
+      {actions.length ? <View style={styles.actions}>{actions.map((action) => (
+        <AccessibleIconButton key={action.label} label={action.label} hint={action.hint} onPress={action.onPress} disabled={action.disabled}>
+          {action.icon}
         </AccessibleIconButton>
-      ) : null}
+      ))}</View> : null}
     </View>
   );
 }
@@ -41,4 +39,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACE.page,
   },
   title: { ...TEXT.screenTitle, flex: 1, flexWrap: "wrap" },
+  goalsTitle: { fontSize: 30, lineHeight: 36 },
+  actions: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
 });
