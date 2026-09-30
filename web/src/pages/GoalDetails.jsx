@@ -13,6 +13,9 @@ function GoalDetails() {
   const navigate = useNavigate();
   const {
     goals,
+    goalsLoading,
+    goalsError,
+    refreshGoals,
     defaultCurrency,
     updateGoal,
     deleteGoal,
@@ -23,6 +26,8 @@ function GoalDetails() {
   const [isSavingOpen, setIsSavingOpen] = useState(false);
   const goal = goals.find((item) => String(item.id) === String(goalId));
 
+  if (goalsLoading) return <section className="mx-auto max-w-5xl p-8 text-sm text-slate-500">Loading goal…</section>;
+  if (goalsError) return <section className="mx-auto max-w-5xl p-8 text-sm text-rose-700">Goal details could not be loaded: {goalsError.message}<button type="button" onClick={refreshGoals} className="ml-3 rounded-lg bg-slate-900 px-3 py-2 text-white">Retry</button></section>;
   if (!goal) return <Navigate to="/goals" replace />;
 
   const target = Number(goal.targetAmount || 0);
@@ -31,21 +36,25 @@ function GoalDetails() {
   const progress = target > 0 ? Math.min((saved / target) * 100, 100) : 0;
   const currency = goal.currency || defaultCurrency;
 
-  const handleEdit = (values) => {
+  const handleEdit = async (values) => {
     if (Number(values.targetAmount) < saved) {
       toast.error(
         "Target amount cannot be lower than the amount already saved.",
       );
       return;
     }
-    updateGoal(goal.id, values);
-    setIsEditOpen(false);
-    toast.success("Goal updated successfully!");
+    try {
+      await updateGoal(goal.id, values);
+      setIsEditOpen(false);
+      toast.success("Goal updated successfully!");
+    } catch (error) {
+      toast.error(error.message || "Unable to update this goal.");
+    }
   };
 
-  const handleAddSaving = (saving) => {
+  const handleAddSaving = async (saving) => {
     try {
-      addSavingToGoal(goal.id, saving);
+      await addSavingToGoal(goal.id, saving);
       setIsSavingOpen(false);
       toast.success("Saving added successfully!");
     } catch (error) {
@@ -53,17 +62,25 @@ function GoalDetails() {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!window.confirm("Delete this goal? This action cannot be undone."))
       return;
-    deleteGoal(goal.id);
-    toast.success("Goal deleted successfully!");
-    navigate("/goals");
+    try {
+      await deleteGoal(goal.id);
+      toast.success("Goal deleted successfully!");
+      navigate("/goals");
+    } catch (error) {
+      toast.error(error.message || "Unable to delete this goal.");
+    }
   };
 
-  const handleDeleteSaving = (savingId) => {
-    deleteSavingFromGoal(goal.id, savingId);
-    toast.success("Saving deleted successfully!");
+  const handleDeleteSaving = async (savingId) => {
+    try {
+      await deleteSavingFromGoal(goal.id, savingId);
+      toast.success("Saving deleted successfully!");
+    } catch (error) {
+      toast.error(error.message || "Unable to delete this contribution.");
+    }
   };
 
   return (

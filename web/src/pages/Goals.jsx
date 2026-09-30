@@ -8,7 +8,7 @@ import GoalFormModal from "../components/GoalFormModal";
 import { useFinance } from "../context/FinanceContext";
 
 function Goals() {
-  const { goals, defaultCurrency, addGoal, setGoals } = useFinance();
+  const { goals, defaultCurrency, addGoal, goalsLoading, goalsError, refreshGoals } = useFinance();
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const currencyGoals = goals.filter(
@@ -16,23 +16,29 @@ function Goals() {
   );
 
   const handleSaveGoal = async (goalValues) => {
-    const newGoal = {
-      id: `goal-${Date.now()}`,
-      ...goalValues,
-      currentAmount: 0,
-      savingsHistory: [],
-    };
-
     try {
-    
       await addGoal(goalValues);
-    } catch {
-      setGoals((previous) => [...previous, newGoal]);
+    } catch (error) {
+      toast.error(error.message || "Unable to save this goal.");
+      return;
     }
 
     toast.success("Goal created successfully!");
     setIsFormOpen(false);
   };
+
+  if (goalsLoading) {
+    return <section className="mx-auto max-w-6xl p-8 text-sm text-slate-500">Loading goals…</section>;
+  }
+
+  if (goalsError) {
+    return (
+      <section className="mx-auto max-w-6xl rounded-2xl border border-rose-200 bg-white p-8 text-sm text-rose-700">
+        <p>Goals could not be loaded: {goalsError.message}</p>
+        <button type="button" onClick={refreshGoals} className="mt-4 rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white">Retry</button>
+      </section>
+    );
+  }
 
   return (
     <section className="relative mx-auto max-w-6xl pb-24">

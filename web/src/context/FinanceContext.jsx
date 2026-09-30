@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 import { supabase } from "../lib/supabaseClient";
 
@@ -339,9 +339,7 @@ export function FinanceProvider({ children }) {
   // TRANSACTIONS
   // -----------------------------------
 
-  const [transactions, setTransactions] = useState(() => {
-    return normalizeTransactions(parseStoredArray("transactions"));
-  });
+  const [transactions, setTransactions] = useState([]);
 
   const [transactionsLoading, setTransactionsLoading] = useState(false);
 
@@ -350,8 +348,12 @@ export function FinanceProvider({ children }) {
   // -----------------------------------
 
   const [goals, setGoals] = useState(() => {
-    return normalizeGoals(parseStoredArray("goals"));
+    return [];
   });
+  const [goalsLoading, setGoalsLoading] = useState(true);
+  const [goalsError, setGoalsError] = useState(null);
+  const [goalsReloadKey, setGoalsReloadKey] = useState(0);
+  const refreshGoals = useCallback(() => setGoalsReloadKey((key) => key + 1), []);
 
   // -----------------------------------
   // BUDGETS
@@ -459,6 +461,165 @@ export function FinanceProvider({ children }) {
 
     loadTransactions();
   }, [user, authLoading]);
+
+  // Goals and their contribution history are shared records in Supabase.
+  // The old browser-only goals array is imported once for its original owner.
+  useEffect(() => {
+    if (authLoading) return;
+    let cancelled = false;
+
+    if (!user) {
+      setGoals([]);
+      setGoalsError(null);
+      setGoalsLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    const loadGoals = async () => {
+      setGoalsLoading(true);
+      setGoalsError(null);
+      try {
+        const { data: remoteData, error: remoteError } = await supabase
+          .from("goals")
+          .select("*")
+          .eq("user_id", user.id);
+        if (remoteError) throw remoteError;
+        let remoteGoals = remoteData ?? [];
+
+        const migrationKey = `goalsMigrated:${user.id}`;
+        const legacyOwner = localStorage.getItem("goalsOwnerUserId");
+        const mayMigrateLegacy = !legacyOwner || legacyOwner === user.id;
+        if (mayMigrateLegacy && localStorage.getItem(migrationKey) !== "true") {
+          const legacyGoals = normalizeGoals(parseStoredArray("goals"));
+          const legacyContributions = [];
+
+          for (const legacyGoal of legacyGoals) {
+            const legacyKey = `web-local:${legacyGoal.id}`;
+            let remoteGoal = remoteGoals.find((item) =>
+              String(item.id) === String(legacyGoal.id),
+            );
+
+            if (!remoteGoal) {
+              remoteGoal = remoteGoals.find((item) =>
+                item.legacy_key === legacyKey || (
+                  item.name?.trim().toLocaleLowerCase() === legacyGoal.name.toLocaleLowerCase() &&
+                  (item.currency || "NGN") === (legacyGoal.currency || "NGN")
+                ),
+              );
+            }
+
+            if (!remoteGoal) {
+              let { data, error } = await supabase.from("goals").insert({
+                user_id: user.id,
+                legacy_key: legacyKey,
+                name: legacyGoal.name,
+                type: legacyGoal.type,
+                target_amount: legacyGoal.targetAmount,
+                current_amount: legacyGoal.currentAmount,
+                target_date: legacyGoal.targetDate || null,
+                currency: legacyGoal.currency || "NGN",
+              }).select().single();
+              if (error?.code === "23505") {
+                const existing = await supabase.from("goals").select("*")
+                  .eq("user_id", user.id).eq("legacy_key", legacyKey).maybeSingle();
+                if (existing.error) throw existing.error;
+                data = existing.data;
+                error = null;
+              }
+              if (error) throw error;
+              remoteGoal = data;
+              if (data && !remoteGoals.some((item) => item.id === data.id)) {
+                remoteGoals = [...remoteGoals, data];
+              }
+            }
+
+            (legacyGoal.savingsHistory || []).forEach((saving, index) => {
+              if (Number(saving.amount) > 0) {
+                legacyContributions.push({
+                  goal_id: remoteGoal.id,
+                  user_id: user.id,
+                  amount: Number(saving.amount),
+                  date: saving.date || new Date().toISOString().slice(0, 10),
+                  note: saving.note || "",
+                  source_key: `legacy-web:${saving.id ?? `${legacyGoal.id}-${index}`}`,
+                });
+              }
+            });
+          }
+
+          if (legacyContributions.length) {
+            const { error } = await supabase.from("goal_contributions").upsert(
+              legacyContributions,
+              { onConflict: "goal_id,source_key", ignoreDuplicates: true },
+            );
+            if (error) throw error;
+          }
+
+          if (cancelled) return;
+          if (mayMigrateLegacy) {
+            localStorage.setItem("goalsOwnerUserId", user.id);
+            localStorage.removeItem("goals");
+          }
+          localStorage.setItem(migrationKey, "true");
+        }
+
+        const { data: contributionRows, error: contributionError } = await supabase
+          .from("goal_contributions")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("date", { ascending: false });
+        if (contributionError) throw contributionError;
+        if (cancelled) return;
+
+        const contributionMap = (contributionRows ?? []).reduce((map, row) => {
+          (map[row.goal_id] ||= []).push({
+            id: row.id,
+            amount: Number(row.amount),
+            date: row.date,
+            note: row.note || "",
+            updatedAt: row.updated_at || row.created_at || null,
+          });
+          return map;
+        }, {});
+
+        setGoals(normalizeGoals(remoteGoals.map((goal) => ({
+          ...goal,
+          targetAmount: goal.target_amount,
+          currentAmount: goal.current_amount,
+          targetDate: goal.target_date,
+          savingsHistory: contributionMap[goal.id] || [],
+          savingsUpdatedAtByMonth: (contributionMap[goal.id] || []).reduce((months, saving) => {
+            const month = saving.date?.slice(0, 7);
+            if (month && saving.updatedAt && (!months[month] || saving.updatedAt > months[month])) {
+              months[month] = saving.updatedAt;
+            }
+            return months;
+          }, {}),
+        }))));
+      } catch (error) {
+        console.error("Load goals error:", error);
+        if (!cancelled) setGoalsError(error);
+      } finally {
+        if (!cancelled) setGoalsLoading(false);
+      }
+    };
+
+    loadGoals();
+    return () => { cancelled = true; };
+  }, [user, authLoading, goalsReloadKey]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") refreshGoals();
+    };
+    window.addEventListener("focus", refreshGoals);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", refreshGoals);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [user, refreshGoals]);
 
   // -----------------------------------
   // LOAD CURRENT FINANCIAL CYCLE STATE
@@ -1142,33 +1303,61 @@ export function FinanceProvider({ children }) {
   // -------------------------------------
   // UPDATE GOAL
   // -------------------------------------
-  // Goals are managed as local state (mirrors the existing Goals page and
-  // AI Planner, which only ever call setGoals). These helpers centralize
-  // that logic so every screen updates goals the same way.
-
-  const updateGoal = (id, updates) => {
-    setGoals((prevGoals) =>
-      prevGoals.map((goal) =>
-        String(goal.id) === String(id) ? { ...goal, ...updates } : goal,
-      ),
-    );
+  const updateGoal = async (id, updates) => {
+    if (!user) throw new Error("You must be logged in to update a goal.");
+    const current = goals.find((goal) => String(goal.id) === String(id));
+    if (!current) throw new Error("Goal not found.");
+    const targetAmount = Number(updates.targetAmount ?? current.targetAmount);
+    if (!Number.isFinite(targetAmount) || targetAmount <= 0) throw new Error("Enter a valid goal target amount.");
+    const { data, error } = await supabase
+      .from("goals")
+      .update({
+        name: updates.name?.trim() || current.name,
+        type: updates.type || current.type,
+        target_amount: targetAmount,
+        target_date: updates.targetDate || null,
+        currency: updates.currency || current.currency,
+      })
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+    if (error) throw error;
+    const saved = {
+      ...current,
+      ...updates,
+      id: data.id,
+      name: data.name,
+      type: data.type,
+      targetAmount: Number(data.target_amount),
+      currentAmount: Number(data.current_amount || 0),
+      targetDate: data.target_date || "",
+      currency: data.currency || "NGN",
+    };
+    setGoals((items) => items.map((goal) => String(goal.id) === String(id) ? saved : goal));
+    return saved;
   };
 
   // -------------------------------------
   // DELETE GOAL
   // -------------------------------------
 
-  const deleteGoal = (id) => {
-    setGoals((prevGoals) =>
-      prevGoals.filter((goal) => String(goal.id) !== String(id)),
-    );
+  const deleteGoal = async (id) => {
+    if (!user) throw new Error("You must be logged in to delete a goal.");
+    const { error } = await supabase
+      .from("goals")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
+    if (error) throw error;
+    setGoals((items) => items.filter((goal) => String(goal.id) !== String(id)));
   };
 
   // -------------------------------------
   // ADD SAVING TO GOAL
   // -------------------------------------
 
-  const addSavingToGoal = (id, saving) => {
+  const addSavingToGoal = async (id, saving) => {
     const amount = Number(saving?.amount);
 
     if (!amount || amount <= 0 || Number.isNaN(amount)) {
@@ -1187,96 +1376,64 @@ export function FinanceProvider({ children }) {
       throw new Error("This saving is larger than the remaining goal amount.");
     }
 
-    setGoals((prevGoals) =>
-      prevGoals.map((goal) => {
-        if (String(goal.id) !== String(id)) {
-          return goal;
-        }
-
-        const savingsHistory = Array.isArray(goal.savingsHistory)
-          ? goal.savingsHistory
-          : [];
-        const updatedAt = new Date().toISOString();
-        const savingDate = saving.date || new Date().toISOString().split("T")[0];
-        const savingMonth = savingDate.slice(0, 7);
-
-        const newSaving = {
-          id: `saving-${Date.now()}`,
-          amount,
-          date: savingDate,
-          note: saving.note || "",
-          updatedAt,
-        };
-
-        return {
-          ...goal,
-          currentAmount: Number(goal.currentAmount || 0) + amount,
-          savingsHistory: [...savingsHistory, newSaving],
+    const { data, error } = await supabase.rpc("add_goal_contribution", {
+      p_goal_id: id,
+      p_amount: amount,
+      p_date: saving.date || new Date().toISOString().split("T")[0],
+      p_note: saving.note || "",
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    const newSaving = {
+      id: row.id,
+      amount: Number(row.amount),
+      date: row.date,
+      note: row.note || "",
+      updatedAt: row.updated_at || row.created_at || null,
+    };
+    setGoals((items) => items.map((item) => String(item.id) === String(id)
+      ? {
+          ...item,
+          currentAmount: Number(item.currentAmount || 0) + amount,
+          savingsHistory: [newSaving, ...(item.savingsHistory || [])],
           savingsUpdatedAtByMonth: {
-            ...(goal.savingsUpdatedAtByMonth || {}),
-            [savingMonth]: updatedAt,
+            ...(item.savingsUpdatedAtByMonth || {}),
+            [newSaving.date.slice(0, 7)]: newSaving.updatedAt,
           },
-        };
-      }),
-    );
+        }
+      : item));
+    return newSaving;
   };
 
   // -------------------------------------
   // DELETE SAVING FROM GOAL
   // -------------------------------------
 
-  const deleteSavingFromGoal = (goalId, savingId) => {
-    setGoals((prevGoals) =>
-      prevGoals.map((goal) => {
-        if (String(goal.id) !== String(goalId)) {
-          return goal;
+  const deleteSavingFromGoal = async (goalId, savingId) => {
+    if (!user) throw new Error("You must be logged in to delete a contribution.");
+    const goal = goals.find((item) => String(item.id) === String(goalId));
+    const saving = goal?.savingsHistory?.find((item) => String(item.id) === String(savingId));
+    if (!goal || !saving) throw new Error("Contribution not found.");
+    const { error } = await supabase.rpc("delete_goal_contribution", {
+      p_contribution_id: savingId,
+    });
+    if (error) throw error;
+    const month = saving.date?.slice(0, 7);
+    setGoals((items) => items.map((item) => String(item.id) === String(goalId)
+      ? {
+          ...item,
+          currentAmount: Math.max(Number(item.currentAmount || 0) - Number(saving.amount || 0), 0),
+          savingsHistory: item.savingsHistory.filter((entry) => String(entry.id) !== String(savingId)),
+          savingsUpdatedAtByMonth: month
+            ? { ...(item.savingsUpdatedAtByMonth || {}), [month]: new Date().toISOString() }
+            : item.savingsUpdatedAtByMonth || {},
         }
-
-        const savingsHistory = Array.isArray(goal.savingsHistory)
-          ? goal.savingsHistory
-          : [];
-
-        const savingToDelete = savingsHistory.find(
-          (saving) => String(saving.id) === String(savingId),
-        );
-
-        if (!savingToDelete) {
-          return goal;
-        }
-        const updatedAt = new Date().toISOString();
-        const savingMonth = savingToDelete.date?.slice(0, 7);
-
-        return {
-          ...goal,
-          currentAmount: Math.max(
-            Number(goal.currentAmount || 0) - Number(savingToDelete.amount || 0),
-            0,
-          ),
-          savingsHistory: savingsHistory.filter(
-            (saving) => String(saving.id) !== String(savingId),
-          ),
-          savingsUpdatedAtByMonth: savingMonth
-            ? {
-                ...(goal.savingsUpdatedAtByMonth || {}),
-                [savingMonth]: updatedAt,
-              }
-            : goal.savingsUpdatedAtByMonth || {},
-        };
-      }),
-    );
+      : item));
   };
 
   // -----------------------------------
   // LOCAL STORAGE
   // -----------------------------------
-
-  useEffect(() => {
-    localStorage.setItem("transactions", JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem("goals", JSON.stringify(goals));
-  }, [goals]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -1348,7 +1505,9 @@ export function FinanceProvider({ children }) {
 
         // Goals
         goals,
-        setGoals,
+        goalsLoading,
+        goalsError,
+        refreshGoals,
         addGoal,
         updateGoal,
         deleteGoal,

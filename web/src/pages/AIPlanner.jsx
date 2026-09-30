@@ -75,7 +75,9 @@ function AIPlanner() {
   const {
     defaultCurrency,
     currencySymbol,
-    setGoals,
+    goals,
+    addGoal,
+    updateGoal,
     budgets,
     addBudget,
     updateBudget,
@@ -220,32 +222,22 @@ function AIPlanner() {
           currency: defaultCurrency,
           month: currentMonth,
         });
-      setGoals((goals) => {
-        const next = [...goals];
+      await Promise.all(
         plan.categories
           .filter((item) => GOAL_IDS.has(item.id) && item.amount > 0)
-          .forEach((item) => {
-            const name =
-              item.id === "savings"
-                ? "BudgetFlow Savings Plan"
-                : "BudgetFlow Emergency Fund";
-            const index = next.findIndex((goal) => goal.name === name);
-            const old = next[index];
-            const goal = {
-              id: old?.id ?? `smart-${item.id}-${Date.now()}`,
-              name,
-              type: item.id === "savings" ? "Savings Plan" : "Emergency Fund",
-              targetAmount: item.amount,
-              currentAmount: old?.currentAmount ?? 0,
-              targetDate: old?.targetDate ?? "",
-              currency: old?.currency ?? defaultCurrency,
-              savingsHistory: old?.savingsHistory ?? [],
-            };
-            if (index >= 0) next[index] = goal;
-            else next.push(goal);
-          });
-        return next;
-      });
+          .map((item) => {
+            const name = item.id === "savings"
+              ? "BudgetFlow Savings Plan"
+              : "BudgetFlow Emergency Fund";
+            const type = item.id === "savings" ? "Savings Plan" : "Emergency Fund";
+            const existing = goals.find(
+              (goal) => goal.name === name && goal.currency === defaultCurrency,
+            );
+            return existing
+              ? updateGoal(existing.id, { targetAmount: item.amount, type })
+              : addGoal({ name, type, targetAmount: item.amount, currency: defaultCurrency });
+          }),
+      );
       await Promise.all(
         plan.categories
           .filter((item) => !GOAL_IDS.has(item.id) && item.amount > 0)
