@@ -18,7 +18,7 @@ export function analyzeMonthlyChange(currentValue, previousValue, hasPreviousDat
   }
 
   const percentage = ((current - previous) / previous) * 100;
-  const rounded = Number(percentage.toFixed(2));
+  const rounded = Math.round(percentage);
   if (rounded === 0) {
     return { direction: "same", label: "0% from last month", spoken: "No change from last month" };
   }

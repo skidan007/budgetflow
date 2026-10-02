@@ -1,10 +1,17 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
+import { financialProfilePayload } from './financialProfile.mjs';
 
 const Ctx = createContext(null);
 export const currencySymbols = { NGN: '\u20a6', USD: '$', GBP: '\u00a3', EUR: '\u20ac', JPY: '\u00a5', CNY: '\u00a5', CAD: 'C$', AUD: 'A$', CHF: 'CHF' };
 const currencies = Object.keys(currencySymbols);
+const classifyStartupError = (error, fallback) => {
+  const message = error?.message || '';
+  if (/network|fetch|timeout|connection/i.test(message)) return 'network';
+  if (error?.status === 401 || error?.name === 'AuthSessionMissingError') return 'authentication';
+  return fallback;
+};
 const monthNow = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
 const contributionView = (row) => ({ id: row.id, amount: Number(row.amount), date: row.date, note: row.note || '', updatedAt: row.updated_at || row.created_at || null });
 
@@ -13,6 +20,8 @@ export function FinanceProvider({ children }) {
   const [authReady, setAuthReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [errorKind, setErrorKind] = useState('');
+  const [startupStage, setStartupStage] = useState('AUTHENTICATING');
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [goals, setGoals] = useState([]);
@@ -20,6 +29,7 @@ export function FinanceProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [cycle, setCycle] = useState(null);
   const [currency, setCurrency] = useState('NGN');
+  const [onboardingStatus, setOnboardingStatus] = useState('not_started');
   const [reloadKey, setReloadKey] = useState(0);
   const currentMonth = monthNow();
   const requestId = useRef(0);
@@ -39,6 +49,7 @@ export function FinanceProvider({ children }) {
         requestId.current += 1;
         loadedUserId.current = null;
         setTransactions([]); setBudgets([]); setGoals([]); setProfile(null); setCycle(null);
+        setOnboardingStatus('not_started');
         setGoalSyncSnapshot(null);
         setError(''); setLoading(Boolean(nextUser));
       }
@@ -47,7 +58,10 @@ export function FinanceProvider({ children }) {
     });
     supabase.auth.getSession().then(({ data, error: sessionError }) => {
       if (!active || authEventSeen) return;
-      if (sessionError) setError(sessionError.message);
+      if (sessionError) {
+        setError(sessionError.message);
+        setErrorKind(classifyStartupError(sessionError, 'authentication'));
+      }
       const nextUser = data.session?.user ?? null;
       authUserId.current = nextUser?.id ?? null;
       setUser(nextUser);
@@ -62,6 +76,7 @@ export function FinanceProvider({ children }) {
     if (!user) {
       loadedUserId.current = null;
       setTransactions([]); setBudgets([]); setGoals([]); setProfile(null); setCycle(null);
+      setOnboardingStatus('not_started');
       setGoalSyncSnapshot(null);
       setError(''); setLoading(false);
       return;
@@ -71,45 +86,48 @@ export function FinanceProvider({ children }) {
       setTransactions([]); setBudgets([]); setGoals([]); setProfile(null); setCycle(null);
     }
     loadedUserId.current = user.id;
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setErrorKind(''); setStartupStage('AUTHENTICATING');
+    let profileLoaded = false;
+    let financialDataStarted = false;
     try {
-      const [{ data: authData, error: authError }, savedCurrency] = await Promise.all([
-        supabase.auth.getUser(),
-        AsyncStorage.getItem('defaultCurrency'),
-      ]);
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw Object.assign(sessionError, { budgetFlowKind: 'authentication', budgetFlowOperation: 'getSession' });
+      if (!sessionData.session) throw Object.assign(new Error('Your session has expired. Please sign in again.'), { budgetFlowKind: 'authentication', budgetFlowOperation: 'getSession' });
+      setStartupStage('LOADING ACCOUNT');
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw Object.assign(authError, { budgetFlowKind: 'authentication', budgetFlowOperation: 'getUser' });
       const authenticatedUser = authData?.user ?? null;
-      const preferredCurrency = currencies.includes(savedCurrency) ? savedCurrency : 'NGN';
-      if (__DEV__) {
-        console.info('[BudgetFlow Goal Sync]', {
-          Platform: 'MOBILE',
-          'Supabase project': new URL(process.env.EXPO_PUBLIC_SUPABASE_URL).hostname.split('.')[0],
-          'Authenticated user ID': authenticatedUser?.id ?? null,
-          'Authenticated email': authenticatedUser?.email ?? null,
-          'Authentication lookup error': authError?.message ?? null,
-          'Query user ID': user.id,
-          'Goal query currency filter': 'NONE',
-          'Goals screen currency preference/filter': preferredCurrency,
-          'Goals data source': 'SUPABASE',
-          'Goal query': "supabase.from('goals').select('*').eq('user_id', user.id)",
-        });
+      if (!authenticatedUser || authenticatedUser.id !== user.id) {
+        throw Object.assign(new Error('The authenticated account changed. Please sign in again.'), { budgetFlowKind: 'authentication', budgetFlowOperation: 'getUser' });
       }
-      const [t, b, g, contributions, p, c] = await Promise.all([
-        supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false }),
-        supabase.from('budgets').select('*').eq('user_id', user.id).order('month', { ascending: false }),
-        supabase.from('goals').select('*').eq('user_id', user.id),
-        supabase.from('goal_contributions').select('*').eq('user_id', user.id).order('date', { ascending: false }),
-        supabase.from('financial_profiles').select('*').eq('user_id', user.id).maybeSingle(),
-        supabase.from('financial_cycles').select('*').eq('user_id', user.id).eq('cycle_month', prevMonth(currentMonth)).maybeSingle(),
+      if (__DEV__) console.info('[BudgetFlow Account] Auth: OK', { userId: authenticatedUser.id, email: authenticatedUser.email ?? null, sessionExists: true });
+
+      const p = await supabase.from('financial_profiles').select('*').eq('user_id', authenticatedUser.id).maybeSingle();
+      if (p.error) throw Object.assign(p.error, { budgetFlowKind: 'database', budgetFlowOperation: 'financial_profiles' });
+      profileLoaded = true;
+      if (__DEV__) console.info('[BudgetFlow Account] Profile: OK', { found: Boolean(p.data) });
+
+      setStartupStage('LOADING FINANCIAL DATA');
+      financialDataStarted = true;
+      const [t, b, g, contributions, c] = await Promise.all([
+        supabase.from('transactions').select('*').eq('user_id', authenticatedUser.id).order('date', { ascending: false }),
+        supabase.from('budgets').select('*').eq('user_id', authenticatedUser.id).order('month', { ascending: false }),
+        supabase.from('goals').select('*').eq('user_id', authenticatedUser.id),
+        supabase.from('goal_contributions').select('*').eq('user_id', authenticatedUser.id).order('date', { ascending: false }),
+        supabase.from('financial_cycles').select('*').eq('user_id', authenticatedUser.id).eq('cycle_month', prevMonth(currentMonth)).maybeSingle(),
       ]);
-      const failed = [t, b, g, contributions, p, c].find((result) => result.error);
-      if (failed?.error) throw failed.error;
+      const failed = [[t, 'transactions'], [b, 'budgets'], [g, 'goals'], [contributions, 'goal_contributions'], [c, 'financial_cycles']].find(([result]) => result.error);
+      if (failed) throw Object.assign(failed[0].error, { budgetFlowKind: 'database', budgetFlowOperation: failed[1] });
+      const savedCurrency = await AsyncStorage.getItem('defaultCurrency');
+      const preferredCurrency = currencies.includes(p.data?.preferred_currency)
+        ? p.data.preferred_currency
+        : currencies.includes(savedCurrency) ? savedCurrency : 'NGN';
       if (id !== requestId.current) return;
 
       if (__DEV__) {
-        const projectUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
         setGoalSyncSnapshot({
           platform: 'MOBILE',
-          project: projectUrl ? new URL(projectUrl).hostname.split('.')[0] : 'UNCONFIGURED',
+          project: new URL(process.env.EXPO_PUBLIC_SUPABASE_URL).hostname.split('.')[0],
           userId: authenticatedUser?.id ?? null,
           email: authenticatedUser?.email ?? null,
           sessionAuthenticated: Boolean(authenticatedUser),
@@ -129,17 +147,6 @@ export function FinanceProvider({ children }) {
         return map;
       }, {});
       if (__DEV__) {
-        console.info('[BudgetFlow Goal Sync] Goals returned:', (g.data || []).length);
-        console.info('[BudgetFlow Goal Sync] Goals screen currency preference/filter:', preferredCurrency);
-        (g.data || []).forEach((goal) => console.info('[BudgetFlow Goal Sync] Goal:', {
-          id: goal.id,
-          name: goal.name,
-          user_id: goal.user_id,
-          currency: goal.currency,
-          target_amount: goal.target_amount,
-          current_amount: goal.current_amount,
-          legacy_key: goal.legacy_key ?? null,
-        }));
       }
       setTransactions((t.data || []).map((row) => ({ ...row, amount: Number(row.amount), month: row.month || row.date?.slice(0, 7) })));
       setBudgets((b.data || []).map((row) => ({ ...row, amount: Number(row.amount) })));
@@ -156,10 +163,24 @@ export function FinanceProvider({ children }) {
         }, {}),
       })));
       setProfile(p.data || null); setCycle(c.data || null);
+      const existingFinancialData = (t.data || []).length + (b.data || []).length + (g.data || []).length > 0;
+      setOnboardingStatus(p.data?.onboarding_status || (existingFinancialData || p.data ? 'completed' : 'not_started'));
       const preferred = preferredCurrency;
       setCurrency(preferred);
+      setStartupStage('READY');
     } catch (e) {
-      if (id === requestId.current) setError(e.message || 'Could not load your financial data.');
+      if (id === requestId.current) {
+        const kind = classifyStartupError(e, e.budgetFlowKind || 'database');
+        setErrorKind(kind);
+        setError(e.message || 'Could not load your financial data.');
+        setStartupStage('ERROR');
+        if (__DEV__) console.error('[BudgetFlow Account]', {
+          Auth: ['getSession', 'getUser'].includes(e.budgetFlowOperation) || kind === 'authentication' ? 'FAILED' : 'OK',
+          Profile: e.budgetFlowOperation === 'financial_profiles' ? 'FAILED' : profileLoaded ? 'OK' : 'not attempted',
+          FinancialData: financialDataStarted ? (e.budgetFlowOperation && e.budgetFlowOperation !== 'financial_profiles' ? `FAILED (${e.budgetFlowOperation})` : 'FAILED') : 'not attempted',
+          FailedOperation: e.budgetFlowOperation || 'startup', ErrorKind: kind, Message: e.message || 'Unknown error',
+        });
+      }
     } finally {
       if (id === requestId.current) setLoading(false);
     }
@@ -291,9 +312,57 @@ export function FinanceProvider({ children }) {
     }
   };
 
-  const changeCurrency = async (value) => { if (!currencies.includes(value)) return; setCurrency(value); await AsyncStorage.setItem('defaultCurrency', value); };
+  const saveFinancialProfile = async (updates) => {
+    if (!user) throw new Error('You must be logged in to save your financial profile.');
+    const payload = financialProfilePayload(user.id, updates);
+    const { data, error: profileError } = await supabase
+      .from('financial_profiles')
+      .upsert(payload, { onConflict: 'user_id' })
+      .select()
+      .single();
+    if (profileError) throw profileError;
+    setProfile(data);
+    return data;
+  };
+
+  const profilePayload = (updates = {}) => financialProfilePayload(user.id, {
+    monthlyIncome: profile?.monthly_income,
+    mainGoal: profile?.main_goal,
+    monthlySavingsTarget: profile?.monthly_savings_target,
+    emergencyFundTarget: profile?.emergency_fund_target,
+    budgetPreference: profile?.budget_preference,
+    ...updates,
+  });
+  const saveOnboardingStatus = async (status, preferredCurrency = currency) => {
+    if (!user) throw new Error('You must be logged in.');
+    if (!['in_progress', 'completed', 'skipped'].includes(status)) throw new Error('Invalid onboarding status.');
+    const { data, error: saveError } = await supabase.from('financial_profiles').upsert({
+      ...profilePayload(), onboarding_status: status, preferred_currency: preferredCurrency,
+    }, { onConflict: 'user_id' }).select().single();
+    if (saveError) throw saveError;
+    setProfile(data);
+    setOnboardingStatus(status);
+    if (currencies.includes(preferredCurrency)) {
+      setCurrency(preferredCurrency);
+      await AsyncStorage.setItem('defaultCurrency', preferredCurrency);
+    }
+    return data;
+  };
+
+  const changeCurrency = async (value) => {
+    if (!currencies.includes(value)) return;
+    if (user) {
+      const { data, error: saveError } = await supabase.from('financial_profiles').upsert({
+        ...profilePayload(), preferred_currency: value,
+      }, { onConflict: 'user_id' }).select().single();
+      if (saveError) throw saveError;
+      setProfile(data);
+    }
+    setCurrency(value);
+    await AsyncStorage.setItem('defaultCurrency', value);
+  };
   const signOut = async () => { const { error: signOutError } = await supabase.auth.signOut(); if (signOutError) throw signOutError; };
-  const value = { user, authReady, loading: !authReady || loading, error, transactions, budgets, goals, goalSyncSnapshot, profile, cycle, currency, symbol: currencySymbols[currency] || '₦', currentMonth, refresh, addTransaction, saveBudget, deleteBudget, saveGoal, updateGoal, deleteGoal, addSaving, deleteSaving, completeFinancialCycle, changeCurrency, signOut };
+  const value = { user, authReady, loading: !authReady || loading, error, errorKind, startupStage, transactions, budgets, goals, goalSyncSnapshot, profile, cycle, currency, onboardingStatus, symbol: currencySymbols[currency] || '₦', currentMonth, refresh, addTransaction, saveBudget, deleteBudget, saveGoal, updateGoal, deleteGoal, addSaving, deleteSaving, completeFinancialCycle, saveFinancialProfile, saveOnboardingStatus, changeCurrency, signOut };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

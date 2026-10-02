@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
 import { COLORS, CONTROL, RADIUS, SHADOW, SPACE, TEXT } from "../../src/theme";
 import { useTheme } from "../../src/ThemeContext";
 
@@ -17,7 +18,17 @@ export function Button({
   testID,
 }) {
   const { colors } = useTheme();
+  const [reduceMotion, setReduceMotion] = useState(false);
   const unavailable = disabled || loading;
+
+  useEffect(() => {
+    let active = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((value) => {
+      if (active) setReduceMotion(value);
+    });
+    return () => { active = false; };
+  }, []);
+
   const variantColors = variant === 'danger'
     ? { backgroundColor: colors.danger, borderColor: colors.danger }
     : variant === 'secondary'
@@ -42,7 +53,7 @@ export function Button({
         variantColors,
         unavailable && styles.disabled,
         unavailable && { backgroundColor: colors.mutedTint, borderColor: colors.border },
-        pressed && !unavailable && styles.pressed,
+        pressed && !unavailable && (reduceMotion ? styles.pressedReduced : styles.pressed),
         style,
       ]}
     >
@@ -81,7 +92,8 @@ const styles = StyleSheet.create({
   label: { ...TEXT.button, color: COLORS.white, textAlign: "center", flexShrink: 1 },
   disabled: { backgroundColor: COLORS.mutedTint, borderColor: COLORS.border, shadowOpacity: 0, elevation: 0 },
   disabledLabel: { color: COLORS.secondaryText },
-  pressed: { opacity: 0.82 },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
+  pressedReduced: { opacity: 0.9 },
 });
 
 const variants = {

@@ -18,11 +18,11 @@ export function AppHeader({ title, onBack, backLabel, backHint, rightAction, rig
           <AppIcon name="back" color={colors.text} />
         </AccessibleIconButton>
       ) : null}
-      <Text accessibilityRole="header" accessibilityLabel={title} style={[styles.title, title === "Goals" && styles.goalsTitle, { color: colors.text }]}>
+      <Text accessibilityRole="header" accessibilityLabel={title} style={[styles.title, { color: colors.text }]}>
         {title === "BudgetFlow" ? <><Text>Budget</Text><Text style={{ color: colors.accentText }}>Flow</Text></> : title}
       </Text>
       {actions.length ? <View style={styles.actions}>{actions.map((action) => (
-        <AccessibleIconButton key={action.label} label={action.label} hint={action.hint} onPress={action.onPress} disabled={action.disabled}>
+        <AccessibleIconButton key={action.label} label={action.label} hint={action.hint} onPress={action.onPress} disabled={action.disabled} style={action.style}>
           {action.icon}
         </AccessibleIconButton>
       ))}</View> : null}
@@ -39,6 +39,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACE.page,
   },
   title: { ...TEXT.screenTitle, flex: 1, flexWrap: "wrap" },
-  goalsTitle: { fontSize: 30, lineHeight: 36 },
   actions: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
 });

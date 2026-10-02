@@ -31,5 +31,5 @@ function RootNavigation() {
     };
   }, []);
 
-  return <><StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} /><Stack screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default', contentStyle: { backgroundColor: colors.background } }}><Stack.Screen name="(tabs)" /><Stack.Screen name="budget/[id]" /><Stack.Screen name="goal/[id]" /><Stack.Screen name="transactions" /><Stack.Screen name="planner" /><Stack.Screen name="reports" /><Stack.Screen name="settings" /><Stack.Screen name="profile" /><Stack.Screen name="compound-interest" /></Stack></>;
+  return <><StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} /><Stack screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default', contentStyle: { backgroundColor: colors.background } }}><Stack.Screen name="(tabs)" /><Stack.Screen name="onboarding" /><Stack.Screen name="budget/[id]" /><Stack.Screen name="goal/[id]" /><Stack.Screen name="transactions" /><Stack.Screen name="planner" /><Stack.Screen name="reports" /><Stack.Screen name="account" /><Stack.Screen name="settings" /><Stack.Screen name="profile" /><Stack.Screen name="compound-interest" /></Stack></>;
 }

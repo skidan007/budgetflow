@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/icons';
@@ -10,9 +10,11 @@ const icons = { index: 'home', budgets: 'budgets', add: 'add', goals: 'goals', m
 const labels = { index: 'Home', budgets: 'Budgets', add: 'Add transaction', goals: 'Goals', more: 'More' };
 
 export default function TabLayout() {
-  const { user } = useFinance();
+  const { user, loading, error, onboardingStatus } = useFinance();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+
+  if (user && !loading && !error && ['not_started', 'in_progress'].includes(onboardingStatus)) return <Redirect href="/onboarding" />;
 
   return (
     <Tabs
@@ -24,9 +26,9 @@ export default function TabLayout() {
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.tabInactive,
           tabBarStyle: {
-            height: 68 + insets.bottom,
-            paddingTop: 8,
-            paddingBottom: Math.max(insets.bottom, 7),
+            height: 64 + insets.bottom,
+            paddingTop: 5,
+            paddingBottom: Math.max(insets.bottom, 5),
             borderTopColor: colors.border,
             backgroundColor: colors.white,
             elevation: 10,
