@@ -1,4 +1,5 @@
 import { Image, StyleSheet, View } from "react-native";
+import { COLORS } from "../../src/theme";
 
 export function BudgetFlowLogo({ size = 96 }) {
   return (
@@ -30,6 +31,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "center",
     backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: COLORS.border,
     shadowColor: "#000000",
     shadowOpacity: 0.16,
     shadowRadius: 16,

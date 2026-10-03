@@ -16,7 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useFocusEffect, useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { makeRedirectUri } from "expo-auth-session";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
@@ -64,6 +64,7 @@ import { allocatePlannerAmounts, fromMinorUnits, toMinorUnits, totalMinorUnits }
 import { getAvailableExpenseCategoriesFromBudgets, INCOME_CATEGORIES, EXPENSE_CATEGORIES } from "./categoryCatalog.mjs";
 import { GOAL_CATEGORIES, normalizeGoal } from "./goalCategories.mjs";
 import { firstName } from "./identity.mjs";
+import { weeklyBudgetSummary } from "./weeklyBudget.mjs";
 import { ThemeScope, useTheme } from "./ThemeContext";
 import { FunctionalIcon, GoalCategoryIcon, functionalToneForName } from "../components/ui/FunctionalIcon";
 import { FeatureRow } from "../components/ui/FeatureRow";
@@ -162,9 +163,42 @@ function Page({
   contentStyle,
   keyboardAvoiding = false,
 }) {
+  const f = useFinance();
+  const router = useRouter();
+  const pathname = usePathname();
+  const theme = useTheme();
+  const metadata = f.user?.user_metadata || {};
+  const avatarUrl = metadata.avatar_url || metadata.picture;
+  const avatarName = String(metadata.full_name || metadata.name || "").trim();
+  const avatarInitials = (avatarName || f.user?.email?.split("@")[0] || "U")
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+  const globalActions = [
+    {
+      label: "Notifications",
+      hint: "Shows whether mobile notifications are available",
+      icon: <AppIcon name="notifications" size={19} color={theme.colors.text} />,
+      onPress: () => Alert.alert("Notifications", "Notifications are not available in the mobile app yet."),
+      style: S.headerIconAction,
+    },
+    {
+      label: "Open account",
+      hint: "Opens your account and settings",
+      icon: avatarUrl
+        ? <Image source={{ uri: avatarUrl }} style={S.dashboardAvatarImage} />
+        : <View style={[S.dashboardAvatarFallback, { backgroundColor: theme.colors.primary }]}><Text style={[S.dashboardAvatarInitials, { color: theme.colors.onPrimary }]}>{avatarInitials || "U"}</Text></View>,
+      onPress: () => { if (!pathname?.endsWith("/account")) router.push("/account"); },
+      style: S.headerAvatarAction,
+    },
+  ];
+  const headerActions = rightActions?.length ? rightActions : rightAction ? [rightAction] : f.user ? globalActions : [];
   return (
     <ScreenContainer
-      header={<AppHeader title={title} onBack={back} backLabel={backLabel} backHint={backHint} rightAction={rightAction} rightActions={rightActions} style={[S.header, headerStyle]} />}
+      header={<AppHeader title={title} onBack={back} backLabel={backLabel} backHint={backHint} rightActions={headerActions} style={[S.header, headerStyle]} />}
       scroll={scroll}
       keyboardAvoiding={keyboardAvoiding}
       edges={back ? ["top", "bottom", "left", "right"] : ["top", "left", "right"]}
@@ -830,24 +864,11 @@ function Home() {
   const netSavings = inc - spent;
   const metadata = f.user?.user_metadata || {};
   const displayName = firstName(metadata.full_name || metadata.name || f.user?.email?.split("@")[0]) || "there";
-  const avatarUrl = metadata.avatar_url || metadata.picture;
-  const avatarName = String(metadata.full_name || metadata.name || "").trim();
-  const avatarInitials = (avatarName || f.user?.email?.split("@")[0] || "U")
-    .split(/[\s._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
   return (
     <Page
       title="BudgetFlow"
       headerStyle={S.dashboardHeader}
       contentStyle={S.dashboardContent}
-      rightActions={[
-        { label: "Notifications", hint: "Notifications are not available in mobile yet", icon: <AppIcon name="notifications" size={19} color={theme.colors.text} />, onPress: () => Alert.alert("Notifications", "Notifications are not available in the mobile app yet."), style: S.headerIconAction },
-        { label: "Open account", hint: "Opens your account and settings", icon: avatarUrl ? <Image source={{ uri: avatarUrl }} style={S.dashboardAvatarImage} /> : <View style={[S.dashboardAvatarFallback, { backgroundColor: theme.colors.primary }]}><Text style={[S.dashboardAvatarInitials, { color: theme.colors.onPrimary }]}>{avatarInitials || "U"}</Text></View>, onPress: () => router.push("/account"), style: S.headerAvatarAction },
-      ]}
     >
       <View style={[S.monthPill, { backgroundColor: theme.colors.purpleTint }]}>
         <CalendarDays size={16} color={theme.colors.accentText} accessible={false} />
@@ -1209,6 +1230,7 @@ function BudgetCard({ budget, detail = true, compact = false }) {
     pct = Number(budget.amount) ? (spent / Number(budget.amount)) * 100 : 0,
     days = daysInMonth(budget.month),
     daily = Number(budget.amount) / Math.max(days, 1),
+    weekly = weeklyBudgetSummary({ budget, transactions: f.transactions, today: new Date().toISOString().slice(0, 10) }),
     usageState = budgetUsageState(pct),
     progressColor = remain < 0
       ? theme.colors.danger
@@ -1221,7 +1243,7 @@ function BudgetCard({ budget, detail = true, compact = false }) {
       accessibilityRole={detail ? "button" : undefined}
       accessibilityLabel={
         detail
-          ? `${budget.category} budget, ${usageState}, ${Math.round(pct)} percent used, ${accessibleMoney(spent, f.currency)} spent of ${accessibleMoney(budget.amount, f.currency)}, ${remain < 0 ? `${accessibleMoney(Math.abs(remain), f.currency)} over budget` : `${accessibleMoney(remain, f.currency)} remaining`}`
+          ? `${budget.category} budget, ${usageState}, ${Math.round(pct)} percent used, ${accessibleMoney(spent, f.currency)} spent of ${accessibleMoney(budget.amount, f.currency)}, ${remain < 0 ? `${accessibleMoney(Math.abs(remain), f.currency)} over budget` : `${accessibleMoney(remain, f.currency)} remaining`}${weekly ? `. This week: ${accessibleMoney(weekly.spent, f.currency)} spent of ${accessibleMoney(weekly.target, f.currency)} target; ${weekly.remaining < 0 ? `over weekly target by ${accessibleMoney(Math.abs(weekly.remaining), f.currency)}` : weekly.remaining === 0 ? "at weekly target" : `${accessibleMoney(weekly.remaining, f.currency)} remaining, within weekly target`}` : ""}`
           : undefined
       }
       accessibilityHint={
@@ -1259,6 +1281,21 @@ function BudgetCard({ budget, detail = true, compact = false }) {
               : `${money(remain, f.symbol)} left`}
           </Text>
         </View>
+        {weekly ? (
+          <View style={[S.budgetWeeklySummary, { backgroundColor: theme.colors.mutedTint, borderColor: theme.colors.border }]}>
+            <View style={S.row}>
+              <Text style={[S.budgetWeeklyHeading, { color: theme.colors.text }]}>This week</Text>
+              <Text style={[S.budgetWeeklyStatus, { color: weekly.remaining < 0 ? theme.colors.danger : weekly.remaining === 0 ? theme.colors.accentText : theme.colors.positive }]}>{weekly.status}</Text>
+            </View>
+            <View style={S.row}>
+              <Text style={[S.caption, { color: theme.colors.secondaryText }]}>Spent {money(weekly.spent, f.symbol)}</Text>
+              <Text style={[S.caption, { color: theme.colors.secondaryText }]}>Target {money(weekly.target, f.symbol)}</Text>
+            </View>
+            <Text style={[S.caption, { color: weekly.remaining < 0 ? theme.colors.danger : theme.colors.positive }]}>
+              {weekly.remaining < 0 ? `Over weekly target by ${money(Math.abs(weekly.remaining), f.symbol)}` : weekly.remaining === 0 ? "At weekly target" : `${money(weekly.remaining, f.symbol)} remaining this week`}
+            </Text>
+          </View>
+        ) : null}
       </Card>
     </Pressable>
   );
@@ -1416,6 +1453,7 @@ function BudgetDetail() {
     todaySpent = expenses
       .filter((t) => t.date === today)
       .reduce((a, t) => a + Number(t.amount), 0),
+    weekly = weeklyBudgetSummary({ budget, transactions: expenses, today }),
     original = Number(budget.amount) / Math.max(days, 1),
     remaining = Number(budget.amount) - spent,
     remainingDays = Math.max(days - new Date().getDate(), 0),
@@ -1580,6 +1618,15 @@ function BudgetDetail() {
                   : "Above expected pace"}
               </Text>
             </Card>
+            {weekly ? <>
+              <Section title="Weekly spending" />
+              <Card style={S.budgetWeeklyDetail}>
+                <Metric label="Weekly target" value={`${money(weekly.target, f.symbol)} / week`} />
+                <Metric label="Spent this week" value={money(weekly.spent, f.symbol)} />
+                <Metric label={weekly.remaining < 0 ? "Over weekly target by" : weekly.remaining === 0 ? "Status" : "Remaining this week"} value={weekly.remaining < 0 ? money(Math.abs(weekly.remaining), f.symbol) : weekly.remaining === 0 ? "At weekly target" : money(weekly.remaining, f.symbol)} color={weekly.remaining < 0 ? theme.colors.danger : weekly.remaining === 0 ? theme.colors.accentText : theme.colors.positive} />
+                {weekly.remaining > 0 ? <Text style={[S.budgetWeeklyStatus, { color: theme.colors.positive }]}>Within weekly target</Text> : null}
+              </Card>
+            </> : null}
             <Section title="Spending history" />
           </>
         }
@@ -3252,7 +3299,7 @@ function Reports() {
         })}
       </Card> : <Empty text="No expenses this month" description="Category spending will appear here when you record an expense." icon={ReceiptText} actionLabel="Add transaction" onAction={() => router.push("/(tabs)/add")} />}
       <Section title="Financial Insights" />
-      <Button title={exportingPdf ? "Preparing PDF..." : "Export selected month as PDF"} loading={exportingPdf} disabled={exportingPdf} onPress={exportPdf} accessibilityHint={`Creates a PDF report for ${monthLabel(reportMonth)}`} />
+      <Button title={exportingPdf ? "Preparing PDF..." : "Download PDF Report"} loading={exportingPdf} disabled={exportingPdf} onPress={exportPdf} accessibilityHint={`Creates a PDF report for ${monthLabel(reportMonth)}`} />
       <Card style={S.insightsCard}>
         {income > 0 ? <Text style={S.bodyText}>{income >= spent ? `Your income exceeded your expenses by ${money(income - spent, f.symbol)}.` : `Your expenses exceeded your income by ${money(spent - income, f.symbol)}.`}</Text> : null}
         {income > 0 && spent > 0 ? <Text style={S.bodyText}>Your expenses are {((spent / income) * 100).toFixed(1)}% of your income.</Text> : null}
@@ -4057,6 +4104,10 @@ const S = StyleSheet.create({
   homeBudgetProgress: { marginVertical: SPACE.xs },
   homeBudgetBottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACE.sm, paddingTop: SPACE.xs },
   homeBudgetRemaining: { maxWidth: "48%", fontSize: 13, fontWeight: TYPE.weight.semibold, textAlign: "right", flexShrink: 1 },
+  budgetWeeklySummary: { gap: SPACE.xs, marginTop: SPACE.sm, padding: SPACE.sm, borderWidth: 1, borderRadius: RADIUS.md },
+  budgetWeeklyHeading: { fontSize: TYPE.small, fontWeight: TYPE.weight.bold },
+  budgetWeeklyStatus: { fontSize: TYPE.caption, lineHeight: TYPE.lineHeight.caption, fontWeight: TYPE.weight.bold, textAlign: "right", flexShrink: 1 },
+  budgetWeeklyDetail: { gap: SPACE.md },
   goalChevron: { minWidth: 32, minHeight: CONTROL.minTouchTarget, alignItems: "center", justifyContent: "center" },
   goalType: { ...TEXT.secondary, marginTop: SPACE.xs, fontSize: 14 },
   goalMetrics: { flexDirection: "row", gap: SPACE.lg, marginTop: SPACE.sm },
@@ -4157,7 +4208,7 @@ const S = StyleSheet.create({
   goalAmount: { ...TEXT.metricAmount },
   goalOf: { ...TEXT.secondary, fontWeight: "500" },
   currencyInput: {
-    minHeight: 64,
+    minHeight: 56,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,

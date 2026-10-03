@@ -18,7 +18,7 @@ export function AppHeader({ title, onBack, backLabel, backHint, rightAction, rig
           <AppIcon name="back" color={colors.text} />
         </AccessibleIconButton>
       ) : null}
-      <Text accessibilityRole="header" accessibilityLabel={title} style={[styles.title, { color: colors.text }]}>
+      <Text accessibilityRole="header" accessibilityLabel={title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.title, { color: colors.text }]}>
         {title === "BudgetFlow" ? <><Text>Budget</Text><Text style={{ color: colors.accentText }}>Flow</Text></> : title}
       </Text>
       {actions.length ? <View style={styles.actions}>{actions.map((action) => (
@@ -38,6 +38,6 @@ const styles = StyleSheet.create({
     gap: SPACE.md,
     paddingHorizontal: SPACE.page,
   },
-  title: { ...TEXT.screenTitle, flex: 1, flexWrap: "wrap" },
+  title: { ...TEXT.screenTitle, flex: 1, minWidth: 0 },
   actions: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
 });
