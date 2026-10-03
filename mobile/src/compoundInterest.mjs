@@ -46,7 +46,6 @@ export function calculateCompoundInterest({
   principal,
   monthlyContribution,
   interestRate,
-  inflationRate = 0,
   years,
   frequency = "Monthly",
   contributionFrequency = "Monthly",
@@ -54,7 +53,6 @@ export function calculateCompoundInterest({
   const numericPrincipal = Number(principal);
   const numericContribution = Number(monthlyContribution);
   const numericRate = Number(interestRate);
-  const numericInflation = Number(inflationRate);
   const numericYears = Number(years);
   const simulation = simulate({
     principal: numericPrincipal,
@@ -70,12 +68,11 @@ export function calculateCompoundInterest({
     futureValue,
     totalContributions,
     interestEarned: futureValue - totalContributions,
-    inflationAdjustedValue: futureValue / Math.pow(1 + numericInflation / 100, Math.max(numericYears, 0)),
     contributionCount: simulation.contributionCount,
   };
 }
 
-export function validateCompoundInputs({ principal, monthlyContribution, interestRate, inflationRate, years }) {
+export function validateCompoundInputs({ principal, monthlyContribution, interestRate, years }) {
   const errors = {};
   const validateNonNegative = (value, key, missingMessage, invalidMessage) => {
     if (String(value).trim() === "") errors[key] = missingMessage;
@@ -85,7 +82,6 @@ export function validateCompoundInputs({ principal, monthlyContribution, interes
   validateNonNegative(principal, "principal", "Enter an initial investment.", "Initial investment must be zero or greater.");
   validateNonNegative(monthlyContribution, "contribution", "Enter a contribution amount.", "Contribution must be zero or greater.");
   validateNonNegative(interestRate, "rate", "Enter an annual interest rate.", "Interest rate must be zero or greater.");
-  validateNonNegative(inflationRate, "inflation", "Enter an inflation rate.", "Inflation rate must be zero or greater.");
   if (String(years).trim() === "") errors.years = "Enter an investment period.";
   else if (!Number.isFinite(Number(years)) || Number(years) <= 0) errors.years = "Enter a valid investment period greater than zero.";
   return errors;

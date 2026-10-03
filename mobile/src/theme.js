@@ -77,7 +77,7 @@ export const TEXT = {
   success: { fontSize: TYPE.body, fontWeight: TYPE.weight.semibold, color: COLORS.positiveText },
 };
 
-export const CONTROL = { minTouchTarget: 48, inputHeight: 52, buttonHeight: 50 };
+export const CONTROL = { minTouchTarget: 48, inputHeight: 48, buttonHeight: 50 };
 export const BORDER = { hairline: 1, standard: 1 };
 export const COMPONENT = {
   screenHorizontalPadding: SPACE.page,

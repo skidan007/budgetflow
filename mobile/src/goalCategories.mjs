@@ -8,7 +8,7 @@ export const GOAL_CATEGORIES = [
   { name: "Car", goalName: "Car Fund", icon: "transport" },
   { name: "Technology", goalName: "Technology Fund", icon: "laptop" },
   { name: "Health", goalName: "Health Fund", icon: "health" },
-  { name: "Other", goalName: "", icon: "sparkles" },
+  { name: "Other", goalName: "Other Goal", icon: "sparkles" },
 ];
 
 const categoryAliases = new Map([

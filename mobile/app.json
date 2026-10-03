@@ -3,12 +3,20 @@
     "name": "BudgetFlow",
     "slug": "budgetflow-mobile",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f83063f6-9ec3-4faf-97ae-d7c0bf757bbc",
+      "enabled": true
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "budgetflow",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.budgetflow.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +26,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.budgetflowmobile"
+      "package": "com.budgetflow.app",
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -40,13 +53,20 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#F5F6FA"
+          "backgroundColor": "#0B0F17"
         }
       ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f83063f6-9ec3-4faf-97ae-d7c0bf757bbc"
+      }
+    },
+    "owner": "skidan007"
   }
 }

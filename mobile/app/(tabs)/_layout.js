@@ -10,11 +10,11 @@ const icons = { index: 'home', budgets: 'budgets', add: 'add', goals: 'goals', m
 const labels = { index: 'Home', budgets: 'Budgets', add: 'Add transaction', goals: 'Goals', more: 'More' };
 
 export default function TabLayout() {
-  const { user, loading, error, onboardingStatus } = useFinance();
+  const { user, loading, error, onboardingStatus, onboardingStatusReady } = useFinance();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
-  if (user && !loading && !error && ['not_started', 'in_progress'].includes(onboardingStatus)) return <Redirect href="/onboarding" />;
+  if (user && !loading && !error && onboardingStatusReady && ['not_started', 'in_progress'].includes(onboardingStatus)) return <Redirect href="/onboarding" />;
 
   return (
     <Tabs
