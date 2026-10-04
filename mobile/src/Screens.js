@@ -4,7 +4,6 @@ import {
   Alert,
   BackHandler,
   FlatList,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -24,6 +23,8 @@ import * as WebBrowser from "expo-web-browser";
 import Svg, { Circle, Path } from "react-native-svg";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import {
   ArrowDownLeft,
   ArrowDown,
@@ -55,6 +56,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { announceAccessibility } from "../components/accessibility/announce";
 import { BudgetFlowLogo } from "../components/ui/BudgetFlowLogo";
+import { AvatarIllustration, BUILT_IN_AVATARS, UserAvatar } from "../components/ui/UserAvatar";
 import { analyzeMonthlyChange, monthlyChangeTone } from "./monthlyChange.mjs";
 import { budgetPerformance, expenseCategoryTotals, totalForType, transactionMonth, transactionsForMonth } from "./reports.mjs";
 import { calculateCompoundInterest, validateCompoundInputs } from "./compoundInterest.mjs";
@@ -167,16 +169,6 @@ function Page({
   const router = useRouter();
   const pathname = usePathname();
   const theme = useTheme();
-  const metadata = f.user?.user_metadata || {};
-  const avatarUrl = metadata.avatar_url || metadata.picture;
-  const avatarName = String(metadata.full_name || metadata.name || "").trim();
-  const avatarInitials = (avatarName || f.user?.email?.split("@")[0] || "U")
-    .split(/[\s._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
   const globalActions = [
     {
       label: "Notifications",
@@ -188,9 +180,7 @@ function Page({
     {
       label: "Open account",
       hint: "Opens your account and settings",
-      icon: avatarUrl
-        ? <Image source={{ uri: avatarUrl }} style={S.dashboardAvatarImage} />
-        : <View style={[S.dashboardAvatarFallback, { backgroundColor: theme.colors.primary }]}><Text style={[S.dashboardAvatarInitials, { color: theme.colors.onPrimary }]}>{avatarInitials || "U"}</Text></View>,
+      icon: <UserAvatar user={f.user} size={34} />,
       onPress: () => { if (!pathname?.endsWith("/account")) router.push("/account"); },
       style: S.headerAvatarAction,
     },
@@ -740,7 +730,7 @@ function ChangeIndicator({ metric, analysis, highContrast = false }) {
   const tone = monthlyChangeTone(metric, analysis.direction);
   const color = highContrast
     ? tone === "positive" ? "#86EFAC" : tone === "danger" ? "#FCA5A5" : "#E8E4FF"
-    : tone === "positive" ? colors.positive : tone === "danger" ? colors.danger : colors.secondaryText;
+    : tone === "positive" ? colors.positive : tone === "danger" ? colors.danger : colors.muted;
   const DirectionIcon = analysis.direction === "up" ? ArrowUp : analysis.direction === "down" ? ArrowDown : analysis.direction === "same" ? Minus : null;
   return (
     <View accessibilityRole="text" accessibilityLabel={analysis.spoken} style={S.changeIndicator}>
@@ -912,7 +902,7 @@ function Home() {
             </View>
             {/* <ChevronRight size={21} color={theme.colors.accentText} accessible={false} /> */}
           </View>
-          <Text style={S.summaryAmount} numberOfLines={1} adjustsFontSizeToFit>{money(inc, f.symbol)}</Text>
+          <Text style={[S.summaryAmount, { color: theme.colors.income }]} numberOfLines={1} adjustsFontSizeToFit>{money(inc, f.symbol)}</Text>
           <ChangeIndicator metric="income" analysis={incomeChange} />
           {inc === 0 && <Text style={S.caption}>No income recorded this month.</Text>}
         </Card>
@@ -924,7 +914,7 @@ function Home() {
             </View>
             {/* <ChevronRight size={21} color={theme.colors.accentText} accessible={false} /> */}
           </View>
-          <Text style={S.summaryAmount} numberOfLines={1} adjustsFontSizeToFit>{money(spent, f.symbol)}</Text>
+          <Text style={[S.summaryAmount, { color: theme.colors.expense }]} numberOfLines={1} adjustsFontSizeToFit>{money(spent, f.symbol)}</Text>
           <ChangeIndicator metric="expenses" analysis={expensesChange} />
         </Card>
       </View>
@@ -935,7 +925,7 @@ function Home() {
         <FunctionalIcon name="savings" tone={netSavings < 0 ? "red" : "teal"} containerSize={42} size={20} />
         <View style={S.monthlySavingsCopy}>
           <Text style={S.summaryLabel}>{netSavings < 0 ? "Net deficit this month" : "Net savings this month"}</Text>
-          <Text style={[S.monthlySavingsAmount, netSavings < 0 && { color: theme.colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+          <Text style={[S.monthlySavingsAmount, { color: netSavings < 0 ? theme.colors.danger : theme.colors.success }]} numberOfLines={1} adjustsFontSizeToFit>
             {netSavings < 0 ? `-${money(Math.abs(netSavings), f.symbol)}` : money(netSavings, f.symbol)}
           </Text>
         </View>
@@ -2797,18 +2787,12 @@ function Account() {
   const f = useFinance();
   const router = useRouter();
   const theme = useTheme();
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const metadata = f.user?.user_metadata || {};
   const name = String(metadata.full_name || metadata.name || "").trim()
     || f.user?.email?.split("@")[0]
     || "BudgetFlow user";
-  const avatarUrl = metadata.avatar_url || metadata.picture;
-  const initials = name
-    .split(/[\s._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase() || "U";
   const providers = f.user?.app_metadata?.providers || [];
   const provider = providers.includes("google") || f.user?.app_metadata?.provider === "google"
     ? "Google"
@@ -2818,19 +2802,64 @@ function Account() {
     <Page title="Account" back={backTo(router, "/")} backLabel="Back to Dashboard" backHint="Returns to your Dashboard">
       <SettingsSection title="Profile">
         <Card style={S.accountIdentityCard}>
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={S.accountAvatar} accessibilityLabel={`${name}'s profile photo`} />
-          ) : (
-            <View style={[S.accountAvatarFallback, { backgroundColor: theme.colors.primary }]} accessible={false}>
-              <Text style={[S.accountAvatarInitials, { color: theme.colors.onPrimary }]}>{initials}</Text>
-            </View>
-          )}
+          <UserAvatar user={f.user} size={56} />
           <View style={S.accountIdentityCopy}>
             <Text style={[S.cardTitle, { color: theme.colors.text }]} numberOfLines={1}>{name}</Text>
             {f.user?.email ? <Text style={[S.caption, { marginTop: 3, color: theme.colors.secondaryText }]} numberOfLines={2}>{f.user.email}</Text> : null}
             <Text style={[S.caption, { marginTop: 3, color: theme.colors.secondaryText }]}>{provider} account</Text>
           </View>
         </Card>
+        <View style={S.profilePictureActions}>
+          <Text style={[S.cardTitle, { color: theme.colors.text }]}>Profile picture</Text>
+          <View style={S.profilePictureButtons}>
+            <SharedButton title="Choose avatar" onPress={() => setAvatarPickerOpen(true)} variant="secondary" />
+            <SharedButton title={uploadingAvatar ? "Uploading…" : "Upload photo"} disabled={uploadingAvatar} onPress={async () => {
+              try {
+                let permission = await ImagePicker.getMediaLibraryPermissionsAsync();
+                if (!permission.granted) permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (!permission.granted) { Alert.alert("Photo access needed", "Allow photo library access to choose a profile picture."); return; }
+                const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.85 });
+                if (result.canceled) return;
+                const asset = result.assets?.[0];
+                if (!asset?.uri || (asset.mimeType && !asset.mimeType.startsWith("image/"))) { Alert.alert("Invalid image", "Choose a valid image file."); return; }
+                setUploadingAvatar(true);
+                const optimized = await ImageManipulator.manipulateAsync(asset.uri, [{ resize: { width: 512, height: 512 } }], { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG });
+                const response = await fetch(optimized.uri);
+                const blob = await response.blob();
+                if (!blob.size || blob.size > 3 * 1024 * 1024) throw new Error("The selected image could not be prepared. Please choose another photo.");
+                const path = `${f.user.id}/avatar.jpg`;
+                const { error: uploadError } = await supabase.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
+                if (uploadError) throw uploadError;
+                const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+                const { error: profileError } = await supabase.auth.updateUser({ data: { custom_avatar_url: `${publicUrl}?v=${Date.now()}`, selected_avatar_id: null } });
+                if (profileError) throw profileError;
+                Alert.alert("Profile picture updated", "Your new photo is now saved to your BudgetFlow profile.");
+              } catch (error) { Alert.alert("Photo upload failed", error?.message || "Check your connection and try again."); }
+              finally { setUploadingAvatar(false); }
+            }} />
+          </View>
+        </View>
+        <Modal visible={avatarPickerOpen} transparent animationType="slide" onRequestClose={() => setAvatarPickerOpen(false)}>
+          <View style={S.avatarModalBackdrop}>
+            <View style={[S.avatarModal, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+              <Text style={[TEXT.sectionTitle, { color: theme.colors.text }]}>Choose an avatar</Text>
+              <Text style={[S.caption, { color: theme.colors.secondaryText }]}>Pick a friendly BudgetFlow avatar for your profile.</Text>
+              <View style={S.avatarChoices}>
+                {BUILT_IN_AVATARS.map((avatar) => <Pressable key={avatar.id} accessibilityRole="button" accessibilityLabel={`Select ${avatar.id} avatar`} onPress={async () => {
+                  try {
+                    const { error } = await supabase.auth.updateUser({ data: { selected_avatar_id: avatar.id, custom_avatar_url: null } });
+                    if (error) throw error;
+                    setAvatarPickerOpen(false);
+                  } catch (error) { Alert.alert("Avatar update failed", error?.message || "Please try again."); }
+                }} style={[S.avatarChoice, metadata.selected_avatar_id === avatar.id && { borderColor: theme.colors.accentText, backgroundColor: theme.colors.purpleTint }]}>
+                  <AvatarIllustration avatarId={avatar.id} size={58} />
+                  {metadata.selected_avatar_id === avatar.id ? <Check size={16} color={theme.colors.accentText} /> : null}
+                </Pressable>)}
+              </View>
+              <SharedButton title="Cancel" variant="secondary" onPress={() => setAvatarPickerOpen(false)} />
+            </View>
+          </View>
+        </Modal>
       </SettingsSection>
 
       <SettingsSection title="Account">
@@ -4407,6 +4436,12 @@ const S = StyleSheet.create({
   accountAvatarFallback: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
   accountAvatarInitials: { fontSize: 17, lineHeight: 22, fontWeight: TYPE.weight.bold },
   accountIdentityCopy: { flex: 1, minWidth: 0 },
+  profilePictureActions: { gap: SPACE.sm, marginTop: SPACE.md, paddingHorizontal: SPACE.sm },
+  profilePictureButtons: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
+  avatarModalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
+  avatarModal: { gap: SPACE.md, padding: SPACE.lg, paddingBottom: SPACE.xxl, borderTopLeftRadius: RADIUS.card, borderTopRightRadius: RADIUS.card, borderWidth: 1 },
+  avatarChoices: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: SPACE.sm },
+  avatarChoice: { width: 72, height: 72, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 2, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: "transparent" },
   smartPlanIcon: { width: 36, height: 36, borderRadius: Math.round(36 * 0.29), alignItems: "center", justifyContent: "center" },
   smartPlanSparkle: { position: "absolute", top: 3, right: 3, backgroundColor: "transparent" },
   dashboardOverviewHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: SPACE.sm, marginTop: SPACE.sm },

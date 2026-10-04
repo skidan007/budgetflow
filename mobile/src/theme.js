@@ -7,6 +7,10 @@ export const COLORS = {
   secondaryText: '#6B7280',
   positive: '#16A34A',
   positiveText: '#15803D',
+  income: '#166534',
+  expense: '#B42332',
+  success: '#166534',
+  muted: '#596273',
   warning: '#F59E0B',
   danger: '#DC2626',
   heroText: '#C7CDE0',
@@ -35,6 +39,15 @@ export const THEMES = {
   light: { ...COLORS, background: '#F5F6FA', card: '#FFFFFF', white: '#FFFFFF', onPrimary: '#FFFFFF', accentText: '#5B4BDB', inputBackground: '#FFFFFF', text: '#111827', navy: '#111827', secondaryText: '#596273', placeholder: '#687184', border: '#E1E4EB', borderSubtle: '#ECEEF3', controlBackground: '#E9EBF2', noticeBackground: '#F7F5FF', tabInactive: '#70798A', purpleTint: '#F0EEFF', greenTint: '#EAF8EF', redTint: '#FCEEEE', mutedTint: '#F1F2F6', positive: '#15803D', positiveText: '#166534', danger: '#B42332', warning: '#A65B00', divider: '#ECEEF3', elevated: '#FFFFFF', overlay: 'rgba(17,24,39,0.42)', chartGrid: '#ECEEF3', chartLabel: '#596273', accessibleText: '#111827' },
   dark: { ...COLORS, primary: '#6C4DFF', background: '#0B0F17', card: '#171E2A', white: '#171E2A', onPrimary: '#FFFFFF', accentText: '#B8ACFF', inputBackground: '#0F141D', text: '#F8FAFC', navy: '#111827', secondaryText: '#A7B0C0', placeholder: '#9AA3B4', border: '#2A3445', borderSubtle: '#253043', controlBackground: '#111827', noticeBackground: '#14261E', tabInactive: '#98A4B8', purpleTint: '#292246', greenTint: '#153326', redTint: '#382129', mutedTint: '#263143', positive: '#22C55E', positiveText: '#34D399', danger: '#EF4444', warning: '#F59E0B', heroText: '#E8E4FF', borderPurple: '#62599B', borderPurpleSoft: '#494265', borderPurpleStrong: '#62599B', borderDanger: '#74414A', overlayWhite12: 'rgba(255,255,255,.08)', overlayWhite14: 'rgba(255,255,255,.10)', overlayWhite16: 'rgba(255,255,255,.12)', overlayWhite18: 'rgba(255,255,255,.14)', divider: '#253043', elevated: '#1D2635', overlay: 'rgba(0,0,0,0.72)', chartGrid: '#343B49', chartLabel: '#A7B0C0', accessibleText: '#F8FAFC' },
 };
+
+THEMES.light.income = '#166534';
+THEMES.light.expense = '#B42332';
+THEMES.light.success = '#166534';
+THEMES.light.muted = '#596273';
+THEMES.dark.income = '#4ADE80';
+THEMES.dark.expense = '#F87171';
+THEMES.dark.success = '#4ADE80';
+THEMES.dark.muted = '#A7B0C0';
 
 export const FUNCTIONAL_ICON_TONES = {
   green: { light: { foreground: '#137A48', background: '#E8F6ED' }, dark: { foreground: '#64D995', background: '#17372A' } },
