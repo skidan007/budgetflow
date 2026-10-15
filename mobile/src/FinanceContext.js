@@ -320,18 +320,63 @@ export function FinanceProvider({ children }) {
     return saved;
   };
 
-  const updateTransactionAmount = async (transactionId, amount) => {
+  const updateTransaction = async (transactionId, input) => {
     if (!user) throw new Error('You must be logged in to update a transaction.');
-    const { data, error: updateError } = await supabase.from('transactions')
-      .update({ amount: Number(amount) })
-      .eq('id', transactionId)
-      .eq('user_id', user.id)
-      .select()
-      .single();
-    if (updateError) throw updateError;
-    const saved = { ...data, amount: Number(data.amount), month: data.month || data.date?.slice(0, 7) };
+    const patch = {};
+    if (input.type !== undefined) patch.type = input.type;
+    if (input.category !== undefined) patch.category = String(input.category || '').trim();
+    if (input.amount !== undefined) patch.amount = Number(input.amount);
+    if (input.date !== undefined) {
+      patch.date = input.date;
+      patch.month = input.date.slice(0, 7);
+    }
+    if (input.currency !== undefined) patch.currency = input.currency;
+    if (input.description !== undefined) patch.description = String(input.description || '').trim();
+    if (!Object.keys(patch).length) throw new Error('No transaction changes were provided.');
+
+    let payload = { ...patch };
+    let result;
+    while (true) {
+      result = await supabase.from('transactions')
+        .update(payload)
+        .eq('id', transactionId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      if (result.error?.code === 'PGRST204' && result.error.message.includes('month') && 'month' in payload) {
+        delete payload.month;
+        continue;
+      }
+      if (result.error?.code === 'PGRST204' && result.error.message.includes('description')) {
+        const existing = transactions.find((item) => String(item.id) === String(transactionId));
+        const unchanged = String(existing?.description || '') === String(input.description || '');
+        if (unchanged && 'description' in payload) {
+          delete payload.description;
+          continue;
+        }
+      }
+      break;
+    }
+    if (result.error) throw result.error;
+    if (!result.data) throw new Error('Transaction not found.');
+    const saved = { ...result.data, amount: Number(result.data.amount), month: result.data.month || result.data.date?.slice(0, 7) };
     setTransactions((items) => items.map((item) => String(item.id) === String(transactionId) ? { ...item, ...saved } : item));
     return saved;
+  };
+
+  const updateTransactionAmount = async (transactionId, amount) => updateTransaction(transactionId, { amount });
+
+  const deleteTransaction = async (transactionId) => {
+    if (!user) throw new Error('You must be logged in to delete a transaction.');
+    const { data, error: deleteError } = await supabase.from('transactions')
+      .delete()
+      .eq('id', transactionId)
+      .eq('user_id', user.id)
+      .select('id')
+      .maybeSingle();
+    if (deleteError) throw deleteError;
+    if (!data) throw new Error('Transaction not found or is not available to this account.');
+    setTransactions((items) => items.filter((item) => String(item.id) !== String(transactionId)));
   };
 
   const saveBudget = async (input) => {
@@ -504,7 +549,7 @@ export function FinanceProvider({ children }) {
     await AsyncStorage.setItem('defaultCurrency', value);
   };
   const signOut = async () => { const { error: signOutError } = await supabase.auth.signOut(); if (signOutError) throw signOutError; };
-  const value = { user, authReady, loading: !authReady || loading, error, errorKind, refreshError, resourceErrors, startupStage, transactions, budgets, goals, goalSyncSnapshot, profile, cycle, currency, onboardingStatus, onboardingStatusReady, symbol: currencySymbols[currency] || '₦', currentMonth, refresh, addTransaction, updateTransactionAmount, saveBudget, deleteBudget, saveGoal, updateGoal, deleteGoal, addSaving, deleteSaving, completeFinancialCycle, saveFinancialProfile, saveOnboardingStatus, changeCurrency, signOut };
+  const value = { user, authReady, loading: !authReady || loading, error, errorKind, refreshError, resourceErrors, startupStage, transactions, budgets, goals, goalSyncSnapshot, profile, cycle, currency, onboardingStatus, onboardingStatusReady, symbol: currencySymbols[currency] || '₦', currentMonth, refresh, addTransaction, updateTransaction, updateTransactionAmount, deleteTransaction, saveBudget, deleteBudget, saveGoal, updateGoal, deleteGoal, addSaving, deleteSaving, completeFinancialCycle, saveFinancialProfile, saveOnboardingStatus, changeCurrency, signOut };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

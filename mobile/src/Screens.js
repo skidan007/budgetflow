@@ -4,6 +4,7 @@ import {
   Alert,
   BackHandler,
   FlatList,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -23,16 +24,16 @@ import * as WebBrowser from "expo-web-browser";
 import Svg, { Circle, Path } from "react-native-svg";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
 import {
   ArrowDownLeft,
   ArrowDown,
   ArrowUpRight,
   ArrowUp,
   CalendarDays,
+  Download,
   ChartNoAxesColumnIncreasing,
   Check,
+  CircleCheck,
   PiggyBank,
   ShieldCheck,
   TrendingUp,
@@ -46,6 +47,7 @@ import {
   EyeOff,
   Landmark,
   Minus,
+  Pencil,
   ReceiptText,
   Sparkles,
   Trash2,
@@ -487,6 +489,7 @@ export function AuthScreen() {
   const router = useRouter();
   const theme = useTheme();
   const redirectTo = useMemo(() => makeRedirectUri({ scheme: "budgetflow" }), []);
+  const confirmationRedirectTo = useMemo(() => makeRedirectUri({ scheme: "budgetflow", path: "auth/callback" }), []);
   const showGoogleError = useCallback((error) => {
     const message = googleAuthErrorMessage(error);
     const previous = lastGoogleAlert.current;
@@ -601,7 +604,7 @@ export function AuthScreen() {
     setBusy(true);
     try {
       const res = signup
-        ? await supabase.auth.signUp({ email: email.trim(), password })
+        ? await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: confirmationRedirectTo } })
         : await supabase.auth.signInWithPassword({
             email: email.trim(),
             password,
@@ -801,11 +804,10 @@ function Home() {
   const incomeChange = analyzeMonthlyChange(inc, previousIncome, previousTx.length > 0);
   const expensesChange = analyzeMonthlyChange(spent, previousExpenses, previousTx.length > 0);
   const balanceChange = analyzeMonthlyChange(inc - spent, previousBalance, hasPreviousBalance);
-  const recentTransactions = useMemo(() => f.transactions
+  const latestTransaction = useMemo(() => f.transactions
     .filter((transaction) => (transaction.currency || "NGN") === f.currency)
     .slice()
-    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
-    .slice(0, 5), [f.transactions, f.currency]);
+    .sort((a, b) => String(b.created_at || b.date || "").localeCompare(String(a.created_at || a.date || "")))[0] || null, [f.transactions, f.currency]);
   const bud = f.budgets.filter(
       (b) => b.currency === f.currency && b.month === f.currentMonth,
     ),
@@ -871,23 +873,42 @@ function Home() {
         <Text style={S.sub}>Here&apos;s your financial overview.</Text>
         <Text style={S.caption}>Currency: {f.currency}</Text>
       </View>
-      <Card style={[S.hero, { backgroundColor: theme.isDark ? "#352DA0" : "#5143C7", borderColor: theme.isDark ? "#5145D5" : "#5143C7" }]}>
-        <View pointerEvents="none" style={S.heroGlow} />
-        <View style={S.heroTop}>
-          <View>
-            <Text style={[S.heroLabel, { color: "#F8FAFC" }]} accessible={false}>TOTAL BALANCE</Text>
-            <View style={S.balanceAmountRow}>
-              <Text style={[S.heroAmount, { color: theme.colors.onPrimary }]} accessibilityLabel={balanceVisible ? `Total balance, ${accessibleMoney(inc - spent, f.currency)}` : "Total balance hidden"}>{balanceVisible ? money(inc - spent, f.symbol) : "••••••"}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? "Hide total balance" : "Show total balance"} accessibilityHint="Toggles whether your total balance is visible" onPress={() => setBalanceVisible((visible) => !visible)} style={S.balanceVisibility}>
-                {balanceVisible ? <Eye size={19} color="#FFFFFF" /> : <EyeOff size={19} color="#FFFFFF" />}
-              </Pressable>
+      <Card style={S.balanceTransactionCard}>
+        <View style={[S.hero, { backgroundColor: theme.isDark ? "#352DA0" : "#5143C7", borderColor: theme.isDark ? "#5145D5" : "#5143C7" }]}>
+          <View pointerEvents="none" style={S.heroGlow} />
+          <View style={S.heroTop}>
+            <View>
+              <Text style={[S.heroLabel, { color: "#F8FAFC" }]} accessible={false}>TOTAL BALANCE</Text>
+              <View style={S.balanceAmountRow}>
+                <Text style={[S.heroAmount, { color: theme.colors.onPrimary }]} accessibilityLabel={balanceVisible ? `Total balance, ${accessibleMoney(inc - spent, f.currency)}` : "Total balance hidden"}>{balanceVisible ? money(inc - spent, f.symbol) : "••••••"}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? "Hide total balance" : "Show total balance"} accessibilityHint="Toggles whether your total balance is visible" onPress={() => setBalanceVisible((visible) => !visible)} style={S.balanceVisibility}>
+                  {balanceVisible ? <Eye size={19} color="#FFFFFF" /> : <EyeOff size={19} color="#FFFFFF" />}
+                </Pressable>
+              </View>
+            </View>
+            <View style={S.balanceIcon}>
+              <Wallet size={21} color="#FFFFFF" accessible={false} />
             </View>
           </View>
-          <View style={S.balanceIcon}>
-            <Wallet size={21} color="#FFFFFF" accessible={false} />
-          </View>
+          <ChangeIndicator metric="balance" analysis={balanceChange} highContrast />
         </View>
-        <ChangeIndicator metric="balance" analysis={balanceChange} highContrast />
+        <View style={[S.dashboardTransactionRow, { backgroundColor: theme.isDark ? "#292246" : "#392B78" }]}>
+          <View style={S.dashboardTransactionSummary}>
+            <CircleCheck size={16} color={FUNCTIONAL_ICON_TONES[latestTransaction?.type === "Income" ? "green" : "red"][theme.themeName].foreground} strokeWidth={2} accessible={false} />
+            {latestTransaction ? <>
+              <Text style={[S.dashboardTransactionText, { color: "#F8FAFC" }]} numberOfLines={1}>
+                {latestTransaction.type === "Income" ? `Received from ${latestTransaction.category || "Income"}` : `Spent on ${latestTransaction.category || "Expense"}`}
+              </Text>
+              <Text style={[S.dashboardTransactionAmount, { color: FUNCTIONAL_ICON_TONES[latestTransaction.type === "Income" ? "green" : "red"][theme.themeName].foreground }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                {latestTransaction.type === "Income" ? "+" : "−"}{money(latestTransaction.amount, f.symbol)}
+              </Text>
+            </> : <Text style={[S.dashboardTransactionText, { color: "#F8FAFC" }]} numberOfLines={1}>No transactions yet</Text>}
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Transactions" accessibilityHint="Opens your full transaction history" onPress={() => router.push("/transactions")} style={S.dashboardTransactionsLink}>
+            <Text style={[S.dashboardTransactionsLinkText, { color: "#FFFFFF" }]} numberOfLines={1}>Transactions</Text>
+            <ChevronRight size={16} color="#FFFFFF" accessible={false} />
+          </Pressable>
+        </View>
       </Card>
       <View style={S.dashboardOverviewHeader}>
         <Text accessibilityRole="header" style={[S.dashboardOverviewTitle, { color: theme.colors.text }]}>Monthly Overview</Text>
@@ -995,7 +1016,7 @@ function Home() {
           <View style={[S.dailyStatWide, { backgroundColor: theme.colors.elevated, borderColor: theme.colors.border, borderWidth: 1, shadowColor: theme.colors.text, shadowOpacity: theme.isDark ? 0 : 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: theme.isDark ? 0 : 2 }]}><FunctionalIcon name={weeklyRemaining < 0 ? "expenses" : "history"} tone={weeklyRemaining < 0 ? "red" : "orange"} containerSize={34} size={17} /><Text style={[S.dailyLabel, { color: theme.colors.secondaryText }]}>{weeklyRemaining < 0 ? "OVER WEEKLY TARGET" : "REMAINING THIS WEEK"}</Text><Text style={[S.dailyValue, { color: theme.colors.text }]} numberOfLines={1} adjustsFontSizeToFit>{money(Math.abs(weeklyRemaining), f.symbol)}</Text></View>
         </View>
         <View accessible accessibilityLabel={!monthlyBudget ? "Create a budget to set a weekly spending target" : weeklyRemaining < 0 ? `You are over this week's target by ${accessibleMoney(Math.abs(weeklyRemaining), f.currency)}` : weeklyRemaining === 0 ? "This week's target reached" : "You are within this week's target"} style={[S.dailyNotice, { backgroundColor: !monthlyBudget ? theme.colors.mutedTint : weeklyRemaining < 0 ? theme.colors.redTint : weeklyRemaining === 0 ? theme.colors.purpleTint : theme.colors.greenTint, borderColor: weeklyRemaining < 0 ? theme.colors.borderDanger : weeklyRemaining === 0 ? theme.colors.borderPurple : theme.colors.border, borderWidth: 1 }]}>
-          <Text style={[S.dailyNoticeTitle, { color: !monthlyBudget ? theme.colors.secondaryText : weeklyRemaining < 0 ? theme.colors.danger : weeklyRemaining === 0 ? theme.colors.accentText : theme.colors.positive }]}>{!monthlyBudget ? "Create a budget to set a weekly target" : weeklyRemaining < 0 ? `Over this week&apos;s target by ${money(Math.abs(weeklyRemaining), f.symbol)}` : weeklyRemaining === 0 ? "This week&apos;s target reached" : "Within this week&apos;s target"}</Text>
+          <Text style={[S.dailyNoticeTitle, { color: !monthlyBudget ? theme.colors.secondaryText : weeklyRemaining < 0 ? theme.colors.danger : weeklyRemaining === 0 ? theme.colors.accentText : theme.colors.positive }]}>{!monthlyBudget ? "Create a budget to set a weekly target" : weeklyRemaining < 0 ? `Over this week&apos;s target by ${money(Math.abs(weeklyRemaining), f.symbol)}` : weeklyRemaining === 0 ? "This week&apos;s target reached" : "Within this week's target"}</Text>
         </View>
       </Card>
       <Section title="Quick Actions" />
@@ -1041,23 +1062,6 @@ function Home() {
           icon={Landmark}
           actionLabel="Create a goal"
           onAction={() => router.push("/goals")}
-        />
-      )}
-      <Section
-        title="Recent Transactions"
-        action="View all transactions"
-        onPress={() => router.push("/transactions")}
-      />
-      {recentTransactions.map((transaction) => (
-        <Transaction key={transaction.id} t={transaction} symbol={f.symbol} currency={f.currency} />
-      ))}
-      {!recentTransactions.length && (
-        <Empty
-          text="No transactions yet"
-          description="Add your first income or expense."
-          icon={ArrowUpRight}
-          actionLabel="Add transaction"
-          onAction={() => router.push("/add")}
         />
       )}
       <Section title="Monthly cycle" />
@@ -1660,7 +1664,7 @@ export function AddScreen() {
 function Add() {
   const f = useFinance(),
     router = useRouter(),
-    { type: requestedType } = useLocalSearchParams(),
+    { type: requestedType, transactionId: requestedTransactionId } = useLocalSearchParams(),
     theme = useTheme(),
     [type, setType] = useState(requestedType === "Income" ? "Income" : "Expense"),
     [amount, setAmount] = useState(""),
@@ -1676,20 +1680,59 @@ function Add() {
     [categoryPickerOpen, setCategoryPickerOpen] = useState(false),
     [categorySearch, setCategorySearch] = useState("");
   const submittingRef = useRef(false);
+  const editInitializedRef = useRef(null);
+  const transactionId = Array.isArray(requestedTransactionId) ? requestedTransactionId[0] : requestedTransactionId;
+  const editingTransaction = transactionId
+    ? f.transactions.find((transaction) => String(transaction.id) === String(transactionId))
+    : null;
   const amountSelectionRef = useRef({ start: 0, end: 0 });
   const amountDisplay = money(amount, "", { editing: true });
   useFocusEffect(useCallback(() => {
-    if (requestedType === "Income" || requestedType === "Expense") {
+    if (transactionId) {
+      if (!editingTransaction) {
+        Alert.alert("Transaction unavailable", "This transaction could not be found in your account.");
+        router.back();
+        return;
+      }
+      if (editInitializedRef.current === String(transactionId)) return;
+      editInitializedRef.current = String(transactionId);
+      setType(editingTransaction.type === "Income" ? "Income" : "Expense");
+      setAmount(String(editingTransaction.amount ?? ""));
+      setCategory(editingTransaction.category || "");
+      setDate(editingTransaction.date || new Date().toISOString().slice(0, 10));
+      setDesc(editingTransaction.description || "");
+      setErrors({});
+      setNotice("");
+      const end = money(String(editingTransaction.amount ?? ""), "", { editing: true }).length;
+      const selection = { start: end, end };
+      setAmountSelection(selection);
+      amountSelectionRef.current = selection;
+    } else {
+      if (editInitializedRef.current) {
+        editInitializedRef.current = null;
+        setAmount("");
+        setAmountSelection({ start: 0, end: 0 });
+        amountSelectionRef.current = { start: 0, end: 0 };
+        setDate(new Date().toISOString().slice(0, 10));
+        setDesc("");
+        setErrors({});
+        setNotice("");
+      }
+      if (requestedType === "Income" || requestedType === "Expense") {
       setType(requestedType);
       setCategory(requestedType === "Income" ? "Salary" : "");
+      }
     }
-  }, [requestedType]));
-  const categories = useMemo(
-    () => type === "Expense"
+  }, [transactionId, editingTransaction, requestedType, router]));
+  const categories = useMemo(() => {
+    const available = type === "Expense"
       ? getAvailableExpenseCategoriesFromBudgets(f.budgets, f.currentMonth, f.currency)
-      : INCOME_CATEGORIES,
-    [type, f.budgets, f.currentMonth, f.currency],
-  );
+      : INCOME_CATEGORIES;
+    if (editingTransaction?.type === type && editingTransaction.category && !available.includes(editingTransaction.category)) {
+      return [editingTransaction.category, ...available];
+    }
+    return available;
+  }, [type, f.budgets, f.currentMonth, f.currency, editingTransaction]);
   const resolvedCategory = categories.length
     ? (categories.includes(category) ? category : categories[0])
     : category;
@@ -1714,13 +1757,20 @@ function Add() {
     Keyboard.dismiss();
     setSubmitting(true);
     try {
-      await f.addTransaction({
+      const values = {
         type,
         amount: Number(amount),
         category: resolvedCategory,
         date,
         description: desc,
-      });
+      };
+      if (transactionId) {
+        await f.updateTransaction(transactionId, values);
+        router.back();
+        Alert.alert("Transaction updated successfully.");
+        return;
+      }
+      await f.addTransaction(values);
       setAmount("");
       setAmountSelection({ start: 0, end: 0 });
       amountSelectionRef.current = { start: 0, end: 0 };
@@ -1730,16 +1780,21 @@ function Add() {
       setNotice(successMessage);
       announceAccessibility(successMessage);
     } catch (e) {
-      Alert.alert("Could not save transaction", e.message);
+      if (transactionId) {
+        console.error("[BudgetFlow Transaction] Update failed:", e);
+        Alert.alert("Update failed", "Unable to update transaction. Please try again.");
+      } else {
+        Alert.alert("Could not save transaction", e.message);
+      }
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
   }
   return (
-      <Page title="Add Transaction" keyboardAvoiding>
+      <Page title={transactionId ? "Edit Transaction" : "Add Transaction"} keyboardAvoiding>
         <View style={S.formIntro}>
-          <Text style={S.sub}>Record income or spending</Text>
+          <Text style={S.sub}>{transactionId ? "Update this income or expense" : "Record income or spending"}</Text>
         </View>
         <View style={[S.typeSwitcher, { backgroundColor: theme.colors.controlBackground, borderColor: theme.colors.border }]} accessibilityRole="radiogroup" accessibilityLabel="Transaction type">
           <Pressable
@@ -1946,9 +2001,9 @@ function Add() {
             </Card>
           ) : null}
           <Button
-            title={`Add ${type}`}
-            accessibilityLabel={`Add ${type.toLowerCase()}`}
-            accessibilityHint="Saves this transaction to your BudgetFlow account"
+            title={transactionId ? "Save Changes" : `Add ${type}`}
+            accessibilityLabel={transactionId ? "Save transaction changes" : `Add ${type.toLowerCase()}`}
+            accessibilityHint={transactionId ? "Updates this transaction in your BudgetFlow account" : "Saves this transaction to your BudgetFlow account"}
             onPress={save}
             disabled={submitting}
             loading={submitting}
@@ -1991,15 +2046,44 @@ export function TransactionsScreen() {
 function Transactions() {
   const f = useFinance(),
     router = useRouter(),
-    [filter, setFilter] = useState("All"),
-    rows = f.transactions
-      .filter(
-        (t) =>
-          t.currency === f.currency && (filter === "All" || t.type === filter),
-      )
-      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    theme = useTheme(),
+    [typeFilter, setTypeFilter] = useState("All"),
+    [categoryFilter, setCategoryFilter] = useState("All"),
+    [selectedMonth, setSelectedMonth] = useState(f.currentMonth),
+    [showAnalysis, setShowAnalysis] = useState(false),
+    [exporting, setExporting] = useState(false);
+  const months = useMemo(() => [...new Set([f.currentMonth, ...f.transactions.filter((t) => (t.currency || "NGN") === f.currency).map(transactionMonth).filter(Boolean)])].sort((a, b) => b.localeCompare(a)), [f.currentMonth, f.transactions, f.currency]);
+  const categories = useMemo(() => [...new Set([...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES, ...f.transactions.filter((t) => (t.currency || "NGN") === f.currency).map((t) => t.category).filter(Boolean)])].sort((a, b) => a.localeCompare(b)), [f.transactions, f.currency]);
+  const monthRows = useMemo(() => transactionsForMonth(f.transactions, selectedMonth, f.currency).slice().sort((a, b) => String(b.created_at || b.date || "").localeCompare(String(a.created_at || a.date || ""))), [f.transactions, selectedMonth, f.currency]);
+  const rows = useMemo(() => monthRows.filter((t) => (typeFilter === "All" || t.type === typeFilter) && (categoryFilter === "All" || t.category === categoryFilter)), [monthRows, typeFilter, categoryFilter]);
+  const income = totalForType(rows, "Income"), expenses = totalForType(rows, "Expense"), net = income - expenses;
+  const spendingCategories = useMemo(() => expenseCategoryTotals(rows), [rows]);
+  async function exportTransactionsPdf() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const logoUri = Image.resolveAssetSource(require("../assets/images/budgetflow-logo.png"))?.uri;
+      let logoData = "";
+      if (logoUri) {
+        try {
+          const response = await fetch(logoUri);
+          const blob = await response.blob();
+          logoData = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || "")); reader.onerror = reject; reader.readAsDataURL(blob); });
+        } catch { logoData = ""; }
+      }
+      const transactionRows = rows.map((t) => `<tr><td>${escape(t.description || t.category || (t.type === "Income" ? "Income" : "Expense"))}</td><td>${escape(t.category || "—")}</td><td>${escape(formatDateLabel(t.date))}</td><td>${escape(t.type)}</td><td class="amount ${t.type === "Income" ? "income" : "expense"}">${t.type === "Income" ? "+" : "−"}${escape(money(t.amount, f.symbol))}</td></tr>`).join("");
+      const generated = new Date().toLocaleString();
+      const html = `<html><head><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{font-family:Arial,sans-serif;color:#172033;padding:28px}header{display:flex;align-items:center;gap:18px;border-bottom:2px solid #6C4DFF;padding-bottom:16px}header img{width:64px;height:64px;object-fit:contain}h1{color:#5143c7;margin:0;font-size:24px}p{margin:6px 0;color:#596273}.metrics{display:flex;gap:12px;margin:20px 0}.metric{background:#f4f2ff;border-radius:8px;padding:12px;flex:1}.label{font-size:11px;color:#596273}.value{font-size:17px;font-weight:700;margin-top:5px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{text-align:left;border-bottom:1px solid #e4e7ee;padding:9px 5px;font-size:11px}.amount{text-align:right;white-space:nowrap}.income{color:#15803d}.expense{color:#b42332}footer{margin-top:24px;color:#687184;font-size:10px;text-align:center}@media print{tr{break-inside:avoid}}</style></head><body><header>${logoData ? `<img src="${logoData}"/>` : ""}<div><h1>BudgetFlow</h1><p>Transaction Report · ${escape(monthLabel(selectedMonth))}</p><p>${escape(categoryFilter === "All" ? "All Categories" : categoryFilter)} · ${escape(typeFilter === "All" ? "All Types" : typeFilter === "Expense" ? "Expenses" : "Income")}</p></div></header><div class="metrics"><div class="metric"><div class="label">Income</div><div class="value">${escape(money(income, f.symbol))}</div></div><div class="metric"><div class="label">Expenses</div><div class="value">${escape(money(expenses, f.symbol))}</div></div><div class="metric"><div class="label">Net</div><div class="value">${escape(money(net, f.symbol))}</div></div></div><h2>Transactions (${rows.length})</h2><table><thead><tr><th>Description</th><th>Category</th><th>Date</th><th>Type</th><th class="amount">Amount</th></tr></thead><tbody>${transactionRows || "<tr><td colspan=\"5\">No transactions match these filters.</td></tr>"}</tbody></table><footer>Generated ${escape(generated)} · BudgetFlow · <span class="pageNumber"></span></footer></body></html>`;
+      const file = await Print.printToFileAsync({ html });
+      if (Platform.OS !== "web" && await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "application/pdf", UTI: ".pdf", dialogTitle: `${monthLabel(selectedMonth)} BudgetFlow transactions` });
+      else if (Platform.OS !== "web") await Print.printAsync({ html });
+      else Alert.alert("Report ready", `The ${monthLabel(selectedMonth)} PDF is ready.`);
+    } catch (error) { Alert.alert("Could not export transactions", error?.message || "Please try again."); }
+    finally { setExporting(false); }
+  }
   return (
-    <Page title="Transactions" scroll={false} back={backTo(router, "/(tabs)/more")} backLabel="Back to More" backHint="Returns to the More screen">
+    <Page title="Transactions" scroll={false} back={backTo(router, "/(tabs)/more")} backLabel="Back" backHint="Returns to the previous screen" rightAction={{ label: exporting ? "Generating transaction PDF" : "Download transaction report", hint: "Generates a PDF report for the selected month and filters", icon: exporting ? <ActivityIndicator size="small" color={theme.colors.accentText} /> : <Download size={20} color={theme.colors.accentText} />, onPress: exportTransactionsPdf, disabled: exporting }}>
       <FlatList
         data={rows}
         keyExtractor={(item) => String(item.id)}
@@ -2007,34 +2091,35 @@ function Transactions() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
-            <View style={S.pageIntro}>
-              <Text style={S.sub}>Your recent income and spending</Text>
+            <Text style={[S.sub, { color: theme.colors.secondaryText }]}>Your income and spending history</Text>
+            <SelectField label="Reporting month" value={monthLabel(selectedMonth)} options={months.map((month) => ({ value: month, label: monthLabel(month) }))} onChange={setSelectedMonth} leadingIcon="calendar" tone="purple" />
+            <View style={S.transactionFilterGrid}>
+              <SelectField label="Category" value={categoryFilter === "All" ? "All Categories" : categoryFilter} options={[{ value: "All", label: "All Categories" }, ...categories.map((category) => ({ value: category, label: category }))]} onChange={setCategoryFilter} />
+              <SelectField label="Transaction type" value={typeFilter === "All" ? "All Types" : typeFilter === "Expense" ? "Expenses" : "Income"} options={[{ value: "All", label: "All Types" }, { value: "Expense", label: "Expenses" }, { value: "Income", label: "Income" }]} onChange={setTypeFilter} />
             </View>
-            <View style={S.filterRow} accessibilityRole="radiogroup" accessibilityLabel="Filter transactions">
-              {["All", "Expense", "Income"].map((x) => (
-                <Pressable
-                  key={x}
-                  accessibilityRole="radio"
-                  accessibilityLabel={`${x} transaction filter`}
-                  accessibilityState={{ selected: filter === x }}
-                  onPress={() => setFilter(x)}
-                  style={[S.chip, filter === x && S.chipOn]}
-                >
-                  <Text
-                    style={[S.filterText, filter === x && { color: C.purple }]}
-                  >
-                    {x}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+            <Section title={monthLabel(selectedMonth)} />
+            <Card style={S.transactionSummaryGrid}>
+              {[{ label: "Income", value: income, color: theme.colors.positive }, { label: "Expenses", value: expenses, color: theme.colors.danger }, { label: "Net", value: net, color: net < 0 ? theme.colors.danger : theme.colors.text }].map((metric) => <View key={metric.label} style={[S.transactionSummaryMetric, { backgroundColor: theme.colors.elevated, borderColor: theme.colors.border }]}><Text style={[S.caption, { color: theme.colors.secondaryText }]}>{metric.label}</Text><Text style={[S.transactionSummaryAmount, { color: metric.color }]} numberOfLines={1} adjustsFontSizeToFit>{money(metric.value, f.symbol)}</Text></View>)}
+            </Card>
+            <Button title="Analysis" icon={<ChartNoAxesColumnIncreasing size={18} />} secondary onPress={() => setShowAnalysis((shown) => !shown)} accessibilityHint="Shows monthly transaction analysis and spending by category" />
+            {showAnalysis ? <>
+              <Card style={S.insightsCard}>
+                <Text style={S.bodyText}>{rows.length} transactions · Average expense {money(rows.filter((t) => t.type === "Expense").length ? expenses / rows.filter((t) => t.type === "Expense").length : 0, f.symbol)}</Text>
+                {spendingCategories[0] ? <Text style={S.bodyText}>Top category: {spendingCategories[0].category} · {money(spendingCategories[0].amount, f.symbol)}</Text> : <Text style={S.caption}>No expenses in this selection.</Text>}
+                {spendingCategories.length ? <><Text style={S.cardTitle}>Spending by category</Text><DonutChart items={spendingCategories} total={expenses} theme={theme} currency={f.currency} />{spendingCategories.map((item) => <View key={item.category} style={S.reportHistoryValues}><Text style={[S.bodyText, { color: theme.colors.text }]}>{item.category}</Text><Text style={[S.bodyText, { color: theme.colors.text }]}>{money(item.amount, f.symbol)}</Text></View>)}</> : null}
+              </Card>
+            </> : null}
+            <Section title="Transactions" />
           </>
         }
-        renderItem={({ item }) => <Transaction t={item} symbol={f.symbol} currency={f.currency} />}
+        renderItem={({ item }) => <Transaction t={item} symbol={f.symbol} currency={f.currency} onPress={() => router.push(`/transaction/${item.id}`)} />}
+        getItemLayout={undefined}
+        initialNumToRender={12}
+        windowSize={7}
         ListEmptyComponent={
           <Empty
-            text="No transactions yet"
-            description="Add your first income or expense to start tracking your finances."
+            text="No transactions found"
+            description={`No transactions match your selected filters for ${monthLabel(selectedMonth)}. Change the month, category or type to see other transactions.`}
             icon={WalletCards}
             actionLabel="Add Transaction"
             onAction={() => router.push("/add")}
@@ -2044,11 +2129,11 @@ function Transactions() {
     </Page>
   );
 }
-function Transaction({ t, symbol, currency }) {
+function Transaction({ t, symbol, currency, onPress }) {
   const income = t.type === "Income";
   const theme = useTheme();
   const description = String(t.description || "").trim();
-  return (
+  const row = (
     <ListRow
       style={S.tx}
       leading={(
@@ -2058,7 +2143,7 @@ function Transaction({ t, symbol, currency }) {
       )}
       title={t.description || t.category}
       titleNumberOfLines={2}
-      subtitle={`${t.category} / ${formatDateLabel(t.date)}`}
+      subtitle={`${formatDateLabel(t.date)}${t.created_at ? ` · ${new Date(t.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""} · ${income ? "Income" : "Expense"}`}
       accessibilityLabel={`${t.category} ${income ? "income" : "expense"}${description && description.toLowerCase() !== String(t.category || "").toLowerCase() ? `, ${description}` : ""}, ${formatDateLabel(t.date)}, ${accessibleMoney(t.amount, currency || t.currency || "NGN")}`}
       trailing={(
         <Text style={[S.transactionAmount, { color: income ? theme.colors.positive : theme.colors.danger }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
@@ -2067,6 +2152,76 @@ function Transaction({ t, symbol, currency }) {
       )}
     />
   );
+  return onPress ? <Pressable accessibilityRole="button" onPress={onPress}>{row}</Pressable> : row;
+}
+export function TransactionDetailScreen() {
+  return <Guard><TransactionDetail /></Guard>;
+}
+function TransactionDetail() {
+  const { id } = useLocalSearchParams();
+  const router = useRouter();
+  const f = useFinance();
+  const theme = useTheme();
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
+  const transaction = f.transactions.find((item) => String(item.id) === String(id));
+  if (!transaction) return <Page title="Transaction" back={backTo(router, "/transactions")} backLabel="Back to transactions"><Empty text="Transaction not found" description="This transaction is no longer available in your account." actionLabel="View transactions" onAction={() => router.replace("/transactions")} /></Page>;
+  const income = transaction.type === "Income";
+  const createdTime = transaction.created_at ? new Date(transaction.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Not recorded";
+  const fields = [
+    ["Description", transaction.description || transaction.category || (income ? "Income" : "Expense")],
+    ["Amount", `${income ? "+" : "−"}${money(transaction.amount, currencySymbols[transaction.currency || f.currency] || f.symbol)}`],
+    ["Type", income ? "Income" : "Expense"],
+    ["Main category", transaction.category || "Uncategorised"],
+    ...(transaction.subcategory ? [["Subcategory", transaction.subcategory]] : []),
+    ["Date", formatDateLabel(transaction.date)],
+    ["Time", createdTime],
+    ...(transaction.status ? [["Status", transaction.status]] : []),
+    ...(transaction.notes ? [["Notes", transaction.notes]] : []),
+  ];
+  async function deleteCurrentTransaction() {
+    if (deletingRef.current) return;
+    deletingRef.current = true;
+    setDeleting(true);
+    try {
+      await f.deleteTransaction(transaction.id);
+      setDeleteDialogVisible(false);
+      router.replace("/transactions");
+      Alert.alert("Transaction deleted.");
+    } catch (error) {
+      console.error("[BudgetFlow Transaction] Delete failed:", error);
+      Alert.alert("Delete failed", "Unable to delete transaction. Please try again.");
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
+    }
+  }
+  return <Page title="Transaction details" back={backTo(router, "/transactions")} backLabel="Back" backHint="Returns to transaction history">
+    <Card style={S.transactionDetailHero}>
+      <View style={[S.recentActivityIcon, { width: 52, height: 52, borderRadius: 16, backgroundColor: income ? theme.colors.greenTint : theme.colors.purpleTint }]}><AppIcon name={income ? "income" : "expenses"} size={23} color={income ? theme.colors.positive : theme.colors.accentText} /></View>
+      <Text style={[S.caption, { color: theme.colors.secondaryText }]}>{income ? "Income received" : "Expense recorded"}</Text>
+      <Text style={[S.transactionDetailAmount, { color: income ? theme.colors.positive : theme.colors.text }]} numberOfLines={1} adjustsFontSizeToFit>{income ? "+" : "−"}{money(transaction.amount, currencySymbols[transaction.currency || f.currency] || f.symbol)}</Text>
+    </Card>
+    <Card style={S.transactionDetailFields}>{fields.map(([label, value]) => <View key={label} style={[S.transactionDetailField, { borderBottomColor: theme.colors.borderSubtle }]}><Text style={[S.caption, { color: theme.colors.secondaryText }]}>{label}</Text><Text style={[S.bodyText, { color: theme.colors.text, flexShrink: 1, textAlign: "right" }]}>{value}</Text></View>)}</Card>
+    <View style={S.transactionDetailActions}>
+      <Button title="Edit" icon={<Pencil size={17} color={theme.colors.onPrimary} />} onPress={() => router.push({ pathname: "/(tabs)/add", params: { transactionId: String(transaction.id) } })} style={S.transactionDetailAction} accessibilityHint="Opens this transaction in the existing transaction form" />
+      <Button title="Delete" variant="danger" icon={<Trash2 size={17} color={theme.colors.onPrimary} />} onPress={() => setDeleteDialogVisible(true)} style={S.transactionDetailAction} accessibilityHint="Asks you to confirm before deleting this transaction" />
+    </View>
+    <Modal visible={deleteDialogVisible} transparent animationType="fade" onRequestClose={() => { if (!deleting) setDeleteDialogVisible(false); }} accessibilityViewIsModal>
+      <View style={[S.deleteDialogBackdrop, { backgroundColor: theme.colors.overlay }]}>
+        <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel="Close delete confirmation" disabled={deleting} onPress={() => setDeleteDialogVisible(false)} />
+        <View style={[S.deleteConfirmation, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text accessibilityRole="header" style={[S.cardTitle, { color: theme.colors.text }]}>Delete transaction?</Text>
+          <Text style={[S.bodyText, { color: theme.colors.secondaryText }]}>Are you sure you want to delete this transaction? This action cannot be undone.</Text>
+          <View style={S.deleteConfirmationActions}>
+            <Button title="Cancel" secondary disabled={deleting} onPress={() => setDeleteDialogVisible(false)} style={S.transactionDetailAction} />
+            <Button title="Delete" variant="danger" loading={deleting} disabled={deleting} onPress={deleteCurrentTransaction} style={S.transactionDetailAction} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  </Page>;
 }
 export function GoalsScreen() {
   return (
@@ -2815,6 +2970,9 @@ function Account() {
             <SharedButton title="Choose avatar" onPress={() => setAvatarPickerOpen(true)} variant="secondary" />
             <SharedButton title={uploadingAvatar ? "Uploading…" : "Upload photo"} disabled={uploadingAvatar} onPress={async () => {
               try {
+                // Keep native picker modules out of app startup. Older preview APKs
+                // may receive a JS update before they are rebuilt with this module.
+                const ImagePicker = await import("expo-image-picker");
                 let permission = await ImagePicker.getMediaLibraryPermissionsAsync();
                 if (!permission.granted) permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
                 if (!permission.granted) { Alert.alert("Photo access needed", "Allow photo library access to choose a profile picture."); return; }
@@ -2823,6 +2981,7 @@ function Account() {
                 const asset = result.assets?.[0];
                 if (!asset?.uri || (asset.mimeType && !asset.mimeType.startsWith("image/"))) { Alert.alert("Invalid image", "Choose a valid image file."); return; }
                 setUploadingAvatar(true);
+                const ImageManipulator = await import("expo-image-manipulator");
                 const optimized = await ImageManipulator.manipulateAsync(asset.uri, [{ resize: { width: 512, height: 512 } }], { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG });
                 const response = await fetch(optimized.uri);
                 const blob = await response.blob();
@@ -2834,7 +2993,11 @@ function Account() {
                 const { error: profileError } = await supabase.auth.updateUser({ data: { custom_avatar_url: `${publicUrl}?v=${Date.now()}`, selected_avatar_id: null } });
                 if (profileError) throw profileError;
                 Alert.alert("Profile picture updated", "Your new photo is now saved to your BudgetFlow profile.");
-              } catch (error) { Alert.alert("Photo upload failed", error?.message || "Check your connection and try again."); }
+              } catch (error) {
+                const message = error?.message || "Check your connection and try again.";
+                const nativeModuleMissing = /ExponentImagePicker|ExponentImageManipulator|cannot find native module/i.test(message);
+                Alert.alert(nativeModuleMissing ? "Photo upload unavailable" : "Photo upload failed", nativeModuleMissing ? "This installed app build does not include the photo tools yet. Preset avatars still work. Install the latest BudgetFlow preview build to upload a photo." : message);
+              }
               finally { setUploadingAvatar(false); }
             }} />
           </View>
@@ -4164,8 +4327,13 @@ const S = StyleSheet.create({
   hero: {
     overflow: "hidden",
     padding: SPACE.xl,
-    borderRadius: RADIUS.card,
+    borderTopLeftRadius: RADIUS.card,
+    borderTopRightRadius: RADIUS.card,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderWidth: 0,
   },
+  balanceTransactionCard: { padding: 0, overflow: "hidden" },
   heroGlow: { position: "absolute", width: 230, height: 230, right: -98, bottom: -156, borderRadius: 115, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.035)" },
   balanceAmountRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   balanceVisibility: { width: CONTROL.minTouchTarget, height: CONTROL.minTouchTarget, alignItems: "center", justifyContent: "center" },
@@ -4319,6 +4487,19 @@ const S = StyleSheet.create({
   transactionReviewType: { ...TEXT.label, marginTop: 0 },
   transactionReviewAmount: { ...TEXT.metricAmount, fontSize: 24, lineHeight: 30 },
   transactionAmount: { fontSize: 14, fontWeight: "800", textAlign: "right", flexShrink: 1 },
+  transactionFilterGrid: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
+  transactionSummaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
+  transactionSummaryMetric: { flex: 1, minWidth: 100, gap: SPACE.xs, borderWidth: 1, borderRadius: RADIUS.md, padding: SPACE.sm },
+  transactionSummaryAmount: { fontSize: 15, fontWeight: "800" },
+  transactionDetailHero: { alignItems: "center", gap: SPACE.sm, paddingVertical: SPACE.xl },
+  transactionDetailAmount: { fontSize: 30, lineHeight: 38, fontWeight: "800", maxWidth: "100%" },
+  transactionDetailFields: { gap: 0 },
+  transactionDetailField: { minHeight: CONTROL.minTouchTarget + 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACE.lg, paddingVertical: SPACE.sm, borderBottomWidth: 1 },
+  transactionDetailActions: { flexDirection: "row", gap: SPACE.sm },
+  transactionDetailAction: { flex: 1, minWidth: 0, minHeight: CONTROL.minTouchTarget },
+  deleteDialogBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: SPACE.page },
+  deleteConfirmation: { width: "100%", maxWidth: 420, gap: SPACE.md, padding: SPACE.lg, borderWidth: 1, borderRadius: RADIUS.card },
+  deleteConfirmationActions: { flexDirection: "row", gap: SPACE.sm, marginTop: SPACE.xs },
   budgetMatch: {
     minHeight: CONTROL.minTouchTarget,
     flexDirection: "row",
@@ -4445,6 +4626,13 @@ const S = StyleSheet.create({
   smartPlanIcon: { width: 36, height: 36, borderRadius: Math.round(36 * 0.29), alignItems: "center", justifyContent: "center" },
   smartPlanSparkle: { position: "absolute", top: 3, right: 3, backgroundColor: "transparent" },
   dashboardOverviewHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: SPACE.sm, marginTop: SPACE.sm },
+  dashboardTransactionRow: { minHeight: CONTROL.minTouchTarget, flexDirection: "row", alignItems: "center", gap: SPACE.sm, paddingHorizontal: SPACE.md, borderBottomLeftRadius: RADIUS.card, borderBottomRightRadius: RADIUS.card },
+  dashboardTransactionSummary: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: SPACE.xs },
+  dashboardTransactionText: { flexShrink: 1, minWidth: 0, fontSize: TYPE.small, fontWeight: TYPE.weight.semibold },
+  dashboardTransactionAmount: { flexShrink: 1, maxWidth: "48%", fontSize: TYPE.small, fontWeight: TYPE.weight.bold, textAlign: "left" },
+  dashboardTransactionsLink: { minHeight: CONTROL.minTouchTarget - 4, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 1, flexShrink: 0, paddingLeft: SPACE.xs },
+  dashboardTransactionsLinkText: { fontSize: TYPE.small, lineHeight: TYPE.lineHeight.caption, fontWeight: TYPE.weight.bold },
+  recentActivityIcon: { width: 38, height: 38, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   dashboardOverviewTitle: { ...TEXT.sectionTitle, flexShrink: 1 },
   dashboardSmartPlanAction: { minHeight: CONTROL.minTouchTarget, flexDirection: "row", alignItems: "center", gap: SPACE.xs, paddingHorizontal: SPACE.sm, borderWidth: 1, borderRadius: RADIUS.md, flexShrink: 0 },
   dashboardSmartPlanText: { fontSize: TYPE.small, lineHeight: TYPE.lineHeight.caption, fontWeight: TYPE.weight.bold },
